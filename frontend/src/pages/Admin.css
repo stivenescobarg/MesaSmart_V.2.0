@@ -1,0 +1,42 @@
+.admin-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #f5f5f5;
+}
+
+.panel-title {
+  position: absolute;
+  top: 20px;
+  color: #7b2cbf;
+}
+
+.btn-salir {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #7b2cbf;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 8px;
+}
+
+.btn-abrir {
+  background: #7b2cbf;
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.admin-card {
+  background: white;
+  padding: 25px;
+  border-radius: 15px;
+  width: 350px;
+}
+
+.titulo-morado {
+  color: #7b2cbf;
+}

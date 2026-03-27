@@ -1,0 +1,161 @@
+/* 🔥 RESET TOTAL (ELIMINA BORDES BLANCOS) */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: "Segoe UI", sans-serif;
+  background: transparent;
+}
+
+/* 🔥 CONTENEDOR PRINCIPAL - PANTALLA COMPLETA REAL */
+.login-container {
+  position: fixed; /* 🔥 CLAVE */
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: linear-gradient(135deg, #d8c4f0, #b38be0);
+  overflow: hidden;
+}
+
+/* 🔥 LÍNEAS DECORATIVAS */
+.login-container::before {
+  content: "";
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(0,0,0,0.05),
+    rgba(0,0,0,0.05) 2px,
+    transparent 2px,
+    transparent 20px
+  );
+}
+
+/* 🔥 TARJETA LOGIN */
+.login-card {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+
+  background: white;
+  border-radius: 20px;
+  padding: 25px;
+
+  box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+  text-align: center;
+  z-index: 1;
+}
+
+/* 🔥 IMAGEN */
+.login-image {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 15px;
+}
+
+/* 🔥 TITULO */
+.login-card h2 {
+  color: #6a0dad;
+  margin: 15px 0;
+  font-size: 26px;
+}
+
+/* 🔥 INPUTS */
+.login-card input,
+.login-card select {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+/* 🔥 BOTÓN PRINCIPAL */
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  background: #6a0dad;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+/* 🔥 BOTÓN SECUNDARIO */
+.menu-btn {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 2px solid #6a0dad;
+  color: #6a0dad;
+  border-radius: 10px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+/* 📱 CELULAR */
+@media (max-width: 600px) {
+  .login-card {
+    margin: 15px;
+    padding: 20px;
+  }
+
+  .login-image {
+    height: 120px;
+  }
+
+  .login-card h2 {
+    font-size: 22px;
+  }
+}
+
+/* 📲 TABLET */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .login-card {
+    max-width: 450px;
+  }
+}
+
+/* 💻 PC */
+@media (min-width: 1024px) {
+  .login-card {
+    max-width: 500px;
+    padding: 40px;
+    border-radius: 25px;
+  }
+
+  .login-image {
+    height: 180px;
+  }
+
+  .login-card input,
+  .login-card select {
+    padding: 12px;
+    font-size: 15px;
+  }
+
+  .login-btn,
+  .menu-btn {
+    padding: 14px;
+    font-size: 16px;
+  }
+}
+
+/* 💻 PANTALLAS GRANDES */
+@media (min-width: 1400px) {
+  .login-card {
+    max-width: 600px;
+    padding: 50px;
+  }
+}

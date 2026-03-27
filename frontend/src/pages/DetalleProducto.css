@@ -1,0 +1,20 @@
+.detalle-container {
+  max-width: 420px;
+  margin: auto;
+  padding: 15px;
+}
+
+.detalle-container img {
+  width: 100%;
+  border-radius: 10px;
+}
+
+.btn {
+  margin-top: 20px;
+  width: 100%;
+  padding: 10px;
+  background: purple;
+  color: white;
+  border: none;
+  border-radius: 10px;
+}
