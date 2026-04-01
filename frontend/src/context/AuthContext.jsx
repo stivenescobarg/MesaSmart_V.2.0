@@ -1,89 +1,56 @@
-// ══════════════════════════════════════════════════════════════════
-// context/AuthContext.jsx
-// Estado global de autenticación.
-// Provee: usuario activo, sesión, funciones login/logout.
-// Consumir con: const { usuario, sesion, login, logout } = useAuth();
-// ══════════════════════════════════════════════════════════════════
+// frontend/src/context/AuthContext.jsx
+// LIMPIO: solo consume authService que llama al backend.
+// El token se guarda en localStorage (solo el token, no datos de negocio).
 
 import { createContext, useContext, useState, useEffect } from "react";
-import { login as loginApi }   from "../services/api/authApi";
-import {
-  iniciarSesion,
-  cerrarSesion,
-  getSesionActiva,
-  limpiarSesionesHuerfanas,
-} from "../services/authService";
+import { authService } from "../services/authService";
 
-// ── CONTEXTO ─────────────────────────────────────────────────────
 const AuthContext = createContext(null);
 
-// ── PROVIDER ──────────────────────────────────────────────────────
 export const AuthProvider = ({ children }) => {
-  const [usuario, setUsuario]   = useState(null);
-  const [sesion,  setSesion]    = useState(null);
-  const [cargando, setCargando] = useState(true); // mientras se verifica sesión persistida
+  const [usuario,  setUsuario]  = useState(null);
+  const [cargando, setCargando] = useState(true);
 
-  // Al montar: recuperar sesión persistida (por si el usuario recargó la página)
+  // Al montar: verificar token guardado llamando al backend
   useEffect(() => {
-    limpiarSesionesHuerfanas();
-    const persistida = getSesionActiva();
-    if (persistida) {
-      setUsuario(persistida.usuario);
-      setSesion(persistida.sesion);
-    }
-    setCargando(false);
+    authService.verificarSesion()
+      .then((u) => setUsuario(u))
+      .finally(() => setCargando(false));
   }, []);
 
-  /**
-   * Inicia sesión con correo + password.
-   * @returns {{ ok: boolean, error?: string }}
-   */
   const login = async (correo, password) => {
-    const resultado = await loginApi(correo, password);
-    if (!resultado.ok) return resultado;
-
-    const nuevaSesion = iniciarSesion(resultado.usuario);
-    setUsuario(resultado.usuario);
-    setSesion(nuevaSesion);
-    return { ok: true };
+    try {
+      const data = await authService.login(correo, password);
+      setUsuario(data.usuario);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
   };
 
-  /**
-   * Cierra la sesión actual y limpia el estado.
-   */
-  const logout = () => {
-    if (sesion?.id) cerrarSesion(sesion.id);
+  const logout = async () => {
+    await authService.logout();
     setUsuario(null);
-    setSesion(null);
   };
 
-  /** Nombre de bienvenida formateado */
+  // Saludo usa el rol real de la BD: "admin", "cocina", "bartender"
   const saludo = usuario
     ? `${usuario.correo.split("@")[0]} (${etiquetaRol(usuario.rol)})`
     : "";
 
   return (
-    <AuthContext.Provider
-      value={{ usuario, sesion, login, logout, cargando, saludo }}
-    >
+    <AuthContext.Provider value={{ usuario, cargando, login, logout, saludo }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// ── HOOK ──────────────────────────────────────────────────────────
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth debe usarse dentro de <AuthProvider>");
   return ctx;
 };
 
-// ── HELPERS ───────────────────────────────────────────────────────
-const etiquetaRol = (rol) => {
-  const map = {
-    administrador: "Administrador",
-    cocina:        "Cocina",
-    bartender:     "Bartender",
-  };
-  return map[rol] || rol;
-};
+// Roles de la BD: "admin", "cocina", "bartender"
+const etiquetaRol = (rol) =>
+  ({ admin: "Administrador", cocina: "Cocina", bartender: "Bartender" }[rol] || rol);

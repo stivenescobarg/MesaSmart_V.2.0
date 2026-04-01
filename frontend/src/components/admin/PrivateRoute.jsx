@@ -1,8 +1,6 @@
-// ══════════════════════════════════════════════════════════════════
-// components/admin/PrivateRoute.jsx — CORREGIDO
-// Espera a que AuthContext verifique la sesión antes de redirigir.
-// Si cargando=true → muestra pantalla de espera (nunca redirige aún).
-// ══════════════════════════════════════════════════════════════════
+// frontend/src/components/admin/PrivateRoute.jsx
+// Roles de la BD: "admin", "cocina", "bartender"
+// NO usar "administrador" — ese era el rol del sistema anterior con localStorage.
 
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -11,9 +9,7 @@ const PrivateRoute = ({ children, rolesPermitidos }) => {
   const { usuario, cargando } = useAuth();
   const location = useLocation();
 
-  // ⚠️ CRÍTICO: mientras AuthContext verifica la sesión persistida,
-  // NO redirigir. Si se redirige aquí, usuarios con sesión válida
-  // ven "acceso denegado" al recargar la página.
+  // Mientras se verifica el token → pantalla de espera, NUNCA redirigir
   if (cargando) {
     return (
       <div className="cargando-pantalla">
@@ -25,7 +21,7 @@ const PrivateRoute = ({ children, rolesPermitidos }) => {
     );
   }
 
-  // Sin sesión → login. "replace" evita que "atrás" vuelva al panel.
+  // Sin sesión → login
   if (!usuario) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }

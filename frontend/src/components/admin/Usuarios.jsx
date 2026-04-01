@@ -1,42 +1,51 @@
-// ══════════════════════════════════════════════════════════════════
-// components/admin/Usuarios.jsx
-// Gestión de usuarios con modal de eliminación segura.
-// La eliminación requiere contraseña de seguridad: 9876
-// ══════════════════════════════════════════════════════════════════
+// frontend/src/components/admin/Usuarios.jsx
+// Sin dependencia de userService.js (eliminado).
+// Validación real la hace el backend.
+// etiquetaRol vive aquí directamente al ser solo presentación.
 
 import { useState } from "react";
-import { validarUsuario, etiquetaRol } from "../../services/userService";
 import Modal from "./Modal";
 
 const PASSWORD_SEGURIDAD = "9876";
 
 const ROLES = [
-  { value: "cocina",        label: "🍳 Cocina" },
-  { value: "bartender",     label: "🍹 Bartender" },
-  { value: "administrador", label: "🛡️ Administrador" },
+  { value: "cocina",    label: "🍳 Cocina" },
+  { value: "bartender", label: "🍹 Bartender" },
+  { value: "admin",     label: "🛡️ Administrador" },
 ];
 
 const COLOR_ROL = {
-  cocina:        "chip-naranja",
-  bartender:     "chip-azul",
-  administrador: "chip-morado",
+  cocina:    "chip-naranja",
+  bartender: "chip-azul",
+  admin:     "chip-morado",
+};
+
+// Función local — solo presentación visual, no lógica de negocio
+const etiquetaRol = (rol) =>
+  ({ admin: "Administrador", cocina: "Cocina", bartender: "Bartender" }[rol] || rol);
+
+// Validación básica solo para UX (feedback inmediato al usuario)
+// La validación real y definitiva la hace el backend
+const validarFormulario = (correo, password, confirmar) => {
+  const errores = [];
+  if (!correo.includes("@")) errores.push("El correo no tiene un formato válido.");
+  if (password.length < 6)   errores.push("La contraseña debe tener al menos 6 caracteres.");
+  if (password !== confirmar) errores.push("Las contraseñas no coinciden.");
+  return errores;
 };
 
 const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
-  // Formulario crear
-  const [formulario,   setFormulario]   = useState(false);
-  const [correo,       setCorreo]       = useState("");
-  const [password,     setPassword]     = useState("");
-  const [confirmar,    setConfirmar]    = useState("");
-  const [rol,          setRol]          = useState("cocina");
-  const [errores,      setErrores]      = useState([]);
-  const [mostrarPass,  setMostrarPass]  = useState(false);
-
-  // Modal de eliminación
-  const [modalEliminar,   setModalEliminar]   = useState(false);
+  const [formulario,       setFormulario]       = useState(false);
+  const [correo,           setCorreo]           = useState("");
+  const [password,         setPassword]         = useState("");
+  const [confirmar,        setConfirmar]        = useState("");
+  const [rol,              setRol]              = useState("cocina");
+  const [errores,          setErrores]          = useState([]);
+  const [mostrarPass,      setMostrarPass]      = useState(false);
+  const [modalEliminar,    setModalEliminar]    = useState(false);
   const [usuarioAEliminar, setUsuarioAEliminar] = useState(null);
-  const [passSeguridad,   setPassSeguridad]   = useState("");
-  const [errorModal,      setErrorModal]      = useState("");
+  const [passSeguridad,    setPassSeguridad]    = useState("");
+  const [errorModal,       setErrorModal]       = useState("");
 
   const limpiarFormulario = () => {
     setCorreo(""); setPassword(""); setConfirmar("");
@@ -44,14 +53,13 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
   };
 
   const handleCrear = () => {
-    const errs = validarUsuario(correo, password, usuarios);
-    if (password !== confirmar) errs.push("Las contraseñas no coinciden.");
+    const errs = validarFormulario(correo, password, confirmar);
     if (errs.length > 0) { setErrores(errs); return; }
+    // El backend devolverá error si el correo ya existe (ER_DUP_ENTRY)
     onCrearUsuario({ correo, password, rol });
     limpiarFormulario();
   };
 
-  // Abrir modal de eliminación
   const abrirModalEliminar = (usuario) => {
     setUsuarioAEliminar(usuario);
     setPassSeguridad("");
@@ -59,7 +67,6 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
     setModalEliminar(true);
   };
 
-  // Confirmar eliminación con contraseña
   const confirmarEliminar = () => {
     if (passSeguridad !== PASSWORD_SEGURIDAD) {
       setErrorModal("Contraseña de seguridad incorrecta.");
@@ -96,14 +103,16 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
 
           <div className="campo-grupo">
             <label className="campo-label">Correo electrónico</label>
-            <input className="campo-input" type="email" placeholder="usuario@restaurante.com"
+            <input className="campo-input" type="email"
+              placeholder="usuario@mesasmart.com"
               value={correo} onChange={(e) => setCorreo(e.target.value)} />
           </div>
 
           <div className="campo-grupo">
             <label className="campo-label">Contraseña (mín. 6 caracteres)</label>
             <div className="input-con-icono">
-              <input className="campo-input" type={mostrarPass ? "text" : "password"}
+              <input className="campo-input"
+                type={mostrarPass ? "text" : "password"}
                 placeholder="••••••••" value={password}
                 onChange={(e) => setPassword(e.target.value)} />
               <button className="btn-toggle-pass" type="button"
@@ -115,8 +124,9 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
 
           <div className="campo-grupo">
             <label className="campo-label">Confirmar contraseña</label>
-            <input className="campo-input" type="password" placeholder="••••••••"
-              value={confirmar} onChange={(e) => setConfirmar(e.target.value)} />
+            <input className="campo-input" type="password"
+              placeholder="••••••••" value={confirmar}
+              onChange={(e) => setConfirmar(e.target.value)} />
           </div>
 
           <div className="campo-grupo">
@@ -134,12 +144,12 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
 
           <div className="form-botones">
             <button className="btn-primario" onClick={handleCrear}>Crear usuario</button>
-            <button className="btn-ghost" onClick={limpiarFormulario}>Cancelar</button>
+            <button className="btn-ghost"    onClick={limpiarFormulario}>Cancelar</button>
           </div>
         </div>
       )}
 
-      {/* ── LISTA ── */}
+      {/* ── LISTA DE USUARIOS ── */}
       <div className="usuarios-lista">
         {usuarios.length === 0 ? (
           <p className="texto-secundario" style={{ marginTop: "1.5rem" }}>
@@ -155,9 +165,9 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
                 </span>
               </div>
               <div className="usuario-meta">
-                {u.creadoEn && (
+                {u.creado_en && (
                   <span className="texto-muted usuario-fecha">
-                    {new Date(u.creadoEn).toLocaleDateString("es-CO")}
+                    {new Date(u.creado_en).toLocaleDateString("es-CO")}
                   </span>
                 )}
                 <button className="btn-eliminar"
@@ -182,24 +192,18 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
         {usuarioAEliminar && (
           <div>
             <p className="texto-secundario" style={{ marginBottom: "1rem" }}>
-              Vas a eliminar a <strong style={{ color: "var(--text-1)" }}>
+              Vas a eliminar a{" "}
+              <strong style={{ color: "var(--text-1)" }}>
                 {usuarioAEliminar.correo}
-              </strong>.
-              Esta acción no se puede deshacer.
+              </strong>. Esta acción no se puede deshacer.
             </p>
             <div className="campo-grupo">
               <label className="campo-label">Contraseña de seguridad</label>
-              <input
-                className="campo-input"
-                type="password"
+              <input className="campo-input" type="password"
                 placeholder="Ingresa la contraseña de seguridad"
                 value={passSeguridad}
-                onChange={(e) => {
-                  setPassSeguridad(e.target.value);
-                  setErrorModal("");
-                }}
-                autoFocus
-              />
+                onChange={(e) => { setPassSeguridad(e.target.value); setErrorModal(""); }}
+                autoFocus />
             </div>
             {errorModal && (
               <p style={{ color: "var(--red)", fontSize: "0.82rem", marginTop: "0.25rem" }}>

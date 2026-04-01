@@ -716,3 +716,109 @@ hr { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
   .sesiones-grid { grid-template-columns: 1fr 1fr; }
   .modal-box { max-width: 100%; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   AGREGAR AL FINAL DE Admin.css
+   Modo claro/oscuro + fix de aislamiento de estilos
+══════════════════════════════════════════════════════════════ */
+
+/* ── MODO CLARO ─────────────────────────────────────────────── */
+/* Se activa cuando <html> tiene la clase "light-mode" */
+html.light-mode {
+  --bg:           #f5f5f0;
+  --bg-card:      #ffffff;
+  --bg-hover:     #eeede8;
+  --bg-input:     #f0efe9;
+  --border:       #dddbd4;
+  --border-light: #cccac2;
+
+  --amber:        #c97d00;
+  --amber-dim:    rgba(201, 125, 0, 0.10);
+  --amber-border: rgba(201, 125, 0, 0.30);
+  --amber-glow:   0 0 0 3px rgba(201, 125, 0, 0.15);
+
+  --green:        #16a34a;
+  --green-dim:    rgba(22, 163, 74, 0.10);
+  --green-border: rgba(22, 163, 74, 0.30);
+
+  --red:          #dc2626;
+  --red-dim:      rgba(220, 38, 38, 0.10);
+  --red-border:   rgba(220, 38, 38, 0.30);
+
+  --blue:         #2563eb;
+  --blue-dim:     rgba(37, 99, 235, 0.10);
+
+  --morado:       #7c3aed;
+  --morado-dim:   rgba(124, 58, 237, 0.10);
+
+  --naranja:      #ea580c;
+  --naranja-dim:  rgba(234, 88, 12, 0.10);
+
+  --text-1: #1a1916;
+  --text-2: #6b6860;
+  --text-3: #b0ada6;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.06);
+}
+
+/* body en modo claro */
+html.light-mode body {
+  background: var(--bg);
+  color: var(--text-1);
+}
+
+/* Header en modo claro */
+html.light-mode .admin-header {
+  background: rgba(245, 245, 240, 0.95);
+  border-bottom-color: var(--border);
+}
+
+/* Scrollbar en modo claro */
+html.light-mode ::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+}
+
+/* ── BOTÓN DE TEMA ───────────────────────────────────────────── */
+.btn-tema {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-sm);
+  padding: 0.35rem 0.55rem;
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.18s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-tema:hover {
+  background: var(--bg-hover);
+  border-color: var(--amber-border);
+  transform: scale(1.1);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FIX AISLAMIENTO — evita que Menu.css pise Admin.css
+   
+   Si Menu.css tiene estilos en "body" o selectores globales,
+   estos overrides los corrigen SOLO dentro del admin.
+══════════════════════════════════════════════════════════════ */
+.admin-container,
+.admin-container * {
+  /* Resetear cualquier fondo que venga de otro CSS */
+  box-sizing: border-box;
+}
+
+/* Forzar el fondo correcto del admin independientemente de otros CSS */
+.admin-container {
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+/* Si el body tiene un color de fondo de Menu.css,
+   esto lo sobrescribe cuando estamos en el admin */
+body:has(.admin-container) {
+  background: var(--bg) !important;
+}

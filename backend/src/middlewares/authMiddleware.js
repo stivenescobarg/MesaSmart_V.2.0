@@ -1,25 +1,26 @@
-const jwt = require("jsonwebtoken");
+// backend/src/middlewares/authMiddleware.js
+const jwt    = require("jsonwebtoken");
+const Sesion = require("../models/Sesion");
 
-module.exports = (req,res,next)=>{
+module.exports = async (req, res, next) => {
+  try {
+    const header = req.headers.authorization;
+    if (!header?.startsWith("Bearer "))
+      return res.status(401).json({ msg: "Token requerido." });
 
-  const token = req.headers.authorization;
+    const token   = header.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-  if(!token){
-    return res.status(401).json({msg:"No autorizado"});
-  }
-
-  try{
-
-    const decoded = jwt.verify(token,process.env.JWT_SECRET);
-
-    req.user = decoded;
-
+    if (decoded.jti) {
+      const activa = await Sesion.estaActiva(decoded.jti);
+      if (!activa)
+        return res.status(401).json({ msg: "Sesión expirada. Inicia sesión de nuevo." });
+    }
+    req.usuario = decoded; // { id, rol, jti }
     next();
-
-  }catch(err){
-
-    res.status(401).json({msg:"Token inválido"});
-
+  } catch (err) {
+    if (err.name === "TokenExpiredError")
+      return res.status(401).json({ msg: "Token expirado." });
+    return res.status(401).json({ msg: "Token inválido." });
   }
-
 };

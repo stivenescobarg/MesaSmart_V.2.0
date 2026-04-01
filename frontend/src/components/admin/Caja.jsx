@@ -1,22 +1,11 @@
 // ══════════════════════════════════════════════════════════════════
-// Caja.jsx — Gestión de apertura/cierre de caja y servicio
+// Caja.jsx — MySQL devuelve DECIMAL como string, se convierte con parseFloat
 // ══════════════════════════════════════════════════════════════════
 
 import { useState } from "react";
-import { calcularTotalVendido } from "../../services/cajaService";
 
-/**
- * @param {{
- *   cajaAbierta: boolean,
- *   caja: object|null,
- *   servicioActivo: boolean,
- *   onAbrirCaja: fn(montoInicial: number) => void,
- *   onCerrarCaja: fn() => void,
- *   onToggleServicio: fn() => void,
- * }} props
- */
 const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, onToggleServicio }) => {
-  const [montoInput, setMontoInput] = useState("");
+  const [montoInput,        setMontoInput]        = useState("");
   const [confirmandoCierre, setConfirmandoCierre] = useState(false);
 
   const handleAbrirCaja = () => {
@@ -26,9 +15,15 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
     setMontoInput("");
   };
 
-  const totalVendido = calcularTotalVendido(caja);
-  const horaApertura = caja?.fechaApertura
-    ? new Date(caja.fechaApertura).toLocaleTimeString("es-CO", {
+  // MySQL devuelve campos DECIMAL como strings → parseFloat obligatorio
+  const montoInicial = parseFloat(caja?.monto_inicial ?? 0) || 0;
+  const ventas       = caja?.ventas ?? [];
+
+  // Sumar correctamente convirtiendo cada total a número
+  const totalVendido = ventas.reduce((acc, v) => acc + (parseFloat(v.total) || 0), 0);
+
+  const horaApertura = caja?.apertura
+    ? new Date(caja.apertura).toLocaleTimeString("es-CO", {
         hour: "2-digit", minute: "2-digit",
       })
     : "—";
@@ -43,7 +38,6 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
       </div>
 
       {!cajaAbierta ? (
-        /* ── CAJA CERRADA ── */
         <div className="admin-card caja-card">
           <p className="caja-descripcion">
             Ingresa el monto en caja al iniciar la jornada para comenzar a registrar ventas.
@@ -72,27 +66,33 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
           </button>
         </div>
       ) : (
-        /* ── CAJA ABIERTA ── */
         <div className="caja-abierta-grid">
-          {/* Métricas */}
+
           <div className="admin-card">
             <p className="metrica-etiqueta">Hora de apertura</p>
             <p className="metrica-valor">{horaApertura}</p>
           </div>
+
           <div className="admin-card">
             <p className="metrica-etiqueta">Monto inicial</p>
-            <p className="metrica-valor">${caja.montoInicial.toLocaleString("es-CO")}</p>
-          </div>
-          <div className="admin-card">
-            <p className="metrica-etiqueta">Total vendido</p>
-            <p className="metrica-valor metrica-amber">${totalVendido.toLocaleString("es-CO")}</p>
-          </div>
-          <div className="admin-card">
-            <p className="metrica-etiqueta">Ventas registradas</p>
-            <p className="metrica-valor">{caja.ventas.length}</p>
+            <p className="metrica-valor">
+              ${montoInicial.toLocaleString("es-CO")}
+            </p>
           </div>
 
-          {/* Acciones */}
+          <div className="admin-card">
+            <p className="metrica-etiqueta">Total vendido</p>
+            <p className="metrica-valor metrica-amber">
+              ${totalVendido.toLocaleString("es-CO")}
+            </p>
+          </div>
+
+          <div className="admin-card">
+            <p className="metrica-etiqueta">Ventas registradas</p>
+            <p className="metrica-valor">{ventas.length}</p>
+          </div>
+
+          {/* Control de servicio */}
           <div className="admin-card caja-acciones-card">
             <h3 className="subtitulo">Control de servicio</h3>
             <p className="texto-secundario">
@@ -106,6 +106,7 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
             </button>
           </div>
 
+          {/* Cierre de jornada */}
           <div className="admin-card caja-acciones-card">
             <h3 className="subtitulo">Cierre de jornada</h3>
             <p className="texto-secundario">
@@ -119,7 +120,10 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
               <div className="confirm-box">
                 <p>¿Confirmas el cierre de caja?</p>
                 <div className="confirm-botones">
-                  <button className="btn-peligro" onClick={() => { onCerrarCaja(); setConfirmandoCierre(false); }}>
+                  <button
+                    className="btn-peligro"
+                    onClick={() => { onCerrarCaja(); setConfirmandoCierre(false); }}
+                  >
                     Sí, cerrar
                   </button>
                   <button className="btn-ghost" onClick={() => setConfirmandoCierre(false)}>
@@ -130,8 +134,8 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
             )}
           </div>
 
-          {/* Últimas ventas de la sesión */}
-          {caja.ventas.length > 0 && (
+          {/* Últimas ventas */}
+          {ventas.length > 0 && (
             <div className="admin-card caja-ventas-recientes">
               <h3 className="subtitulo">Ventas de esta sesión</h3>
               <table className="tabla">
@@ -144,18 +148,25 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
                   </tr>
                 </thead>
                 <tbody>
-                  {[...caja.ventas].reverse().slice(0, 8).map((v) => (
-                    <tr key={v.id}>
-                      <td>{v.mesa}</td>
-                      <td>{v.hora}</td>
-                      <td><span className={`chip chip-metodo chip-${v.metodo.toLowerCase()}`}>{v.metodo}</span></td>
-                      <td className="td-monto">${v.total.toLocaleString("es-CO")}</td>
+                  {[...ventas].reverse().slice(0, 8).map((v, i) => (
+                    <tr key={v.id ?? i}>
+                      <td>{v.mesa_nombre ?? v.mesa ?? "—"}</td>
+                      <td>{v.hora ?? "—"}</td>
+                      <td>
+                        <span className={`chip chip-metodo chip-${(v.metodo_pago ?? v.metodo ?? "").toLowerCase()}`}>
+                          {v.metodo_pago ?? v.metodo ?? "—"}
+                        </span>
+                      </td>
+                      <td className="td-monto">
+                        ${(parseFloat(v.total) || 0).toLocaleString("es-CO")}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
+
         </div>
       )}
     </div>
