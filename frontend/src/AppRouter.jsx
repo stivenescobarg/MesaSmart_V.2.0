@@ -39,7 +39,7 @@ const AppRouter = () => (
     <Route path="/bartender/:numero" element={<BartenderDashboard />} />
 
     {/* ── MENÚ — público para clientes QR ── */}
-    <Route path="/menu" element={<Menu />} />
+    <Route path="/menu" element={<Menu />} />cd frontend
 
     {/* Ruta de detalle de producto usada por Menu.jsx */}
     <Route
@@ -68,7 +68,7 @@ const AppRouter = () => (
     />
 
     {/* Cualquier ruta desconocida → login */}
-    <Route path="*" element={<Navigate to="/login" replace />} />
+    <Route path="*" element={<Navigate to="/Login" replace />} />
 
   </Routes>
 );

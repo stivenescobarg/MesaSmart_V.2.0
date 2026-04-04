@@ -1,27 +1,12 @@
-// ══════════════════════════════════════════════════════════════════
-// DetalleMesa.jsx — Detalle de pedido, modificación y sistema de pago
-// ══════════════════════════════════════════════════════════════════
+// frontend/src/components/admin/DetalleMesa.jsx
 
 import { useState } from "react";
 
 const METODOS_PAGO = ["Efectivo", "Tarjeta", "Transferencia"];
+const ICONO_METODO = { Efectivo: "💵", Tarjeta: "💳", Transferencia: "📲" };
 
-const ICONO_METODO = {
-  Efectivo:      "💵",
-  Tarjeta:       "💳",
-  Transferencia: "📲",
-};
+const num = (v) => parseFloat(v) || 0;
 
-/**
- * @param {{
- *   mesa: object,
- *   onModificarItem: fn(index, delta) => void,
- *   onPagoTotal: fn(metodo) => void,
- *   onPagoParcial: fn(items, metodo) => void,
- *   onVolver: fn() => void,
- *   cajaAbierta: boolean,
- * }} props
- */
 const DetalleMesa = ({
   mesa,
   onModificarItem,
@@ -30,50 +15,64 @@ const DetalleMesa = ({
   onVolver,
   cajaAbierta,
 }) => {
-  const [metodoPago, setMetodoPago] = useState("Efectivo");
-  const [modoDivision, setModoDivision] = useState(false);
-  const [seleccionados, setSeleccionados] = useState([]);
+  const [metodoPago,    setMetodoPago]    = useState("Efectivo");
+  const [modoDivision,  setModoDivision]  = useState(false);
+  // FIX BUG 1: guardar el item completo indexado por su posición en el array
+  // para que la comparación siempre funcione aunque item_id sea undefined
+  const [indicesSeleccionados, setIndicesSeleccionados] = useState([]);
+  const [procesando, setProcesando] = useState(false);
 
   const pedido = mesa.pedido || [];
-  const totalMesa = pedido.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
-  const totalSeleccionado = seleccionados.reduce(
-    (acc, i) => acc + i.precio * i.cantidad, 0
+
+  const totalMesa = pedido.reduce(
+    (acc, i) => acc + num(i.precio) * num(i.cantidad), 0
   );
 
-  const toggleSeleccion = (item) => {
-    const existe = seleccionados.find((s) => s.nombre === item.nombre);
-    if (existe) {
-      setSeleccionados(seleccionados.filter((s) => s.nombre !== item.nombre));
-    } else {
-      setSeleccionados([...seleccionados, item]);
-    }
+  // FIX BUG 1: calcular total usando los índices seleccionados, no los objetos
+  const itemsSeleccionados = indicesSeleccionados.map(idx => pedido[idx]).filter(Boolean);
+  const totalSeleccionado  = itemsSeleccionados.reduce(
+    (acc, i) => acc + num(i.precio) * num(i.cantidad), 0
+  );
+
+  const toggleSeleccion = (idx) => {
+    setIndicesSeleccionados(prev =>
+      prev.includes(idx)
+        ? prev.filter(i => i !== idx)
+        : [...prev, idx]
+    );
   };
 
-  const handlePagoTotal = () => {
-    onPagoTotal(metodoPago);
+  const handlePagoTotal = async () => {
+    setProcesando(true);
+    await onPagoTotal(metodoPago);
     setModoDivision(false);
-    setSeleccionados([]);
+    setIndicesSeleccionados([]);
+    setProcesando(false);
   };
 
-  const handlePagoParcial = () => {
-    if (seleccionados.length === 0) return;
-    onPagoParcial(seleccionados, metodoPago);
-    setSeleccionados([]);
+  // FIX BUG 2: esperar a que el padre recargue las mesas antes de limpiar estado
+  const handlePagoParcial = async () => {
+    if (itemsSeleccionados.length === 0) return;
+    setProcesando(true);
+    await onPagoParcial(itemsSeleccionados, metodoPago);
+    // El padre recargó las mesas desde la API — limpiar estado local
+    setIndicesSeleccionados([]);
     setModoDivision(false);
+    setProcesando(false);
+    // Volver automáticamente para que el usuario vea el estado actualizado
+    // (si la mesa quedó sin items, el padre ya maneja el cierre)
+    onVolver();
   };
 
   return (
     <div className="detalle-overlay">
       <div className="detalle-panel">
+
         {/* ── ENCABEZADO ── */}
         <div className="detalle-header">
-          <button className="btn-ghost btn-back" onClick={onVolver}>
-            ← Volver
-          </button>
+          <button className="btn-ghost btn-back" onClick={onVolver}>← Volver</button>
           <div className="detalle-titulo-group">
-            <h3 className="detalle-titulo">
-              {mesa.nombre || `Mesa ${mesa.id}`}
-            </h3>
+            <h3 className="detalle-titulo">{mesa.nombre || `Mesa ${mesa.id}`}</h3>
             <span className={`chip ${mesa.ocupada ? "chip-amber" : "chip-verde"}`}>
               {mesa.ocupada ? "Ocupada" : "Libre"}
             </span>
@@ -86,7 +85,7 @@ const DetalleMesa = ({
           </div>
         ) : (
           <>
-            {/* ── TABLA DE PEDIDO ── */}
+            {/* ── TABLA ── */}
             <div className="tabla-wrapper">
               <table className="tabla">
                 <thead>
@@ -101,15 +100,17 @@ const DetalleMesa = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {pedido.map((item, i) => {
-                    const seleccionado = !!seleccionados.find(
-                      (s) => s.nombre === item.nombre
-                    );
+                  {pedido.map((item, idx) => {
+                    const seleccionado = indicesSeleccionados.includes(idx);
+                    const precio   = num(item.precio);
+                    const cantidad = num(item.cantidad);
+                    const subtotal = precio * cantidad;
+
                     return (
                       <tr
-                        key={i}
+                        key={idx}
                         className={modoDivision && seleccionado ? "fila-seleccionada" : ""}
-                        onClick={modoDivision ? () => toggleSeleccion(item) : undefined}
+                        onClick={modoDivision ? () => toggleSeleccion(idx) : undefined}
                         style={modoDivision ? { cursor: "pointer" } : {}}
                       >
                         {modoDivision && (
@@ -117,42 +118,28 @@ const DetalleMesa = ({
                             <input
                               type="checkbox"
                               checked={seleccionado}
-                              onChange={() => toggleSeleccion(item)}
+                              onChange={() => toggleSeleccion(idx)}
                               onClick={(e) => e.stopPropagation()}
                             />
                           </td>
                         )}
                         <td className="td-nombre">{item.nombre}</td>
                         <td className="td-obs">
-                          {item.observacion ? (
-                            <span className="badge-obs" title={item.observacion}>
-                              📝
-                            </span>
-                          ) : (
-                            <span className="texto-muted">—</span>
-                          )}
+                          {item.observacion
+                            ? <span className="badge-obs" title={item.observacion}>📝</span>
+                            : <span className="texto-muted">—</span>}
                         </td>
-                        <td className="td-num">{item.cantidad}</td>
-                        <td className="td-num">${item.precio.toLocaleString("es-CO")}</td>
-                        <td className="td-num td-monto">
-                          ${(item.precio * item.cantidad).toLocaleString("es-CO")}
-                        </td>
+                        <td className="td-num">{cantidad}</td>
+                        <td className="td-num">${precio.toLocaleString("es-CO")}</td>
+                        <td className="td-num td-monto">${subtotal.toLocaleString("es-CO")}</td>
                         {!modoDivision && (
                           <td className="td-center">
                             <div className="controles-cantidad">
-                              <button
-                                className="btn-cantidad"
-                                onClick={() => onModificarItem(i, -1)}
-                              >
-                                −
-                              </button>
-                              <span className="cantidad-valor">{item.cantidad}</span>
-                              <button
-                                className="btn-cantidad"
-                                onClick={() => onModificarItem(i, 1)}
-                              >
-                                +
-                              </button>
+                              <button className="btn-cantidad"
+                                onClick={() => onModificarItem(idx, -1)}>−</button>
+                              <span className="cantidad-valor">{cantidad}</span>
+                              <button className="btn-cantidad"
+                                onClick={() => onModificarItem(idx, 1)}>+</button>
                             </div>
                           </td>
                         )}
@@ -172,29 +159,24 @@ const DetalleMesa = ({
             {/* ── PANEL DE PAGO ── */}
             {cajaAbierta ? (
               <div className="pago-panel">
-                {/* Método de pago */}
                 <div className="metodo-selector">
                   {METODOS_PAGO.map((m) => (
-                    <button
-                      key={m}
+                    <button key={m}
                       className={`btn-metodo ${metodoPago === m ? "activo" : ""}`}
-                      onClick={() => setMetodoPago(m)}
-                    >
+                      onClick={() => setMetodoPago(m)}>
                       {ICONO_METODO[m]} {m}
                     </button>
                   ))}
                 </div>
 
-                {/* Botones de acción */}
                 {!modoDivision ? (
                   <div className="pago-botones">
-                    <button className="btn-primario" onClick={handlePagoTotal}>
+                    <button className="btn-primario" onClick={handlePagoTotal}
+                      disabled={procesando}>
                       💳 Cobrar total — ${totalMesa.toLocaleString("es-CO")}
                     </button>
-                    <button
-                      className="btn-secundario"
-                      onClick={() => { setModoDivision(true); setSeleccionados([]); }}
-                    >
+                    <button className="btn-secundario"
+                      onClick={() => { setModoDivision(true); setIndicesSeleccionados([]); }}>
                       ➗ Dividir cuenta
                     </button>
                   </div>
@@ -203,24 +185,31 @@ const DetalleMesa = ({
                     <p className="division-instruccion">
                       Selecciona los productos que va a pagar esta persona:
                     </p>
+
+                    {/* FIX BUG 1: ahora muestra precio correcto */}
                     <div className="division-resumen">
-                      <span>{seleccionados.length} item(s) seleccionado(s)</span>
+                      <span>
+                        {itemsSeleccionados.length} artículo(s) seleccionado(s)
+                        {itemsSeleccionados.length > 0 && (
+                          <span style={{ color: "var(--text-2)", fontSize: "0.78rem", marginLeft: "0.5rem" }}>
+                            ({itemsSeleccionados.map(i =>
+                              `${i.nombre} x${num(i.cantidad)}`
+                            ).join(", ")})
+                          </span>
+                        )}
+                      </span>
                       <span className="total-valor">
                         ${totalSeleccionado.toLocaleString("es-CO")}
                       </span>
                     </div>
+
                     <div className="pago-botones">
-                      <button
-                        className="btn-primario"
-                        onClick={handlePagoParcial}
-                        disabled={seleccionados.length === 0}
-                      >
-                        Registrar pago parcial
+                      <button className="btn-primario" onClick={handlePagoParcial}
+                        disabled={itemsSeleccionados.length === 0 || procesando}>
+                        {procesando ? "Procesando..." : "Registrar pago parcial"}
                       </button>
-                      <button
-                        className="btn-ghost"
-                        onClick={() => { setModoDivision(false); setSeleccionados([]); }}
-                      >
+                      <button className="btn-ghost"
+                        onClick={() => { setModoDivision(false); setIndicesSeleccionados([]); }}>
                         Cancelar división
                       </button>
                     </div>
@@ -228,9 +217,7 @@ const DetalleMesa = ({
                 )}
               </div>
             ) : (
-              <p className="advertencia-caja">
-                ⚠️ Abre la caja para registrar pagos.
-              </p>
+              <p className="advertencia-caja">⚠️ Abre la caja para registrar pagos.</p>
             )}
           </>
         )}

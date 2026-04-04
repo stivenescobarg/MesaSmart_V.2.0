@@ -1,6 +1,4 @@
-// frontend/src/pages/AdminDashboard.jsx
-// Consume API real. Sin localStorage para datos de negocio.
-// El token se maneja automáticamente en services/api.js
+// frontend/src/pages/AdminDashboard.jsx — versión final completa
 
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate }   from "react-router-dom";
@@ -8,16 +6,16 @@ import { useAuth }       from "../context/AuthContext";
 import { useBeforeUnload, useBlockBack } from "../hooks/useBeforeUnload";
 import { useToast }      from "../hooks/useToast";
 
-// Servicios API
 import { mesaService }    from "../services/mesaService";
 import { pedidoService }  from "../services/pedidoService";
 import { cajaService }    from "../services/cajaService";
 import { usuarioService } from "../services/usuarioService";
 
-// Componentes (sin cambios)
 import Navbar          from "../components/admin/Navbar";
+import Dashboard       from "../components/admin/Dashboard";
 import Caja            from "../components/admin/Caja";
 import Mesas           from "../components/admin/Mesas";
+import Egresos         from "../components/admin/Egresos";
 import Historial       from "../components/admin/Historial";
 import Usuarios        from "../components/admin/Usuarios";
 import SesionesActivas from "../components/admin/SesionesActivas";
@@ -31,35 +29,28 @@ const AdminDashboard = () => {
   const { usuario, logout } = useAuth();
   const { toasts, remover, toast } = useToast();
 
-  const [seccion,        setSeccion]        = useState("inicio");
+  const [seccion,        setSeccion]        = useState("dashboard");
   const [modalSalida,    setModalSalida]    = useState(false);
+  const [servicioActivo, setServicioActivo] = useState(true);
 
-  // Estado desde API
   const [mesas,          setMesas]          = useState([]);
   const [cajaAbierta,    setCajaAbierta]    = useState(false);
   const [caja,           setCaja]           = useState(null);
   const [historial,      setHistorial]      = useState([]);
   const [usuarios,       setUsuarios]       = useState([]);
-  const [servicioActivo, setServicioActivo] = useState(true);
   const [cargandoDatos,  setCargandoDatos]  = useState(true);
 
   // ── CARGA INICIAL ──────────────────────────────────────────────
   useEffect(() => {
     cargarDatosIniciales();
-    toast.info(`Hola, ${usuario?.correo?.split("@")[0]} (${etiquetaRol(usuario?.rol)})`);
+    toast.info(`Hola, ${usuario?.correo?.split("@")[0]} 👋`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const cargarDatosIniciales = async () => {
     setCargandoDatos(true);
-    try {
-      await Promise.all([
-        cargarMesas(),
-        cargarCaja(),
-      ]);
-    } finally {
-      setCargandoDatos(false);
-    }
+    await Promise.all([cargarMesas(), cargarCaja()]);
+    setCargandoDatos(false);
   };
 
   const cargarMesas = async () => {
@@ -91,7 +82,6 @@ const AdminDashboard = () => {
     } catch (err) { toast.error("Error al cargar usuarios: " + err.message); }
   };
 
-  // Recargar mesas cuando se cambia a esa sección
   useEffect(() => {
     if (seccion === "mesas")     cargarMesas();
     if (seccion === "historial") cargarHistorial();
@@ -99,7 +89,7 @@ const AdminDashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seccion]);
 
-  // Polling ligero: recargar mesas cada 10s (cocina/bar actualizan pedidos)
+  // Polling de mesas cada 10s
   useEffect(() => {
     const id = setInterval(cargarMesas, 10000);
     return () => clearInterval(id);
@@ -110,28 +100,33 @@ const AdminDashboard = () => {
   useBeforeUnload(cajaAbierta);
   useBlockBack(true, useCallback(() => setModalSalida(true), []));
 
-  const manejarSalida = () => cajaAbierta ? setModalSalida(true) : ejecutarLogout();
-  const ejecutarLogout = async () => { await logout(); navigate("/login", { replace: true }); };
+  const manejarSalida   = () => cajaAbierta ? setModalSalida(true) : ejecutarLogout();
+  const ejecutarLogout  = async () => { await logout(); navigate("/login", { replace: true }); };
 
   // ── CAJA ──────────────────────────────────────────────────────
   const handleAbrirCaja = async (monto) => {
     try {
       await cajaService.abrir(monto);
       await cargarCaja();
-      setSeccion("mesas");
-      toast.exito(`Caja abierta con $${monto.toLocaleString("es-CO")}`);
+      setSeccion("dashboard");
+      toast.exito(`Caja abierta con ${COP(monto)}`);
     } catch (err) { toast.error(err.message); }
   };
 
+  // Devuelve el resultado para que Caja.jsx pueda descargar el PDF
   const handleCerrarCaja = async () => {
     try {
       const res = await cajaService.cerrar();
       setCajaAbierta(false);
       setCaja(null);
-      toast.exito(`Caja cerrada. Total: $${res.total_ventas?.toLocaleString("es-CO")}`);
+      toast.exito("Caja cerrada. PDF generado.");
       await cargarHistorial();
       setSeccion("historial");
-    } catch (err) { toast.error(err.message); }
+      return res; // { ok, total_ventas, pdf }
+    } catch (err) {
+      toast.error(err.message);
+      return null;
+    }
   };
 
   const handleToggleServicio = () => {
@@ -156,7 +151,6 @@ const AdminDashboard = () => {
     } catch (err) { toast.error(err.message); }
   };
 
-  // ── PEDIDOS Y PAGOS ──────────────────────────────────────────
   const handleModificarItem = async (mesa, item_id, delta) => {
     const item = mesa.pedido.find(i => i.item_id === item_id);
     if (!item) return;
@@ -169,18 +163,15 @@ const AdminDashboard = () => {
   const handlePagoTotal = async (mesa, metodo) => {
     if (!cajaAbierta) { toast.error("Abre la caja antes de registrar pagos."); return; }
     try {
-      const pedido_id = mesa.pedido[0]?.pedido_id || null;
       await cajaService.registrarPago({
-        mesa_id:    mesa.id,
-        mesa_nombre: mesa.nombre,
-        pedido_id,
-        total:       mesa.total,
-        metodo_pago: metodo,
-        items:       mesa.pedido.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+        mesa_id: mesa.id, mesa_nombre: mesa.nombre,
+        pedido_id: mesa.pedido[0]?.pedido_id || null,
+        total: mesa.total, metodo_pago: metodo,
+        items: mesa.pedido.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
       });
       await cargarMesas();
       await cargarCaja();
-      toast.exito(`Pago: $${mesa.total.toLocaleString("es-CO")} — ${metodo}`);
+      toast.exito(`Pago: ${COP(mesa.total)} — ${metodo}`);
     } catch (err) { toast.error(err.message); }
   };
 
@@ -189,20 +180,14 @@ const AdminDashboard = () => {
     try {
       const total = items.reduce((a, i) => a + i.precio * i.cantidad, 0);
       await cajaService.registrarPago({
-        mesa_id:     mesa.id,
-        mesa_nombre: mesa.nombre,
-        pedido_id:   null,
-        total,
-        metodo_pago: metodo,
-        items:       items.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+        mesa_id: mesa.id, mesa_nombre: mesa.nombre,
+        pedido_id: null, total, metodo_pago: metodo,
+        items: items.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
       });
-      // Actualizar items del pedido en BD
-      for (const item of items) {
-        await pedidoService.updateItem(item.item_id, 0); // eliminar del pedido
-      }
+      for (const item of items) await pedidoService.updateItem(item.item_id, 0);
       await cargarMesas();
       await cargarCaja();
-      toast.exito(`Pago parcial: $${total.toLocaleString("es-CO")} — ${metodo}`);
+      toast.exito(`Pago parcial: ${COP(total)} — ${metodo}`);
     } catch (err) { toast.error(err.message); }
   };
 
@@ -215,15 +200,14 @@ const AdminDashboard = () => {
     } catch (err) { toast.error(err.message); }
   };
 
-  const handleEliminarUsuario = async (id) => {
-    try {
-      await usuarioService.eliminar(id);
-      await cargarUsuarios();
-      toast.advertencia("Usuario eliminado");
-    } catch (err) { toast.error(err.message); }
-  };
+const handleEliminarUsuario = async (id) => {
+  const res = await usuarioService.eliminar(id);
+  // Si llegamos aquí, el backend respondió OK
+  await cargarUsuarios(); // recargar lista desde la API
+  toast.advertencia("Usuario eliminado");
+  return res;
+};
 
-  // ── RENDER ───────────────────────────────────────────────────
   if (cargandoDatos) {
     return (
       <div className="cargando-pantalla">
@@ -238,32 +222,37 @@ const AdminDashboard = () => {
       <ToastContainer toasts={toasts} remover={remover} />
 
       <Navbar
-        seccion={seccion}
-        setSeccion={setSeccion}
-        servicioActivo={servicioActivo}
-        onSalir={manejarSalida}
+        seccion={seccion} setSeccion={setSeccion}
+        servicioActivo={servicioActivo} onSalir={manejarSalida}
       />
 
       <main className="admin-main">
-        {seccion === "inicio"    && (
+        {seccion === "dashboard" && (
+          <Dashboard cajaAbierta={cajaAbierta} />
+        )}
+        {seccion === "inicio" && (
           <Caja
-            cajaAbierta={cajaAbierta}
-            caja={caja}
+            cajaAbierta={cajaAbierta} caja={caja}
             servicioActivo={servicioActivo}
             onAbrirCaja={handleAbrirCaja}
             onCerrarCaja={handleCerrarCaja}
             onToggleServicio={handleToggleServicio}
           />
         )}
-        {seccion === "mesas"     && (
+        {seccion === "mesas" && (
           <Mesas
-            mesas={mesas}
-            cajaAbierta={cajaAbierta}
+            mesas={mesas} cajaAbierta={cajaAbierta}
             onCrearMesa={handleCrearMesa}
             onEliminarMesa={handleEliminarMesa}
             onModificarItem={handleModificarItem}
             onPagoTotal={handlePagoTotal}
             onPagoParcial={handlePagoParcial}
+          />
+        )}
+        {seccion === "egresos" && (
+          <Egresos
+            cajaAbierta={cajaAbierta}
+            onEgresoCreado={() => {}} // Dashboard se refresca solo con polling
           />
         )}
         {seccion === "historial" && <Historial historial={historial} />}
@@ -274,17 +263,15 @@ const AdminDashboard = () => {
             onEliminarUsuario={handleEliminarUsuario}
           />
         )}
-        {seccion === "sesiones"  && <SesionesActivas />}
+        {seccion === "sesiones" && (
+          <SesionesActivas toast={toast} />
+        )}
       </main>
 
       <Modal
-        abierto={modalSalida}
-        titulo="¿Seguro que deseas salir?"
-        variante="peligro"
-        labelConfirmar="Sí, cerrar sesión"
-        labelCancelar="Quedarme"
-        onConfirmar={ejecutarLogout}
-        onCancelar={() => setModalSalida(false)}
+        abierto={modalSalida} titulo="¿Seguro que deseas salir?"
+        variante="peligro" labelConfirmar="Sí, cerrar sesión" labelCancelar="Quedarme"
+        onConfirmar={ejecutarLogout} onCancelar={() => setModalSalida(false)}
       >
         <p className="texto-secundario">
           {cajaAbierta
@@ -296,7 +283,6 @@ const AdminDashboard = () => {
   );
 };
 
-const etiquetaRol = (rol) =>
-  ({ admin: "Administrador", cocina: "Cocina", bartender: "Bartender" }[rol] || rol);
+const COP = (n) => `$${(parseFloat(n)||0).toLocaleString("es-CO")}`;
 
 export default AdminDashboard;

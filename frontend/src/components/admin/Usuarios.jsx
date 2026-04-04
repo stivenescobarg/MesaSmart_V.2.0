@@ -1,7 +1,4 @@
 // frontend/src/components/admin/Usuarios.jsx
-// Sin dependencia de userService.js (eliminado).
-// Validación real la hace el backend.
-// etiquetaRol vive aquí directamente al ser solo presentación.
 
 import { useState } from "react";
 import Modal from "./Modal";
@@ -20,17 +17,14 @@ const COLOR_ROL = {
   admin:     "chip-morado",
 };
 
-// Función local — solo presentación visual, no lógica de negocio
 const etiquetaRol = (rol) =>
   ({ admin: "Administrador", cocina: "Cocina", bartender: "Bartender" }[rol] || rol);
 
-// Validación básica solo para UX (feedback inmediato al usuario)
-// La validación real y definitiva la hace el backend
 const validarFormulario = (correo, password, confirmar) => {
   const errores = [];
-  if (!correo.includes("@")) errores.push("El correo no tiene un formato válido.");
-  if (password.length < 6)   errores.push("La contraseña debe tener al menos 6 caracteres.");
-  if (password !== confirmar) errores.push("Las contraseñas no coinciden.");
+  if (!correo.includes("@"))  errores.push("El correo no tiene un formato válido.");
+  if (password.length < 6)    errores.push("La contraseña debe tener al menos 6 caracteres.");
+  if (password !== confirmar)  errores.push("Las contraseñas no coinciden.");
   return errores;
 };
 
@@ -46,6 +40,7 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
   const [usuarioAEliminar, setUsuarioAEliminar] = useState(null);
   const [passSeguridad,    setPassSeguridad]    = useState("");
   const [errorModal,       setErrorModal]       = useState("");
+  const [eliminando,       setEliminando]       = useState(false);
 
   const limpiarFormulario = () => {
     setCorreo(""); setPassword(""); setConfirmar("");
@@ -55,7 +50,6 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
   const handleCrear = () => {
     const errs = validarFormulario(correo, password, confirmar);
     if (errs.length > 0) { setErrores(errs); return; }
-    // El backend devolverá error si el correo ya existe (ER_DUP_ENTRY)
     onCrearUsuario({ correo, password, rol });
     limpiarFormulario();
   };
@@ -67,14 +61,36 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
     setModalEliminar(true);
   };
 
-  const confirmarEliminar = () => {
+  // FIX BUG 3: esperar la promesa del padre y capturar errores del backend
+  const confirmarEliminar = async () => {
     if (passSeguridad !== PASSWORD_SEGURIDAD) {
       setErrorModal("Contraseña de seguridad incorrecta.");
       return;
     }
-    onEliminarUsuario(usuarioAEliminar.id);
-    setModalEliminar(false);
-    setUsuarioAEliminar(null);
+
+    // FIX: verificar que el id exista y sea válido
+    const idUsuario = usuarioAEliminar?.id;
+    if (!idUsuario) {
+      setErrorModal("No se pudo identificar el usuario. Recarga la página.");
+      return;
+    }
+
+    setEliminando(true);
+    setErrorModal("");
+
+    try {
+      // FIX: await para esperar la respuesta real del backend
+      await onEliminarUsuario(idUsuario);
+      // Solo cerrar el modal si el backend respondió OK
+      setModalEliminar(false);
+      setUsuarioAEliminar(null);
+      setPassSeguridad("");
+    } catch (err) {
+      // Si el backend responde con error, mostrarlo en el modal
+      setErrorModal(err.message || "Error al eliminar. Intenta de nuevo.");
+    } finally {
+      setEliminando(false);
+    }
   };
 
   return (
@@ -144,12 +160,12 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
 
           <div className="form-botones">
             <button className="btn-primario" onClick={handleCrear}>Crear usuario</button>
-            <button className="btn-ghost"    onClick={limpiarFormulario}>Cancelar</button>
+            <button className="btn-ghost" onClick={limpiarFormulario}>Cancelar</button>
           </div>
         </div>
       )}
 
-      {/* ── LISTA DE USUARIOS ── */}
+      {/* ── LISTA ── */}
       <div className="usuarios-lista">
         {usuarios.length === 0 ? (
           <p className="texto-secundario" style={{ marginTop: "1.5rem" }}>
@@ -157,7 +173,7 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
           </p>
         ) : (
           usuarios.map((u) => (
-            <div key={u.id || u.correo} className="usuario-row">
+            <div key={u.id} className="usuario-row">
               <div className="usuario-info">
                 <span className="usuario-correo">{u.correo}</span>
                 <span className={`chip ${COLOR_ROL[u.rol] || "chip-neutro"}`}>
@@ -179,15 +195,19 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
         )}
       </div>
 
-      {/* ── MODAL ELIMINACIÓN SEGURA ── */}
+      {/* ── MODAL ELIMINACIÓN ── */}
       <Modal
         abierto={modalEliminar}
         titulo="Eliminar usuario"
         variante="peligro"
-        labelConfirmar="Eliminar"
+        labelConfirmar={eliminando ? "Eliminando..." : "Eliminar"}
         labelCancelar="Cancelar"
         onConfirmar={confirmarEliminar}
-        onCancelar={() => setModalEliminar(false)}
+        onCancelar={() => {
+          if (eliminando) return; // no cerrar mientras procesa
+          setModalEliminar(false);
+          setUsuarioAEliminar(null);
+        }}
       >
         {usuarioAEliminar && (
           <div>
@@ -199,11 +219,15 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
             </p>
             <div className="campo-grupo">
               <label className="campo-label">Contraseña de seguridad</label>
-              <input className="campo-input" type="password"
+              <input
+                className="campo-input"
+                type="password"
                 placeholder="Ingresa la contraseña de seguridad"
                 value={passSeguridad}
                 onChange={(e) => { setPassSeguridad(e.target.value); setErrorModal(""); }}
-                autoFocus />
+                onKeyDown={(e) => e.key === "Enter" && confirmarEliminar()}
+                autoFocus
+              />
             </div>
             {errorModal && (
               <p style={{ color: "var(--red)", fontSize: "0.82rem", marginTop: "0.25rem" }}>

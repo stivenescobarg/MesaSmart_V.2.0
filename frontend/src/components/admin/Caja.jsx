@@ -1,12 +1,28 @@
-// ══════════════════════════════════════════════════════════════════
-// Caja.jsx — MySQL devuelve DECIMAL como string, se convierte con parseFloat
-// ══════════════════════════════════════════════════════════════════
+// frontend/src/components/admin/Caja.jsx
+// Con descarga automática del PDF al cerrar caja
 
 import { useState } from "react";
+
+const COP = (n) => `$${(parseFloat(n) || 0).toLocaleString("es-CO")}`;
+
+// Descarga el PDF base64 que devuelve el backend
+const descargarPDF = (base64) => {
+  const blob = new Blob(
+    [Uint8Array.from(atob(base64), c => c.charCodeAt(0))],
+    { type: "application/pdf" }
+  );
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href  = url;
+  link.download = `cierre-caja-${new Date().toISOString().split("T")[0]}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
 
 const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, onToggleServicio }) => {
   const [montoInput,        setMontoInput]        = useState("");
   const [confirmandoCierre, setConfirmandoCierre] = useState(false);
+  const [cerrando,          setCerrando]          = useState(false);
 
   const handleAbrirCaja = () => {
     const monto = parseFloat(montoInput.replace(/\./g, "").replace(",", "."));
@@ -15,17 +31,25 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
     setMontoInput("");
   };
 
-  // MySQL devuelve campos DECIMAL como strings → parseFloat obligatorio
+  const handleCerrarCaja = async () => {
+    setCerrando(true);
+    try {
+      const resultado = await onCerrarCaja(); // AdminDashboard devuelve la respuesta
+      if (resultado?.pdf) {
+        descargarPDF(resultado.pdf);
+      }
+    } finally {
+      setCerrando(false);
+      setConfirmandoCierre(false);
+    }
+  };
+
   const montoInicial = parseFloat(caja?.monto_inicial ?? 0) || 0;
   const ventas       = caja?.ventas ?? [];
-
-  // Sumar correctamente convirtiendo cada total a número
   const totalVendido = ventas.reduce((acc, v) => acc + (parseFloat(v.total) || 0), 0);
 
   const horaApertura = caja?.apertura
-    ? new Date(caja.apertura).toLocaleTimeString("es-CO", {
-        hour: "2-digit", minute: "2-digit",
-      })
+    ? new Date(caja.apertura).toLocaleTimeString("es-CO", { hour:"2-digit", minute:"2-digit" })
     : "—";
 
   return (
@@ -47,10 +71,7 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
             <div className="input-prefijo">
               <span className="prefijo">$</span>
               <input
-                className="campo-input"
-                type="number"
-                min="0"
-                placeholder="0"
+                className="campo-input" type="number" min="0" placeholder="0"
                 value={montoInput}
                 onChange={(e) => setMontoInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAbrirCaja()}
@@ -58,8 +79,7 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
             </div>
           </div>
           <button
-            className="btn-primario btn-ancho"
-            onClick={handleAbrirCaja}
+            className="btn-primario btn-ancho" onClick={handleAbrirCaja}
             disabled={!montoInput || parseFloat(montoInput) < 0}
           >
             Abrir caja — Iniciar jornada
@@ -72,21 +92,14 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
             <p className="metrica-etiqueta">Hora de apertura</p>
             <p className="metrica-valor">{horaApertura}</p>
           </div>
-
           <div className="admin-card">
             <p className="metrica-etiqueta">Monto inicial</p>
-            <p className="metrica-valor">
-              ${montoInicial.toLocaleString("es-CO")}
-            </p>
+            <p className="metrica-valor">{COP(montoInicial)}</p>
           </div>
-
           <div className="admin-card">
             <p className="metrica-etiqueta">Total vendido</p>
-            <p className="metrica-valor metrica-amber">
-              ${totalVendido.toLocaleString("es-CO")}
-            </p>
+            <p className="metrica-valor metrica-amber">{COP(totalVendido)}</p>
           </div>
-
           <div className="admin-card">
             <p className="metrica-etiqueta">Ventas registradas</p>
             <p className="metrica-valor">{ventas.length}</p>
@@ -96,7 +109,7 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
           <div className="admin-card caja-acciones-card">
             <h3 className="subtitulo">Control de servicio</h3>
             <p className="texto-secundario">
-              Activa o desactiva el servicio para que los clientes puedan hacer pedidos vía QR.
+              Activa o desactiva el servicio para pedidos vía QR.
             </p>
             <button
               className={servicioActivo ? "btn-secundario" : "btn-primario"}
@@ -106,11 +119,11 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
             </button>
           </div>
 
-          {/* Cierre de jornada */}
+          {/* Cierre */}
           <div className="admin-card caja-acciones-card">
             <h3 className="subtitulo">Cierre de jornada</h3>
             <p className="texto-secundario">
-              Cierra la caja del día. Se generará un reporte con todas las ventas.
+              Al cerrar se generará un <strong>reporte PDF</strong> automáticamente.
             </p>
             {!confirmandoCierre ? (
               <button className="btn-peligro" onClick={() => setConfirmandoCierre(true)}>
@@ -118,13 +131,14 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
               </button>
             ) : (
               <div className="confirm-box">
-                <p>¿Confirmas el cierre de caja?</p>
+                <p>¿Confirmas el cierre? Se descargará el reporte PDF.</p>
                 <div className="confirm-botones">
                   <button
                     className="btn-peligro"
-                    onClick={() => { onCerrarCaja(); setConfirmandoCierre(false); }}
+                    onClick={handleCerrarCaja}
+                    disabled={cerrando}
                   >
-                    Sí, cerrar
+                    {cerrando ? "Generando PDF..." : "✓ Sí, cerrar y descargar PDF"}
                   </button>
                   <button className="btn-ghost" onClick={() => setConfirmandoCierre(false)}>
                     Cancelar
@@ -141,32 +155,26 @@ const Caja = ({ cajaAbierta, caja, servicioActivo, onAbrirCaja, onCerrarCaja, on
               <table className="tabla">
                 <thead>
                   <tr>
-                    <th>Mesa</th>
-                    <th>Hora</th>
-                    <th>Método</th>
-                    <th>Total</th>
+                    <th>Mesa</th><th>Hora</th><th>Método</th><th>Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[...ventas].reverse().slice(0, 8).map((v, i) => (
                     <tr key={v.id ?? i}>
-                      <td>{v.mesa_nombre ?? v.mesa ?? "—"}</td>
+                      <td>{v.mesa_nombre ?? "—"}</td>
                       <td>{v.hora ?? "—"}</td>
                       <td>
-                        <span className={`chip chip-metodo chip-${(v.metodo_pago ?? v.metodo ?? "").toLowerCase()}`}>
-                          {v.metodo_pago ?? v.metodo ?? "—"}
+                        <span className={`chip chip-metodo chip-${(v.metodo_pago ?? "").toLowerCase()}`}>
+                          {v.metodo_pago ?? "—"}
                         </span>
                       </td>
-                      <td className="td-monto">
-                        ${(parseFloat(v.total) || 0).toLocaleString("es-CO")}
-                      </td>
+                      <td className="td-monto">{COP(v.total)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-
         </div>
       )}
     </div>

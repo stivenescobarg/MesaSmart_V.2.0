@@ -1,12 +1,12 @@
 // frontend/src/components/admin/Navbar.jsx
-// Con botón de modo claro/oscuro
-
 import { useAuth }  from "../../context/AuthContext";
 import { useTheme } from "../../hooks/useTheme";
 
 const SECCIONES = [
+  { key: "dashboard", label: "Dashboard", icono: "◈" },
   { key: "inicio",    label: "Caja",      icono: "⬡" },
   { key: "mesas",     label: "Mesas",     icono: "⊞" },
+  { key: "egresos",   label: "Egresos",   icono: "📤" },
   { key: "historial", label: "Historial", icono: "≡" },
   { key: "usuarios",  label: "Usuarios",  icono: "◉" },
   { key: "sesiones",  label: "Sesiones",  icono: "●" },
@@ -38,13 +38,11 @@ const Navbar = ({ seccion, setSeccion, servicioActivo, onSalir }) => {
       </nav>
 
       <div className="header-actions">
-        {/* Badge servicio */}
         <span className={`badge-servicio ${servicioActivo ? "activo" : "inactivo"}`}>
           <span className="badge-dot" />
           {servicioActivo ? "Activo" : "Pausado"}
         </span>
 
-        {/* Usuario logueado */}
         {usuario && (
           <div className="usuario-activo-badge" title={`Sesión: ${usuario.rol}`}>
             <span className="usuario-activo-icono">
@@ -55,11 +53,10 @@ const Navbar = ({ seccion, setSeccion, servicioActivo, onSalir }) => {
           </div>
         )}
 
-        {/* Botón modo claro/oscuro */}
         <button
           className="btn-tema"
           onClick={toggleThema}
-          title={esOscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+          title={esOscuro ? "Modo claro" : "Modo oscuro"}
         >
           {esOscuro ? "☀️" : "🌙"}
         </button>

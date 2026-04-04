@@ -1,6 +1,8 @@
-// backend/src/controllers/admin/cajaController.js
+// backend/src/controllers/admin/cajaController.js — con PDF al cerrar
 const { Caja, Venta } = require("../../models/Caja");
+const Egreso          = require("../../models/Egreso");
 const Mesa            = require("../../models/Mesa");
+const generarPDF      = require("../../utils/generarPDF");
 
 exports.getEstado = async (req, res) => {
   try {
@@ -27,9 +29,33 @@ exports.cerrar = async (req, res) => {
   try {
     const caja = await Caja.getAbierta();
     if (!caja) return res.status(404).json({ msg: "No hay caja abierta." });
+
+    // Obtener datos ANTES de cerrar para el PDF
+    const datosPDF = await Caja.getDatosParaPDF(caja.id);
+    const egresos  = await Egreso.getByCaja(caja.id);
+
+    // Cerrar caja
     const resultado = await Caja.cerrar(caja.id, req.usuario.id);
-    res.json({ ok: true, ...resultado });
-  } catch { res.status(500).json({ msg: "Error al cerrar caja." }); }
+
+    // Generar PDF
+    let pdfBase64 = null;
+    try {
+      pdfBase64 = await generarPDF({
+        caja:      { ...datosPDF.caja, ...resultado },
+        ventas:    datosPDF.ventas,
+        egresos,
+        cerradoPor: req.usuario,
+      });
+    } catch (pdfErr) {
+      console.error("[PDF] Error al generar:", pdfErr.message);
+      // No fallar el cierre si el PDF falla
+    }
+
+    res.json({ ok: true, ...resultado, pdf: pdfBase64 });
+  } catch (err) {
+    console.error("[cerrar caja]", err);
+    res.status(500).json({ msg: "Error al cerrar caja." });
+  }
 };
 
 exports.getHistorial = async (req, res) => {
@@ -49,13 +75,12 @@ exports.registrarPago = async (req, res) => {
       usuario_id: req.usuario.id, items,
     });
 
-    // Verificar si la mesa quedó sin pedidos activos
-    const [activos] = require("../../config/db").pool.execute
-      ? await require("../../config/db").pool.execute(
-          "SELECT COUNT(*) as n FROM pedidos WHERE mesa_id=? AND estado NOT IN ('pagado','cancelado')",
-          [mesa_id])
-      : [[{ n: 1 }]];
-    if (activos[0]?.n === 0) await Mesa.updateEstado(mesa_id, "libre");
+    const { pool } = require("../../config/db");
+    const [activos] = await pool.execute(
+      "SELECT COUNT(*) as n FROM pedidos WHERE mesa_id=? AND estado NOT IN ('pagado','cancelado')",
+      [mesa_id]
+    );
+    if ((activos[0]?.n || 0) == 0) await Mesa.updateEstado(mesa_id, "libre");
 
     res.status(201).json({ ok: true, venta_id });
   } catch (err) {

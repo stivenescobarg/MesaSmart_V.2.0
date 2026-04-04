@@ -139,3 +139,38 @@ INSERT INTO mesas (nombre) VALUES
   ('Mesa 6'),('Mesa 7'),('Mesa 8'),('Mesa 9'),('Mesa 10');
 
 -- NOTA: Los usuarios se crean ejecutando: node src/config/seed.js
+
+-- ══════════════════════════════════════════════════════════════════
+-- MesaSmart — Actualización BD para nuevas funcionalidades
+-- Ejecutar en phpMyAdmin sobre la BD mesasmart existente
+-- ══════════════════════════════════════════════════════════════════
+
+USE mesasmart;
+
+-- ── TABLA EGRESOS ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS egresos (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  caja_id     INT UNSIGNED NOT NULL,
+  usuario_id  INT UNSIGNED NOT NULL,
+  descripcion VARCHAR(255) NOT NULL,
+  monto       DECIMAL(12,2) NOT NULL,
+  fecha       DATE NOT NULL,
+  hora        TIME NOT NULL,
+  creado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_egreso_caja FOREIGN KEY (caja_id)    REFERENCES caja(id),
+  CONSTRAINT fk_egreso_usr  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+);
+
+CREATE INDEX idx_egresos_caja  ON egresos(caja_id);
+CREATE INDEX idx_egresos_fecha ON egresos(fecha);
+
+-- ── AGREGAR total_egresos A historial_caja ────────────────────────
+-- Si la columna ya existe, este ALTER será ignorado por el IF NOT EXISTS
+ALTER TABLE historial_caja
+  ADD COLUMN IF NOT EXISTS total_egresos  DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  ADD COLUMN IF NOT EXISTS efectivo_neto  DECIMAL(12,2) NOT NULL DEFAULT 0.00;
+
+-- Verificar que todo quedó bien
+SELECT 'egresos' as tabla, COUNT(*) as registros FROM egresos
+UNION ALL
+SELECT 'historial_caja', COUNT(*) FROM historial_caja;

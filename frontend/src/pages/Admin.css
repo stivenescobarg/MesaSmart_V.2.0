@@ -822,3 +822,90 @@ html.light-mode ::-webkit-scrollbar-thumb {
 body:has(.admin-container) {
   background: var(--bg) !important;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   AGREGAR AL FINAL DE Admin.css
+   Estilos para Dashboard, gráficas y Egresos
+══════════════════════════════════════════════════════════════ */
+
+/* ── DASHBOARD GRID ─────────────────────────────────────────── */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.metrica-card {
+  padding: 1.1rem 1.25rem;
+}
+
+.metrica-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.metrica-card-icono {
+  font-size: 1.1rem;
+}
+
+.metrica-sub {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  margin-top: 0.2rem;
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── GRÁFICAS ───────────────────────────────────────────────── */
+.dashboard-graficas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.75rem;
+}
+
+.grafica-card {
+  padding: 1.25rem;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tooltip personalizado de Recharts */
+.grafica-tooltip {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--text-1);
+  box-shadow: var(--shadow);
+}
+
+.tooltip-label {
+  color: var(--text-2);
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── EGRESOS ────────────────────────────────────────────────── */
+/* La tabla de egresos usa los mismos estilos de .tabla */
+/* Solo necesitamos el tfoot */
+.tabla tfoot td {
+  border-top: 1px solid var(--border-light);
+  background: var(--bg);
+}
+
+/* ── SESIONES — botón expulsar ──────────────────────────────── */
+.sesion-card .btn-peligro {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+}
+
+/* ── RESPONSIVE ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .dashboard-grid    { grid-template-columns: 1fr 1fr; }
+  .dashboard-graficas { grid-template-columns: 1fr; }
+}
