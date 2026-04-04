@@ -34,22 +34,20 @@
 
 body {
   margin: 0;
-  background: #ffffff;
+  background: #0d0d1a;  /* ← cambia de #ffffff a esto */
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  width: 100%;           /* ← quita el 1126px */
+  max-width: 100%;       /* ← quita el limite */
+  margin: 0;             /* ← quita el auto */
+  background: #0d0d1a;  /* ← cambia el blanco */
+  border: none;          /* ← quita el borde lateral */
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  background: #ffffff;
 }
-
 /* TITULOS */
 
 h1,
