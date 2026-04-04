@@ -23,6 +23,8 @@ html, body, #root {
 body {
   font-family: "DM Sans", sans-serif;
   background: #0d0d1a;
+  /* 🔥 FONDO MORADO SOLO AFUERA */
+  background: linear-gradient(135deg, #7d5d3d, #2e353a);
   min-height: 100vh;
 }
 

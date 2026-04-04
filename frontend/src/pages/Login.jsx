@@ -1,133 +1,120 @@
+// frontend/src/pages/Login.jsx
+// LIMPIO: sin localStorage, sin hash, sin usuarios quemados.
+// Solo consume el backend via AuthContext.
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import logoMesaSmart from "../assets/Logo-MesaSmart.png";
 import "./Login.css";
+
+// Redirección según el rol que devuelve la BD
+// BD usa: "admin", "cocina", "bartender"
+const getRutaPorRol = (usuario) => {
+  switch (usuario.rol) {
+    case "admin":      return "/admin";
+    case "cocina":     return `/kitchen/${usuario.numero || 1}`;
+    case "bartender":  return `/bartender/${usuario.numero || 1}`;
+    default:           return "/admin";
+  }
+};
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login, usuario, cargando } = useAuth();
 
-  const [correo, setCorreo] = useState("");
-  const [password, setPassword] = useState("");
-  const [rol, setRol] = useState("admin");
+  const [correo,      setCorreo]      = useState("");
+  const [password,    setPassword]    = useState("");
+  const [error,       setError]       = useState("");
+  const [cargandoBtn, setCargandoBtn] = useState(false);
+  const [mostrarPass, setMostrarPass] = useState(false);
 
-  // 🔥 CREAR USUARIOS INICIALES
+  // Si ya hay sesión activa → redirigir según rol de la BD
   useEffect(() => {
-    let users = JSON.parse(localStorage.getItem("users")) || [];
-
-    if (users.length === 0) {
-      const iniciales = [
-        {
-          correo: "admin@mesasmart.com",
-          password: "admin123",
-          rol: "admin",
-          numero: 1,
-        },
-        {
-          correo: "cocina@mesasmart.com",
-          password: "cocina123",
-          rol: "cocina",
-          numero: 1,
-        },
-        {
-          correo: "bar@mesasmart.com",
-          password: "bar123",
-          rol: "bartender",
-          numero: 1,
-        },
-      ];
-
-      localStorage.setItem("users", JSON.stringify(iniciales));
+    if (!cargando && usuario) {
+      navigate(getRutaPorRol(usuario), { replace: true });
     }
-  }, []);
+  }, [usuario, cargando, navigate]);
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-
-    // 🔍 Buscar usuario por correo
-    const user = users.find((u) => u.correo === correo);
-
-    if (!user) {
-      alert("Usuario no encontrado ❌");
+  const handleLogin = async (e) => {
+    e?.preventDefault();
+    if (!correo.trim() || !password) {
+      setError("Completa todos los campos.");
       return;
     }
+    setCargandoBtn(true);
+    setError("");
 
-    // 🔒 Validar contraseña
-    if (user.password !== password) {
-      alert("Contraseña incorrecta ❌");
-      return;
-    }
+    const resultado = await login(correo.trim(), password);
 
-    // 🚫 VALIDAR ROL OBLIGATORIO
-    if (user.rol !== rol) {
-      alert(`Este usuario pertenece al rol: ${user.rol} ❌`);
-      return;
+    if (!resultado.ok) {
+      setError(resultado.error || "Correo o contraseña incorrectos ❌");
+      setCargandoBtn(false);
     }
-
-    // ✅ REDIRECCIÓN CORRECTA
-    if (rol === "admin") {
-      navigate("/admin");
-    }
-
-    if (rol === "cocina") {
-      navigate(`/kitchen/${user.numero}`);
-    }
-
-    if (rol === "bartender") {
-      navigate(`/bartender/${user.numero}`);
-    }
+    // Si ok=true, el useEffect de arriba redirige automáticamente
   };
+
+  if (cargando) return null;
+  if (usuario)  return null;
 
   return (
     <div className="login-container">
       <div className="login-card">
 
-        <img
-          src="https://picsum.photos/400/180"
-          alt="banner"
-          className="login-img"
-        />
-
-        <h1 className="title">Hola de nuevo </h1>
+        <img src={logoMesaSmart} alt="Logo MesaSmart" className="login-img" />
+        <h1 className="title">MesaSmart</h1>
 
         <form onSubmit={handleLogin}>
+
+          {error && <div className="login-error" role="alert">{error}</div>}
 
           <label>Correo</label>
           <input
             type="email"
             value={correo}
-            onChange={(e) => setCorreo(e.target.value)}
+            onChange={(e) => { setCorreo(e.target.value); setError(""); }}
+            placeholder="usuario@mesasmart.com"
+            autoComplete="username"
+            autoFocus
           />
 
           <label>Contraseña</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div className="input-con-icono">
+            <input
+              type={mostrarPass ? "text" : "password"}
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              placeholder="••••••••"
+              className="campo-input-pass"
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              className="btn-toggle-pass"
+              onClick={() => setMostrarPass(!mostrarPass)}
+              tabIndex={-1}
+            >
+              {mostrarPass ? "🙈" : "👁"}
+            </button>
+          </div>
 
-          <p className="rol-title">Selecciona tu rol</p>
-          <select value={rol} onChange={(e) => setRol(e.target.value)}>
-            <option value="admin">Administrador</option>
-            <option value="cocina">Cocina</option>
-            <option value="bartender">Bartender</option>
-          </select>
-
-          <button type="submit">Iniciar sesión</button>
+          <button type="submit" disabled={cargandoBtn}>
+            {cargandoBtn ? "Verificando..." : "Iniciar sesión"}
+          </button>
 
           <button
-  type="button"
-  className="btn-menu"
-  onClick={() => navigate("/menu")}
->
-  Menú
-</button>
+            type="button"
+            className="btn-menu"
+            onClick={() => navigate("/menu")}
+          >
+            Menú
+          </button>
+
         </form>
 
         <div className="about">
           Sobre nosotros: Sistema MesaSmart para gestión de restaurante.
         </div>
-
       </div>
     </div>
   );
