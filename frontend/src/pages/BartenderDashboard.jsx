@@ -74,26 +74,6 @@ const BartenderDashboard = () => {
           )}
         </div>
       )}
-      <br /><br />
-      <button
-        className="btn-listo"
-        onClick={() => {
-          const prueba = [
-            { mesa: 2, items: ["Margarita", "Ron"], estado: "pendiente" },
-            { mesa: 4, items: ["Vodka"], estado: "pendiente" },
-            { mesa: 5, items: ["Cerveza"], estado: "pendiente" },
-            { mesa: 1, items: ["Jugo Mango"], estado: "pendiente" },
-            { mesa: 6, items: ["Smirnoff", "Vodka"], estado: "pendiente" },
-            { mesa: 8, items: ["Champaña"], estado: "pendiente" },
-            { mesa: 7, items: ["Bacardi" , "Captain Morgan"], estado: "pendiente" }
-          ];
-
-          localStorage.setItem("ordenes_bar", JSON.stringify(prueba));
-          setOrdenes(prueba);
-        }}
-      >
-        Generar pedidos de prueba
-      </button>
     </div>
   );
 };
