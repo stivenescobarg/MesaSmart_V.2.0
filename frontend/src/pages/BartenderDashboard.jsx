@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { imagenes } from "../data/imagenes";
 import "./Bartender.css";
 
 const OrdenModal = ({ orden, onClose, onListo }) => {
@@ -71,26 +70,16 @@ const BartenderDashboard = () => {
 
   const [ordenes,  setOrdenes]  = useState([]);
   const [ordenSel, setOrdenSel] = useState(null);
+const BartenderDashboard = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
-  const cargarOrdenes = async () => {
-    try {
-      const res  = await fetch("http://localhost:3001/api/bar/ordenes");
-      const data = await res.json();
-      if (data.ok) {
-        setOrdenes(data.ordenes.map(o => ({
-          ...o,
-          items: typeof o.items === "string" ? JSON.parse(o.items) : o.items,
-        })));
-      }
-    } catch (err) {
-      console.error("Error cargando órdenes:", err);
-    }
-  };
+  const [ordenes, setOrdenes] = useState([]);
 
   useEffect(() => {
-    cargarOrdenes();
-    const interval = setInterval(cargarOrdenes, 5000);
-    return () => clearInterval(interval);
+    const data = JSON.parse(localStorage.getItem("ordenes_bar")) || [];
+    setOrdenes(data);
   }, []);
 
   const marcarListo = async (orden) => {
@@ -105,25 +94,24 @@ const BartenderDashboard = () => {
   const handleSalir = async () => {
     await logout();
     navigate("/login", { replace: true });
+  const marcarListo = (index) => {
+    const actualizadas = ordenes.map((o, i) =>
+      i === index ? { ...o, estado: "listo" } : o
+    );
+    localStorage.setItem("ordenes_bar", JSON.stringify(actualizadas));
+    setOrdenes(actualizadas);
   };
 
   const activas      = ordenes.filter((o) => o.estado !== "listo");
   const completadas  = ordenes.filter((o) => o.estado === "listo");
   const totalBebidas = ordenes.reduce((acc, o) => acc + (o.items?.length || 0), 0);
 
-  const getNombreItem = item =>
-    typeof item === "object" ? item.nombre : item.replace(/ x\d+$/, "");
-
   return (
     <div className="bd-container">
 
-      {ordenSel && (
-        <OrdenModal orden={ordenSel} onClose={() => setOrdenSel(null)} onListo={marcarListo} />
-      )}
-
       <div className="bd-header">
         <div>
-          <h1 className="bd-title"><span>Bartender</span></h1>
+          <h1 className="bd-title">Panel de Bartender</h1>
           <p className="bd-subtitle">Bartender {id} — turno activo</p>
         </div>
         <button className="btn-salir" onClick={handleSalir}>Salir</button>
@@ -160,13 +148,24 @@ const BartenderDashboard = () => {
                 <p className="order-items">
                   {orden.items?.map(getNombreItem).join(" · ")}
                 </p>
+        <p className="bd-empty">Sin órdenes pendientes</p>
+      ) : (
+        <div className="bd-orders">
+          {ordenes.map((orden, i) =>
+            orden.estado !== "listo" ? (
+              <div key={i} className="order-card">
+                <div className="order-num pendiente">M{orden.mesa}</div>
+                <div className="order-info">
+                  <p className="order-mesa">Mesa {orden.mesa}</p>
+                  <p className="order-items">{orden.items?.join(" · ")}</p>
+                </div>
+                <span className="badge badge-pendiente">Pendiente</span>
+                <button className="btn-listo" onClick={() => marcarListo(i)}>
+                  Listo
+                </button>
               </div>
-              <span className="badge badge-pendiente">Pendiente</span>
-              <button className="btn-listo" onClick={e => { e.stopPropagation(); marcarListo(orden); }}>
-                Listo
-              </button>
-            </div>
-          ))}
+            ) : null
+          )}
         </div>
       )}
     </div>
