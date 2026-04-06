@@ -107,6 +107,27 @@ async function seed() {
       { nombre:"Con azúcar",             tipo:"acompanamiento", precio:0     },
       { nombre:"Sin azúcar",             tipo:"acompanamiento", precio:0     },
       { nombre:"Con leche",              tipo:"acompanamiento", precio:0     },
+      { nombre:"Con hielo",              tipo:"acompanamiento", precio:0     },
+      { nombre:"Sin hielo",              tipo:"acompanamiento", precio:0     },
+      { nombre:"Azul",                   tipo:"acompanamiento", precio:0     },
+      { nombre:"Verde",                  tipo:"acompanamiento", precio:5000  },
+      { nombre:"Amarillo",               tipo:"acompanamiento", precio:5000  },
+      { nombre:"Manzana Verde",          tipo:"acompanamiento", precio:0     },
+      { nombre:"Cereza",                 tipo:"acompanamiento", precio:0     },
+      { nombre:"Macuraya",               tipo:"acompanamiento", precio:0     },
+      { nombre:"Mango",                  tipo:"acompanamiento", precio:0     },
+      { nombre:"Mora",                   tipo:"acompanamiento", precio:0     },
+      { nombre:"Naranja",                tipo:"acompanamiento", precio:0     },
+      { nombre:"Mandarina",              tipo:"acompanamiento", precio:0     },
+      { nombre:"Fresa",                  tipo:"acompanamiento", precio:0     },
+      { nombre:"Aguila original",        tipo:"acompanamiento", precio:0     },
+      { nombre:"Aguila Light",           tipo:"acompanamiento", precio:0     },
+      { nombre:"Colombiana",             tipo:"acompanamiento", precio:0     },
+      { nombre:"uva",                    tipo:"acompanamiento", precio:0     },
+      { nombre:"Petsi",                  tipo:"acompanamiento", precio:0     },
+      { nombre:"Coca Cola",              tipo:"acompanamiento", precio:0     },
+      { nombre:"Fanta",                  tipo:"acompanamiento", precio:0     },
+      { nombre:"Sprite",                 tipo:"acompanamiento", precio:0     },
       { nombre:"Queso extra",            tipo:"adiccion",       precio:3000  },
       { nombre:"Tocineta",               tipo:"adiccion",       precio:5000  },
       { nombre:"Aguacate extra",         tipo:"adiccion",       precio:4000  },
@@ -153,6 +174,7 @@ async function seed() {
       { nombre:"Mantequilla extra",      tipo:"adiccion",       precio:1000  },
       { nombre:"Ají extra",              tipo:"adiccion",       precio:500   },
       { nombre:"Pan artesanal",          tipo:"adiccion",       precio:3000  },
+      { nombre:"Cereza extra",           tipo:"adiccion",       precio:500   },
     ];
 
     const opIds = {};
@@ -302,7 +324,7 @@ async function seed() {
       acomp:["Linguine","Fettuccine"], adic:["Pollo grillado","Camarones"],
     });
     await ins({
-      nombre:"Lasaña de Carne", imagen:"carbonara", precio:32000,
+      nombre:"Lasaña de Carne", imagen:"lasaña", precio:32000,
       descripcion:"Lasaña tradicional con carne de res, salsa bechamel y queso gratinado.",
       tiene_termino:false, categoria_id:catIds["Pastas"],
       acomp:[], adic:["Queso extra","Salsa extra"],
@@ -398,6 +420,49 @@ async function seed() {
     });
 
     // ── 14. BAR ─────────────────────────────────────────────────────────────
+    console.log("\n📂 Bar > Licores");
+    await ins({
+      nombre:"Aguardiente Antioqueño", imagen:"aguardiente", precio:50000,
+      descripcion:"Aguardiente antioqueño botella personal, frío.",
+      tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Licores"],
+      acomp:["Con hielo","Sin hielo","Azul","Verde","Amarillo"],
+      adic:["Limón extra"],
+    });
+    await ins({
+      nombre:"Smirnoff", imagen:"smirnoff", precio:12000,
+      descripcion:"Delicioso licor refrescante, frío.",
+      tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Licores"],
+      acomp:["Con hielo","Sin hielo"],
+      adic:["Limón extra"],
+    });
+
+    console.log("\n📂 Bar > Cervezas");
+    await ins({
+      nombre:"Aguila", imagen:"aguila", precio:7000,
+      descripcion:"Cerveza original, frío.",
+      tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Cervezas"],
+      acomp:["Con hielo","Sin hielo"], adic:["Limón extra"],
+    });
+    await ins({
+      nombre:"Aguila Light", imagen:"aguilaLight", precio:7000,
+      descripcion:"Cerveza refrescante, frío.",
+      tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Cervezas"],
+      acomp:["Con hielo","Sin hielo"], adic:["Limón extra"],
+    });
+    await ins({
+      nombre:"Corona", imagen:"corona", precio:12000,
+      descripcion:"Cerveza tradicional, frío.",
+      tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Cervezas"],
+      acomp:["Con hielo","Sin hielo"], adic:["Limón extra"],
+    });
+    await ins({
+      nombre:"Cuates", imagen:"cuates", precio:10000,
+      descripcion:"Cerveza saborizada, frío.",
+      tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Cervezas"],
+      acomp:["Manzana Verde","Cereza","Macuraya","Con hielo","Sin hielo"],
+      adic:["Limón extra"],
+    });
+
     console.log("\n📂 Bar > Jugos");
     await ins({
       nombre:"Jugo Natural", imagen:"jugo", precio:8000,
@@ -405,23 +470,45 @@ async function seed() {
       tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Jugos"],
       acomp:["Con azúcar","Sin azúcar","Con leche"], adic:[],
     });
+    await ins({
+      nombre:"Jugo Frutal", imagen:"jugos", precio:9000,
+      descripcion:"Jugo natural de la fruta, sin azúcar o con azúcar al gusto.",
+      tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Jugos"],
+      acomp:["Con azúcar","Sin azúcar","Con leche","Mango","Mora","Naranja","Mandarina","Fresa"],
+      adic:[],
+    });
 
-    // Ejemplo: agregar Aguardiente a Bar > Licores
-console.log("\n📂 Bar > Licores");
-await ins({
-  nombre:        "Aguardiente Antioqueño",   // nombre del plato
-  imagen:        "aguardiente",              // nombre en imagenes.js (sin .jpg)
-  precio:        12000,                      // precio en pesos
-  descripcion:   "Aguardiente antioqueño botella personal, frío.",
-  tiene_termino: false,                      // true SOLO para carnes
-  categoria_id:  catIds["Bar"],              // categoría exacta
-  subcategoria_id: subIds["Licores"],        // subcategoría (solo Bar la usa)
-  acomp: ["Con hielo", "Sin hielo"],         // acompañamientos (precio 0)
-  adic:  ["Limón extra"],                    // adiciones (precio > 0)
-});
+    console.log("\n📂 Bar > Micheladas");
+    await ins({
+      nombre:"Michelada", imagen:"michelada", precio:7000,
+      descripcion:"Michelada tradicional.",
+      tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Micheladas"],
+      acomp:["Aguila original","Aguila Light"], adic:[],
+    });
+    await ins({
+      nombre:"Michelada Saborizada", imagen:"micheladaSaborizada", precio:7000,
+      descripcion:"Michelada saborizada.",
+      tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Micheladas"],
+      acomp:["Mango","Cereza"], adic:[],
+    });
+
+    console.log("\n📂 Bar > Gaseosas");
+    await ins({
+      nombre:"Gaseosas", imagen:"gaseosas", precio:2500,
+      descripcion:"Gaseosas Colombianas.",
+      tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Gaseosas"],
+      acomp:["Colombiana","uva","Petsi","Coca Cola","Fanta","Sprite"], adic:[],
+    });
+
+    console.log("\n📂 Bar > Malteadas");
+    await ins({
+      nombre:"Malteada de chocolate", imagen:"malteadachp", precio:7000,
+      descripcion:"Malteada de chocolate con chips de chocolate.",
+      tiene_termino:false, categoria_id:catIds["Bar"], subcategoria_id:subIds["Malteadas"],
+      acomp:[], adic:[],
+    });
 
     console.log("\n\n🎉 ¡Seed COMPLETO exitosamente!");
-    console.log(`Productos insertados: 30`);
 
   } catch (err) {
     console.error("\n❌ Error en seed:", err.message);

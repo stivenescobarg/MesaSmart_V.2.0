@@ -281,7 +281,7 @@ const Menu = () => {
         adiciones:[{nombre:"Pollo grillado",precio:8000},{nombre:"Camarones",precio:12000}],
       },
       {
-        nombre:"Lasaña de Carne", img:imagenes.carbonara, categoria:"Pastas",
+        nombre:"Lasaña de Carne", img:imagenes.lasana, categoria:"Pastas",
         descripcion:"Lasaña tradicional con carne de res, salsa bechamel y queso gratinado.",
         precio:32000, tiene_termino:false,
         opciones:[], adiciones:[{nombre:"Extra queso",precio:3000},{nombre:"Salsa extra",precio:2000}],
@@ -382,12 +382,65 @@ const Menu = () => {
       img:           imagenes.aguardiente,   // debe existir en imagenes.js
       categoria:     "Bar",
       descripcion:   "Aguardiente antioqueño botella personal, frío.",
+      precio:        50000,
+      tiene_termino: false,
+      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }, { nombre:"Azul", precio:5000 }, { nombre:"Verde", precio:5000 }, { nombre:"Amarillo", precio:5000 }],
+      adiciones: [{ nombre:"Limón extra", precio:1000 }],
+    },
+
+      { nombre:        "Smirnoff",
+      img:           imagenes.smirnoff,   // debe existir en imagenes.js
+      categoria:     "Bar",
+      descripcion:   "Delicioso licor refrecante, frío.",
+      precio:        12000,
+      tiene_termino: false,
+      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
+      adiciones: [{ nombre:"Limón extra", precio:1000 }, { nombre:"Cereza", precio:500 }],
+      },
+
+      ],Cervezas:[
+       { nombre:        "Aguila",
+      img:           imagenes.aguila,   // debe existir en imagenes.js
+      categoria:     "Bar",
+      descripcion:   "Cerveza original, frío.",
+      precio:        7000,
+      tiene_termino: false,
+      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
+      adiciones: [{ nombre:"Limón extra", precio:1000 }],
+      },
+
+      { nombre:        "Aguila Light",
+      img:           imagenes.aguilaLight,   // debe existir en imagenes.js
+      categoria:     "Bar",
+      descripcion:   "Cerveza refresacnte, frío.",
+      precio:        7000,
+      tiene_termino: false,
+      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
+      adiciones: [{ nombre:"Limón extra", precio:1000 }],
+      },
+
+      { nombre:        "Corona",
+      img:           imagenes.corona,   // debe existir en imagenes.js
+      categoria:     "Bar",
+      descripcion:   "Cerveza tradicional, frío.",
       precio:        12000,
       tiene_termino: false,
       opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
       adiciones: [{ nombre:"Limón extra", precio:1000 }],
-    },
-      ],Cervezas:[],Jugos:[
+      },
+
+       { nombre:        "Cuates",
+      img:           imagenes.cuates,   // debe existir en imagenes.js
+      categoria:     "Bar",
+      descripcion:   "Cerveza saborizada, frío.",
+      precio:        10000,
+      tiene_termino: false,
+      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }, { nombre:"Manzana Verde", precio:0 }, { nombre:"Cereza", precio:0 }, { nombre:"Macuraya", precio:0 }],
+      adiciones: [{ nombre:"Limón extra", precio:1000 }],
+      },
+
+    
+      ],Jugos:[
         {
           nombre:"Jugo Natural", img:imagenes.jugo, categoria:"Bar",
           descripcion:"Jugo natural de la fruta del día, sin azúcar o con azúcar al gusto.",
@@ -395,7 +448,51 @@ const Menu = () => {
           opciones:[{nombre:"Con azúcar",precio:0},{nombre:"Sin azúcar",precio:0},{nombre:"Con leche",precio:0}],
           adiciones:[],
         },
-      ],Micheladas:[],Gaseosas:[],Malteadas:[],
+
+                {
+          nombre:"Jugo Frutal", img:imagenes.jugos, categoria:"Bar",
+          descripcion:"Jugo natural de la fruta , sin azúcar o con azúcar al gusto.",
+          precio:9000, tiene_termino:false,
+          opciones:[{nombre:"Con azúcar",precio:0},{nombre:"Sin azúcar",precio:0},{nombre:"Con leche",precio:0},{nombre:"Mango",precio:0},{nombre:"Mora",precio:0},{nombre:"Naranja",precio:0},{nombre:"Mandarina",precio:0},{nombre:"Fresa",precio:0}],
+          adiciones:[],
+        },
+      ],Micheladas:[
+
+                        {
+          nombre:"Michelada", img:imagenes.michelada, categoria:"Bar",
+          descripcion:"Michelada tradicional",
+          precio:7000, tiene_termino:false,
+          opciones:[{nombre:"Aguila original",precio:0},{nombre:"Aguila Light",precio:0}],
+          adiciones:[],
+        },
+
+                                {
+          nombre:"Michelada", img:imagenes.micheladaSaborizada, categoria:"Bar",
+          descripcion:"Michelada Saborizada",
+          precio:7000, tiene_termino:false,
+          opciones:[{nombre:"Mango",precio:0},{nombre:"Cereza",precio:0}],
+          adiciones:[],
+        },
+
+
+      ],Gaseosas:[
+
+                                        {
+          nombre:"Gaseosas", img:imagenes.gaseosas, categoria:"Bar",
+          descripcion:"Gaseosas Colombianas",
+          precio:2500, tiene_termino:false,
+          opciones:[{nombre:"Colombiana",precio:0},{nombre:"uva",precio:0},{nombre:"Petsi",precio:0},{nombre:"Coca Cola",precio:0},{nombre:"Fanta",precio:0},{nombre:"Sprite",precio:0}],
+          adiciones:[],
+        },
+      ],Malteadas:[
+
+                                                {
+          nombre:"Malteada de chocolate", img:imagenes.malteadachp, categoria:"Bar",
+          descripcion:"Malteada de chocolate con chips de chocolate",
+          precio:7000, tiene_termino:false,
+          adiciones:[],
+        },
+      ],
     },
   };
 
