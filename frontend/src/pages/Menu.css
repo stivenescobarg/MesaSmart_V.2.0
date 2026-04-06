@@ -22,9 +22,11 @@ html, body, #root {
 
 body {
   font-family: "DM Sans", sans-serif;
-  background: #0d0d1a;
+  background:
+  radial-gradient(ellipse 80% 40% at 50% -10%, rgba(255,140,50,0.18) 0%, transparent 70%),
+  radial-gradient(ellipse 60% 30% at 80% 80%, rgba(43,47,168,0.2) 0%, transparent 60%),
+  linear-gradient(160deg, #0d0d1a 0%, #13112b 40%, #1a0e2e 70%, #0d1520 100%);
   /* 🔥 FONDO MORADO SOLO AFUERA */
-  background: linear-gradient(135deg, #7d5d3d, #2e353a);
   min-height: 100vh;
 }
 
