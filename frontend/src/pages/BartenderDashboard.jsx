@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "./Bartender.css";
 
 const BartenderDashboard = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const [ordenes, setOrdenes] = useState([]);
 
@@ -21,7 +23,12 @@ const BartenderDashboard = () => {
     setOrdenes(actualizadas);
   };
 
-  const activas = ordenes.filter((o) => o.estado !== "listo");
+  const handleSalir = async () => {
+    await logout();
+    navigate("/login", { replace: true });
+  };
+
+  const activas     = ordenes.filter((o) => o.estado !== "listo");
   const completadas = ordenes.filter((o) => o.estado === "listo");
   const totalBebidas = ordenes.reduce((acc, o) => acc + (o.items?.length || 0), 0);
 
@@ -33,7 +40,7 @@ const BartenderDashboard = () => {
           <h1 className="bd-title">Panel de Bartender</h1>
           <p className="bd-subtitle">Bartender {id} — turno activo</p>
         </div>
-        <button className="btn-salir" onClick={() => navigate("/")}>Salir</button>
+        <button className="btn-salir" onClick={handleSalir}>Salir</button>
       </div>
 
       <div className="bd-metrics">
