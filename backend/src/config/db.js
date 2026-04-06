@@ -1,5 +1,4 @@
 // backend/src/config/db.js
-require("dotenv").config();
 const mysql = require("mysql2/promise");
 
 const pool = mysql.createPool({
@@ -18,10 +17,6 @@ pool.getConnection()
     console.log("✅ Conectado a MySQL");
     conn.release();
   })
-  .catch(err => {
-    console.error("❌ Error MySQL:", err.message);
-    process.exit(1);
-  });
   .catch(err => console.error("❌ Error de conexión:", err));
 
 module.exports = { pool };
