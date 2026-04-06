@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import "./Bartender.css";
 
+// ─── Modal de detalle de orden ───────────────────────────────────
 const OrdenModal = ({ orden, onClose, onListo }) => {
   if (!orden) return null;
   return (
@@ -21,28 +22,18 @@ const OrdenModal = ({ orden, onClose, onListo }) => {
           {orden.items?.map((item, i) => {
             const nombre    = typeof item === "object" ? item.nombre   : item.replace(/ x\d+$/, "");
             const cantidad  = typeof item === "object" ? item.cantidad : (item.match(/ x(\d+)$/)?.[1] || "1");
-            const imgKey    = typeof item === "object" ? item.imgKey   : null;
             const adiciones = typeof item === "object" ? (item.adiciones || []) : [];
-            const opcion    = typeof item === "object" ? item.opcion   : null;
-            const imagen    = imgKey ? imagenes[imgKey] : null;
+            const opcion    = typeof item === "object" ? item.opcion : null;
 
             return (
               <div key={i} className="bd-modal-item">
                 <div className="bd-modal-item-img">
-                  {imagen
-                    ? <img src={imagen} alt={nombre} />
-                    : <span>🍹</span>
-                  }
+                  <span>🍹</span>
                 </div>
                 <div className="bd-modal-item-info">
                   <p className="bd-modal-item-name">{nombre}</p>
                   <p className="bd-modal-item-qty">Cantidad: {cantidad}</p>
-                  {typeof item === "object" && item.descripcion && (
-                    <p className="bd-modal-item-desc">{item.descripcion}</p>
-                  )}
-                  {opcion && (
-                    <p className="bd-modal-item-opcion">📌 {opcion}</p>
-                  )}
+                  {opcion && <p className="bd-modal-item-opcion">📌 {opcion}</p>}
                   {adiciones.length > 0 && (
                     <div className="bd-modal-item-adiciones">
                       {adiciones.map((a, j) => (
@@ -63,6 +54,7 @@ const OrdenModal = ({ orden, onClose, onListo }) => {
   );
 };
 
+// ─── Dashboard principal ─────────────────────────────────────────
 const BartenderDashboard = () => {
   const { id }     = useParams();
   const navigate   = useNavigate();
@@ -70,16 +62,21 @@ const BartenderDashboard = () => {
 
   const [ordenes,  setOrdenes]  = useState([]);
   const [ordenSel, setOrdenSel] = useState(null);
-const BartenderDashboard = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { logout } = useAuth();
 
-  const [ordenes, setOrdenes] = useState([]);
+  const cargarOrdenes = async () => {
+    try {
+      const res  = await fetch("http://localhost:3001/api/bar/ordenes");
+      const data = await res.json();
+      setOrdenes(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error cargando órdenes:", err);
+    }
+  };
 
   useEffect(() => {
-    const data = JSON.parse(localStorage.getItem("ordenes_bar")) || [];
-    setOrdenes(data);
+    cargarOrdenes();
+    const interval = setInterval(cargarOrdenes, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const marcarListo = async (orden) => {
@@ -94,20 +91,22 @@ const BartenderDashboard = () => {
   const handleSalir = async () => {
     await logout();
     navigate("/login", { replace: true });
-  const marcarListo = (index) => {
-    const actualizadas = ordenes.map((o, i) =>
-      i === index ? { ...o, estado: "listo" } : o
-    );
-    localStorage.setItem("ordenes_bar", JSON.stringify(actualizadas));
-    setOrdenes(actualizadas);
   };
 
-  const activas      = ordenes.filter((o) => o.estado !== "listo");
-  const completadas  = ordenes.filter((o) => o.estado === "listo");
+  const getNombreItem = (item) =>
+    typeof item === "object" ? item.nombre : item.replace(/ x\d+$/, "");
+
+  const activas      = ordenes.filter(o => o.estado !== "listo");
+  const completadas  = ordenes.filter(o => o.estado === "listo");
   const totalBebidas = ordenes.reduce((acc, o) => acc + (o.items?.length || 0), 0);
 
   return (
     <div className="bd-container">
+      <OrdenModal
+        orden={ordenSel}
+        onClose={() => setOrdenSel(null)}
+        onListo={marcarListo}
+      />
 
       <div className="bd-header">
         <div>
@@ -148,25 +147,33 @@ const BartenderDashboard = () => {
                 <p className="order-items">
                   {orden.items?.map(getNombreItem).join(" · ")}
                 </p>
-        <p className="bd-empty">Sin órdenes pendientes</p>
-      ) : (
-        <div className="bd-orders">
-          {ordenes.map((orden, i) =>
-            orden.estado !== "listo" ? (
-              <div key={i} className="order-card">
-                <div className="order-num pendiente">M{orden.mesa}</div>
-                <div className="order-info">
-                  <p className="order-mesa">Mesa {orden.mesa}</p>
-                  <p className="order-items">{orden.items?.join(" · ")}</p>
-                </div>
-                <span className="badge badge-pendiente">Pendiente</span>
-                <button className="btn-listo" onClick={() => marcarListo(i)}>
-                  Listo
-                </button>
               </div>
-            ) : null
-          )}
+              <span className="badge badge-pendiente">Pendiente</span>
+            </div>
+          ))}
         </div>
+      )}
+
+      {completadas.length > 0 && (
+        <>
+          <h2 className="bd-section-title" style={{ marginTop: "32px" }}>Completadas hoy</h2>
+          <div className="bd-orders">
+            {completadas.map((orden) => (
+              <div key={orden.id} className="order-card order-card-listo">
+                <div className="order-num listo">
+                  M{orden.mesa?.replace(/\D/g, "") || "?"}
+                </div>
+                <div className="order-info">
+                  <p className="order-mesa">{orden.mesa}</p>
+                  <p className="order-items">
+                    {orden.items?.map(getNombreItem).join(" · ")}
+                  </p>
+                </div>
+                <span className="badge badge-listo">✅ Listo</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
