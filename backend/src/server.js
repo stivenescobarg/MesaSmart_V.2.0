@@ -55,3 +55,20 @@ app.patch('/api/quejas/:id/estado', async (req, res) => {
 });
 
 app.listen(3001, () => console.log('🔥 Servidor corriendo en http://localhost:3001'));
+app.use('/api/auth',    require('./routes/auth'));
+
+// ── Menú ──────────────────────────────────────────────────────────
+app.use('/api/menu',    require('./routes/productos'));
+
+// ── Admin ─────────────────────────────────────────────────────────
+app.use('/api/mesas',    require('./routes/admin/mesaRoutes'));
+app.use('/api/caja',     require('./routes/admin/cajaRoutes'));
+app.use('/api/pedidos',  require('./routes/admin/pedidoRoutes'));
+app.use('/api/usuarios', require('./routes/admin/userRoutes'));
+app.use('/api/egresos',  require('./routes/admin/egresoRoutes'));
+app.use('/api/sesiones', require('./routes/admin/sesionRoutes'));
+app.use('/api/metricas', require('./routes/admin/metricaRoutes'));
+
+app.listen(3001, () => {
+  console.log('🔥 Servidor corriendo en http://localhost:3001');
+});

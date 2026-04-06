@@ -73,6 +73,9 @@ const BartenderDashboard = () => {
   const [ordenes,     setOrdenes]     = useState([]);
   const [ordenSel,    setOrdenSel]    = useState(null);
   const [completadas, setCompletadas] = useState(0);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const cargarOrdenes = async () => {
     try {
@@ -110,6 +113,13 @@ const BartenderDashboard = () => {
     navigate("/login", { replace: true });
   };
 
+  const handleSalir = async () => {
+    await logout();
+    navigate("/login", { replace: true });
+  };
+
+  const activas     = ordenes.filter((o) => o.estado !== "listo");
+  const completadas = ordenes.filter((o) => o.estado === "listo");
   const totalBebidas = ordenes.reduce((acc, o) => acc + (o.items?.length || 0), 0);
 
   const getNombreItem = item =>
