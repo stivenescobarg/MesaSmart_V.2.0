@@ -1,22 +1,7 @@
-const mysql = require("mysql2");
-
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "", // o tu contraseña
-  database: "mesasmart"
-});
-
-db.connect((err) => {
-  if (err) {
-    console.error("❌ Error de conexión:", err);
-    return;
-  }
-  console.log("✅ Conectado a MySQL");
-});
-
-module.exports = db;
 // backend/src/config/db.js
+// UN SOLO archivo de conexión para todo el proyecto.
+// Usa mysql2/promise con pool — compatible con el admin Y el menú.
+
 const mysql = require("mysql2/promise");
 
 const pool = mysql.createPool({
@@ -41,4 +26,7 @@ const connectDB = async () => {
   }
 };
 
+// Exportamos pool Y connectDB
+// Para rutas del admin:  const { pool } = require("../config/db")
+// Para rutas del menú:   const { pool } = require("../config/db")  (mismo import)
 module.exports = { pool, connectDB };

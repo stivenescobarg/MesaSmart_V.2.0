@@ -1,11 +1,12 @@
-const express = require("express");
-const router = express.Router();
-const connection = require("../config/db"); // 🔥 usar la misma conexión
+// backend/src/routes/productos.js
+const express    = require("express");
+const router     = express.Router();
+const { pool }   = require("../config/db"); // ← mismo pool que usa el admin
 
-// 🔥 GET MENÚ COMPLETO
-router.get("/", (req, res) => {
+// GET /api/menu — devuelve el menú completo agrupado por producto
+router.get("/", async (req, res) => {
   const sql = `
-    SELECT 
+    SELECT
       p.id,
       p.nombre,
       p.descripcion,
@@ -14,48 +15,41 @@ router.get("/", (req, res) => {
       p.tiene_termino,
       c.nombre AS categoria,
       s.nombre AS subcategoria,
-      o.id AS opcion_id,
+      o.id     AS opcion_id,
       o.nombre AS opcion_nombre,
       o.tipo,
       o.precio AS opcion_precio
     FROM productos p
-    LEFT JOIN categorias c ON p.categoria_id = c.id
-    LEFT JOIN subcategorias s ON p.subcategoria_id = s.id
-    LEFT JOIN productos_opciones po ON p.id = po.producto_id
-    LEFT JOIN opciones o ON po.opcion_id = o.id
+    LEFT JOIN categorias        c  ON p.categoria_id    = c.id
+    LEFT JOIN subcategorias     s  ON p.subcategoria_id = s.id
+    LEFT JOIN productos_opciones po ON p.id             = po.producto_id
+    LEFT JOIN opciones          o  ON po.opcion_id      = o.id
     ORDER BY p.id;
   `;
 
-  connection.query(sql, (err, results) => {
-    if (err) {
-      console.error("❌ Error SQL:", err);
-      return res.status(500).json({ error: "Error en el servidor" });
-    }
+  try {
+    const [results] = await pool.execute(sql);
 
-    // 🔥 AGRUPAR PRODUCTOS
+    // Agrupar productos (misma lógica de antes)
     const productosMap = {};
 
     results.forEach(row => {
       if (!productosMap[row.id]) {
         productosMap[row.id] = {
-          nombre: row.nombre,
-          descripcion: row.descripcion,
-          precio: row.precio,
-          imagen: row.imagen,
+          nombre:        row.nombre,
+          descripcion:   row.descripcion,
+          precio:        row.precio,
+          imagen:        row.imagen,
           tiene_termino: row.tiene_termino,
-          categoria: row.categoria,
-          subcategoria: row.subcategoria,
-          opciones: [],
-          adiciones: []
+          categoria:     row.categoria,
+          subcategoria:  row.subcategoria,
+          opciones:      [],
+          adiciones:     [],
         };
       }
 
       if (row.opcion_id) {
-        const opcion = {
-          nombre: row.opcion_nombre,
-          precio: row.opcion_precio
-        };
-
+        const opcion = { nombre: row.opcion_nombre, precio: row.opcion_precio };
         if (row.tipo === "acompanamiento") {
           productosMap[row.id].opciones.push(opcion);
         } else {
@@ -65,7 +59,10 @@ router.get("/", (req, res) => {
     });
 
     res.json(Object.values(productosMap));
-  });
+  } catch (err) {
+    console.error("❌ Error SQL productos:", err);
+    res.status(500).json({ error: "Error en el servidor" });
+  }
 });
 
 module.exports = router;
