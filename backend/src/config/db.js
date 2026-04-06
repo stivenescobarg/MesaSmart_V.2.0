@@ -22,6 +22,5 @@ pool.getConnection()
     console.error("❌ Error MySQL:", err.message);
     process.exit(1);
   });
-  .catch(err => console.error("❌ Error de conexión:", err));
 
 module.exports = { pool };

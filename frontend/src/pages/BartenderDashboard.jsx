@@ -38,10 +38,9 @@ const OrdenModal = ({ orden, onClose, onListo }) => {
                 <div className="bd-modal-item-info">
                   <p className="bd-modal-item-name">{nombre}</p>
                   <p className="bd-modal-item-qty">Cantidad: {cantidad}</p>
-{typeof item === "object" && item.descripcion && (
-  <p className="bd-modal-item-desc">{item.descripcion}</p>
-)}
-                  
+                  {typeof item === "object" && item.descripcion && (
+                    <p className="bd-modal-item-desc">{item.descripcion}</p>
+                  )}
                   {opcion && (
                     <p className="bd-modal-item-opcion">📌 {opcion}</p>
                   )}
@@ -70,12 +69,8 @@ const BartenderDashboard = () => {
   const navigate   = useNavigate();
   const { logout } = useAuth();
 
-  const [ordenes,     setOrdenes]     = useState([]);
-  const [ordenSel,    setOrdenSel]    = useState(null);
-  const [completadas, setCompletadas] = useState(0);
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { logout } = useAuth();
+  const [ordenes,  setOrdenes]  = useState([]);
+  const [ordenSel, setOrdenSel] = useState(null);
 
   const cargarOrdenes = async () => {
     try {
@@ -101,7 +96,6 @@ const BartenderDashboard = () => {
   const marcarListo = async (orden) => {
     try {
       await fetch(`http://localhost:3001/api/bar/orden/${orden.id}`, { method: "PATCH" });
-      setCompletadas(c => c + 1);
       cargarOrdenes();
     } catch (err) {
       console.error("Error marcando listo:", err);
@@ -113,13 +107,8 @@ const BartenderDashboard = () => {
     navigate("/login", { replace: true });
   };
 
-  const handleSalir = async () => {
-    await logout();
-    navigate("/login", { replace: true });
-  };
-
-  const activas     = ordenes.filter((o) => o.estado !== "listo");
-  const completadas = ordenes.filter((o) => o.estado === "listo");
+  const activas      = ordenes.filter((o) => o.estado !== "listo");
+  const completadas  = ordenes.filter((o) => o.estado === "listo");
   const totalBebidas = ordenes.reduce((acc, o) => acc + (o.items?.length || 0), 0);
 
   const getNombreItem = item =>
@@ -143,11 +132,11 @@ const BartenderDashboard = () => {
       <div className="bd-metrics">
         <div className="metric-card">
           <p className="metric-label">Órdenes activas</p>
-          <p className="metric-value">{ordenes.length}</p>
+          <p className="metric-value">{activas.length}</p>
         </div>
         <div className="metric-card">
           <p className="metric-label">Completadas hoy</p>
-          <p className="metric-value">{completadas}</p>
+          <p className="metric-value">{completadas.length}</p>
         </div>
         <div className="metric-card">
           <p className="metric-label">Total bebidas</p>
@@ -157,11 +146,11 @@ const BartenderDashboard = () => {
 
       <h2 className="bd-section-title">Órdenes activas</h2>
 
-      {ordenes.length === 0 ? (
+      {activas.length === 0 ? (
         <p className="bd-empty">Sin órdenes pendientes 🍹</p>
       ) : (
         <div className="bd-orders">
-          {ordenes.map((orden) => (
+          {activas.map((orden) => (
             <div key={orden.id} className="order-card" onClick={() => setOrdenSel(orden)}>
               <div className="order-num pendiente">
                 M{orden.mesa?.replace(/\D/g, "") || "?"}
