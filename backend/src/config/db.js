@@ -1,7 +1,4 @@
 // backend/src/config/db.js
-// UN SOLO archivo de conexión para todo el proyecto.
-// Usa mysql2/promise con pool — compatible con el admin Y el menú.
-
 const mysql = require("mysql2/promise");
 
 const pool = mysql.createPool({
@@ -26,7 +23,5 @@ const connectDB = async () => {
   }
 };
 
-// Exportamos pool Y connectDB
-// Para rutas del admin:  const { pool } = require("../config/db")
-// Para rutas del menú:   const { pool } = require("../config/db")  (mismo import)
+// Exporta pool Y connectDB para compatibilidad con admin y menú
 module.exports = { pool, connectDB };

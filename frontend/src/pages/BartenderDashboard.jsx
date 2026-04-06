@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "./Bartender.css";
 
 const BartenderDashboard = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const [ordenes, setOrdenes] = useState([]);
 
@@ -21,7 +23,12 @@ const BartenderDashboard = () => {
     setOrdenes(actualizadas);
   };
 
-  const activas = ordenes.filter((o) => o.estado !== "listo");
+  const handleSalir = async () => {
+    await logout();
+    navigate("/login", { replace: true });
+  };
+
+  const activas     = ordenes.filter((o) => o.estado !== "listo");
   const completadas = ordenes.filter((o) => o.estado === "listo");
   const totalBebidas = ordenes.reduce((acc, o) => acc + (o.items?.length || 0), 0);
 
@@ -33,7 +40,7 @@ const BartenderDashboard = () => {
           <h1 className="bd-title">Panel de Bartender</h1>
           <p className="bd-subtitle">Bartender {id} — turno activo</p>
         </div>
-        <button className="btn-salir" onClick={() => navigate("/")}>Salir</button>
+        <button className="btn-salir" onClick={handleSalir}>Salir</button>
       </div>
 
       <div className="bd-metrics">
@@ -74,26 +81,6 @@ const BartenderDashboard = () => {
           )}
         </div>
       )}
-      <br /><br />
-      <button
-        className="btn-listo"
-        onClick={() => {
-          const prueba = [
-            { mesa: 2, items: ["Margarita", "Ron"], estado: "pendiente" },
-            { mesa: 4, items: ["Vodka"], estado: "pendiente" },
-            { mesa: 5, items: ["Cerveza"], estado: "pendiente" },
-            { mesa: 1, items: ["Jugo Mango"], estado: "pendiente" },
-            { mesa: 6, items: ["Smirnoff", "Vodka"], estado: "pendiente" },
-            { mesa: 8, items: ["Champaña"], estado: "pendiente" },
-            { mesa: 7, items: ["Bacardi" , "Captain Morgan"], estado: "pendiente" }
-          ];
-
-          localStorage.setItem("ordenes_bar", JSON.stringify(prueba));
-          setOrdenes(prueba);
-        }}
-      >
-        Generar pedidos de prueba
-      </button>
     </div>
   );
 };
