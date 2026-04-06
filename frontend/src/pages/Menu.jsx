@@ -42,36 +42,10 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
 
   const precioTotal = Number(item.precio || 0) + precioAdiciones;
 
-const handlePagar = async () => {
-  const bebidas = cart.filter(c =>
-    c.categoria === "Bar" || c.categoria === "Bebidas" ||
-    BAR_CATS.includes(c.categoria)
-  );
-
-  if (bebidas.length > 0) {
-    try {
-      await fetch("http://localhost:3001/api/bar/orden", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mesa: quejaMesa || "Sin mesa",
-items: bebidas.map(b => ({
-  nombre:    b.nombre,
-  cantidad:  b.qty,
-  imgKey:    b.imgKey || null,   // ← clave string, no el import
-  adiciones: b.adiciones || [],
-  opcion:    b.opcion || null,
-})),
-        }),
-      });
-    } catch (err) {
-      console.error("Error enviando al bar:", err);
-    }
-  }
-
-  setPagado(true);
-  setTimeout(() => { setPagado(false); setCart([]); setCartOpen(false); }, 4000);
-};
+  const handleAdd = () => {
+    onAddToCart({ ...item, termino, opcion: opcionSel, adiciones, precio: precioTotal });
+    onClose();
+  };
 
   return (
     <div className="product-modal-overlay" onClick={onClose}>
@@ -132,7 +106,7 @@ items: bebidas.map(b => ({
               ))}
             </div>
           )}
-          <button className="modal-add-btn" onClick={() => { onAddToCart({ ...item, termino, opcion: opcionSel, adiciones }); onClose(); }}>
+          <button className="modal-add-btn" onClick={handleAdd}>
             Agregar al pedido — {fmtCOP(precioTotal)}
           </button>
         </div>
@@ -433,15 +407,14 @@ const Menu = () => {
 
   const dataFinal = Object.keys(menuDB).length ? menuDB : menuData;
 
-const addToCart = item => {
-  const imgKey = Object.entries(imagenes).find(([k,v]) => v === item.img)?.[0] || null;
-  setCart(prev => {
-    const key = `${item.nombre}|${item.termino||""}|${item.opcion||""}|${(item.adiciones||[]).join(",")}`;
-    const existe = prev.find(c => c._key === key);
-    if (existe) return prev.map(c => c._key===key ? {...c,qty:c.qty+1} : c);
-    return [...prev, {...item, _key:key, qty:1, imgKey}];
-  });
-};
+  const addToCart = item => {
+    setCart(prev => {
+      const key = `${item.nombre}|${item.termino||""}|${item.opcion||""}|${(item.adiciones||[]).join(",")}`;
+      const existe = prev.find(c => c._key === key);
+      if (existe) return prev.map(c => c._key===key ? {...c,qty:c.qty+1} : c);
+      return [...prev, {...item,_key:key,qty:1}];
+    });
+  };
 
   const removeOne = key => {
     setCart(prev => {
@@ -454,36 +427,10 @@ const addToCart = item => {
   const totalItems  = cart.reduce((a,c) => a+c.qty, 0);
   const totalPrecio = cart.reduce((a,c) => a+c.precio*c.qty, 0);
 
-const handlePagar = async () => {
-  const bebidas = cart.filter(c =>
-    c.categoria === "Bar" || c.categoria === "Bebidas" ||
-    BAR_CATS.includes(c.categoria)
-  );
-
-  if (bebidas.length > 0) {
-    try {
-      await fetch("http://localhost:3001/api/bar/orden", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mesa: quejaMesa || "Sin mesa",
-          items: bebidas.map(b => ({
-            nombre:    b.nombre,
-            cantidad:  b.qty,
-            imgKey:    b.imgKey || null,
-            adiciones: b.adiciones || [],
-            opcion:    b.opcion || null,
-          })),
-        }),
-      });
-    } catch (err) {
-      console.error("Error enviando al bar:", err);
-    }
-  }
-
-  setPagado(true);
-  setTimeout(() => { setPagado(false); setCart([]); setCartOpen(false); }, 4000);
-};
+  const handlePagar = () => {
+    setPagado(true);
+    setTimeout(() => { setPagado(false); setCart([]); setCartOpen(false); }, 4000);
+  };
 
   const toggleFav = item =>
     setFavs(prev => prev.find(f=>f.nombre===item.nombre) ? prev.filter(f=>f.nombre!==item.nombre) : [...prev,item]);
@@ -564,69 +511,48 @@ const handlePagar = async () => {
       {/* CARRITO */}
       {cartOpen && <div className="overlay-bg" onClick={() => setCartOpen(false)}/>}
       <div className={`cart-panel ${cartOpen?"open":""}`}>
-<div className="cart-panel-header">
-  <h2>Tu pedido 🛒</h2>
-  <button className="sidebar-close-btn" onClick={() => setCartOpen(false)}>✕</button>
-</div>
-{pagado ? (
-  <div className="cart-paid">
-    <div className="cart-paid-icon">✅</div>
-    <h3>¡Pedido registrado!</h3>
-    <p>Dirígete a caja a pagar 🎉</p>
-  </div>
-) : cart.length===0 ? (
-  <p className="cart-empty">Aún no has agregado nada 🍽️</p>
-) : (
-  <>
-    {/* ── INPUT DE MESA ── */}
-    <div style={{ padding: "14px 22px 0" }}>
-      <input
-        type="text"
-        placeholder="¿Cuál es tu mesa? (ej: Mesa 3)"
-        value={quejaMesa}
-        onChange={e => setQuejaMesa(e.target.value)}
-        style={{
-          width: "100%",
-          background: "rgba(255,255,255,0.07)",
-          border: "1.5px solid rgba(255,255,255,0.15)",
-          borderRadius: "12px",
-          padding: "12px 16px",
-          color: "#fff",
-          fontSize: "14px",
-          fontFamily: "DM Sans, sans-serif",
-          outline: "none",
-        }}
-      />
-    </div>
-
-    <ul className="cart-list">
-      {cart.map((c,i) => (
-        <li key={i} className="cart-item">
-          <div className="cart-item-info">
-            <span className="cart-item-name">{c.nombre}</span>
-            {(c.termino||c.opcion||c.adiciones?.length>0) && (
-              <span className="cart-item-meta">
-                {[c.termino,c.opcion,...(c.adiciones||[])].filter(Boolean).join(" · ")}
-              </span>
-            )}
-            <span className="cart-item-price">{fmtCOP(c.precio)}</span>
+        <div className="cart-panel-header">
+          <h2>Tu pedido 🛒</h2>
+          <button className="sidebar-close-btn" onClick={() => setCartOpen(false)}>✕</button>
+        </div>
+        {pagado ? (
+          <div className="cart-paid">
+            <div className="cart-paid-icon">✅</div>
+            <h3>¡Pedido registrado!</h3>
+            <p>Dirígete a caja a pagar 🎉</p>
           </div>
-          <div className="cart-item-controls">
-            <button onClick={() => removeOne(c._key)}>−</button>
-            <span>{c.qty}</span>
-            <button onClick={() => addToCart(c)}>+</button>
-          </div>
-        </li>
-      ))}
-    </ul>
-    <div className="cart-total">
-      <span>Total</span>
-      <span className="cart-total-price">{fmtCOP(totalPrecio)}</span>
-    </div>
-    <button className="cart-pay-btn" onClick={handlePagar}>Pagar {fmtCOP(totalPrecio)}</button>
-  </>
-)}
-</div>
+        ) : cart.length===0 ? (
+          <p className="cart-empty">Aún no has agregado nada 🍽️</p>
+        ) : (
+          <>
+            <ul className="cart-list">
+              {cart.map((c,i) => (
+                <li key={i} className="cart-item">
+                  <div className="cart-item-info">
+                    <span className="cart-item-name">{c.nombre}</span>
+                    {(c.termino||c.opcion||c.adiciones?.length>0) && (
+                      <span className="cart-item-meta">
+                        {[c.termino,c.opcion,...(c.adiciones||[])].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
+                    <span className="cart-item-price">{fmtCOP(c.precio)}</span>
+                  </div>
+                  <div className="cart-item-controls">
+                    <button onClick={() => removeOne(c._key)}>−</button>
+                    <span>{c.qty}</span>
+                    <button onClick={() => addToCart(c)}>+</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="cart-total">
+              <span>Total</span>
+              <span className="cart-total-price">{fmtCOP(totalPrecio)}</span>
+            </div>
+            <button className="cart-pay-btn" onClick={handlePagar}>Pagar {fmtCOP(totalPrecio)}</button>
+          </>
+        )}
+      </div>
 
       {/* HEADER */}
       <div className="top-bar">
