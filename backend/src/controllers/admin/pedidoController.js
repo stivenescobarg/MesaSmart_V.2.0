@@ -1,4 +1,4 @@
-const db = require('../config/mysqlDb');
+const { pool: db } = require('../../config/db');
 
 // ─────────────────────────────────────────────
 // GET /api/pedidos
@@ -242,4 +242,9 @@ module.exports = {
   getEstados,
   getCategorias,
   getCocineroTurno,
+  // aliases para las rutas del equipo
+  crear:         createPedido,
+  getByMesa:     getPedidos,
+  updateEstado:  updateEstadoPedido,
+  updateItem:    updateEstadoPedido,
 };

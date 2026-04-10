@@ -22,6 +22,8 @@ app.use('/api/menu',    require('./routes/productos'));
 app.use('/api/mesas',    require('./routes/admin/mesaRoutes'));
 app.use('/api/caja',     require('./routes/admin/cajaRoutes'));
 app.use('/api/pedidos',  require('./routes/admin/pedidoRoutes'));
+app.use('/api/turno',    require('./routes/admin/pedidoRoutes'));
+app.use('/api/turno',    require('./routes/admin/pedidoRoutes'));
 app.use('/api/usuarios', require('./routes/admin/userRoutes'));
 app.use('/api/egresos',  require('./routes/admin/egresoRoutes'));
 app.use('/api/sesiones', require('./routes/admin/sesionRoutes'));
