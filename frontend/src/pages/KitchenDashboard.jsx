@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { kitchenService } from "../services/kitchenService";
 import OrderCard from "../components/kitchen/OrderCard";
 import KitchenHeader from "../components/kitchen/KitchenHeader";
@@ -7,6 +9,9 @@ import "./KitchenDashboard.css";
 const ESTADOS_ORDEN = { pendiente: 0, en_preparacion: 1, listo: 2 };
 
 export default function KitchenDashboard() {
+  const navigate   = useNavigate();
+  const { logout } = useAuth();
+
   const [theme, setTheme]             = useState(() => localStorage.getItem("kitchen-theme") || "dark");
   const [orders, setOrders]           = useState([]);
   const [filtro, setFiltro]           = useState("todos");
@@ -16,6 +21,11 @@ export default function KitchenDashboard() {
   const [cocinero, setCocinero]       = useState(null);
 
   const prevOrderIds = useRef(new Set());
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login", { replace: true });
+  };
 
   useEffect(() => {
     localStorage.setItem("kitchen-theme", theme);
@@ -141,6 +151,7 @@ export default function KitchenDashboard() {
         theme={theme}
         onToggleTheme={toggleTheme}
         cocinero={cocinero}
+        onLogout={handleLogout}
       />
 
       <main className="kd-main">

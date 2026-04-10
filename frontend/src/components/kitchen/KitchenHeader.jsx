@@ -1,6 +1,5 @@
 import "./KitchenHeader.css";
 
-
 export default function KitchenHeader({
   orders,
   filtro,
@@ -8,6 +7,7 @@ export default function KitchenHeader({
   theme,
   onToggleTheme,
   cocinero,
+  onLogout,
 }) {
   const pendientes = orders.filter(o => o.estado === "pendiente").length;
   const enPrep     = orders.filter(o => o.estado === "en_preparacion").length;
@@ -34,9 +34,7 @@ export default function KitchenHeader({
 
   return (
     <header className="kdh-root">
-      {/* ── Fila superior ── */}
       <div className="kdh-top">
-        {/* Logo + título */}
         <div className="kdh-brand">
           <div className="kdh-brand-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -50,15 +48,14 @@ export default function KitchenHeader({
           </div>
         </div>
 
-        {/* Stats */}
         <div className="kdh-stats">
           {STATS.map(s => (
             <div
               key={s.label}
               className="kdh-stat"
               style={{
-                background:   `var(${s.bgVar})`,
-                borderColor:  `var(${s.colorVar})22`,
+                background:  `var(${s.bgVar})`,
+                borderColor: `var(${s.colorVar})22`,
               }}
             >
               <span className="kdh-stat-value" style={{ color: `var(${s.colorVar})` }}>
@@ -69,9 +66,7 @@ export default function KitchenHeader({
           ))}
         </div>
 
-        {/* Acciones: cocinero + hora + toggle */}
         <div className="kdh-actions">
-          {/* Cocinero en turno */}
           {cocinero && (
             <div className="kdh-cocinero" title="Cocinero en turno">
               <div className="kdh-cocinero-avatar">
@@ -80,13 +75,12 @@ export default function KitchenHeader({
               <div className="kdh-cocinero-info">
                 <span className="kdh-cocinero-nombre">{cocinero.nombre}</span>
                 <span className="kdh-cocinero-badge">
-                  {cocinero.turno === "mock" ? "En turno ·  provisional" : "En turno"}
+                  {cocinero.turno === "mock" ? "En turno · provisional" : "En turno"}
                 </span>
               </div>
             </div>
           )}
 
-          {/* Reloj */}
           <div className="kdh-clock">{hora}</div>
 
           {/* Theme toggle */}
@@ -97,7 +91,6 @@ export default function KitchenHeader({
             aria-label="Cambiar tema"
           >
             {theme === "dark" ? (
-              /* Sol */
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="5"/>
@@ -111,17 +104,30 @@ export default function KitchenHeader({
                 <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
               </svg>
             ) : (
-              /* Luna */
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2">
                 <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
               </svg>
             )}
           </button>
+
+          {/* Botón salir */}
+          <button
+            className="kdh-toggle"
+            onClick={onLogout}
+            title="Cerrar sesión"
+            aria-label="Cerrar sesión"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </button>
         </div>
       </div>
 
-      {/* ── Filtros ── */}
       <div className="kdh-filters">
         {FILTROS.map(f => (
           <button

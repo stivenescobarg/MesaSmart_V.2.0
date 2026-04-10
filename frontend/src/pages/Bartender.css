@@ -283,21 +283,21 @@ body {
 }
 
 .order-info { flex: 1; }
+
+.order-num {
   width: 45px;
   height: 45px;
   border-radius: 50%;
-
   display: flex;
   align-items: center;
   justify-content: center;
+}
 
 .order-mesa {
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
   margin-bottom: 4px;
-  color: #fff;
-  font-weight: 600;
 }
 
 .order-items {
