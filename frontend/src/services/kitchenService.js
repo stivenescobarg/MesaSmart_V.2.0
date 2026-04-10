@@ -49,7 +49,8 @@ const notifyListeners = (orders) => {
 
 export const kitchenService = {
   getOrders: async () => {
-    return http.get('/pedidos');
+    const data = await http.get('/pedidos');
+    return { pedidos: Array.isArray(data) ? data : (data.pedidos || []) };
   },
   createOrder: async (payload) => {
     return http.post('/pedidos', payload);
