@@ -161,7 +161,7 @@ const Menu = () => {
   const [searchText,   setSearchText]   = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:3000/api/menu")
+    fetch("http://localhost:3001/api/menu")
       .then(res => res.json())
       .then(data => {
         const organizado = {};
@@ -493,7 +493,7 @@ const handlePagar = async () => {
     if (!quejaMsg.trim()) return;
     setQuejaLoading(true);
     try {
-      await fetch("http://localhost:3000/api/quejas", {
+      await fetch("http://localhost:3001/api/quejas", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({mesa:quejaMesa, mensaje:quejaMsg}),
       });
