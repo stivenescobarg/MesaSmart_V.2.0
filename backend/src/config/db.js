@@ -27,7 +27,7 @@ const connectDB = async () => {
     console.error("❌ Error MySQL:", err.message);
     process.exit(1);
   });
-  .catch(err => console.error("❌ Error de conexión:", err));
 
+module.exports = { pool };
 // Exporta pool Y connectDB para compatibilidad con admin y menú
 module.exports = { pool, connectDB };
