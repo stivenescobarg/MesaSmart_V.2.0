@@ -42,10 +42,36 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
 
   const precioTotal = Number(item.precio || 0) + precioAdiciones;
 
-  const handleAdd = () => {
-    onAddToCart({ ...item, termino, opcion: opcionSel, adiciones, precio: precioTotal });
-    onClose();
-  };
+const handlePagar = async () => {
+  const bebidas = cart.filter(c =>
+    c.categoria === "Bar" || c.categoria === "Bebidas" ||
+    BAR_CATS.includes(c.categoria)
+  );
+
+  if (bebidas.length > 0) {
+    try {
+      await fetch("http://localhost:3001/api/bar/orden", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mesa: quejaMesa || "Sin mesa",
+items: bebidas.map(b => ({
+  nombre:    b.nombre,
+  cantidad:  b.qty,
+  imgKey:    b.imgKey || null,   // ← clave string, no el import
+  adiciones: b.adiciones || [],
+  opcion:    b.opcion || null,
+})),
+        }),
+      });
+    } catch (err) {
+      console.error("Error enviando al bar:", err);
+    }
+  }
+
+  setPagado(true);
+  setTimeout(() => { setPagado(false); setCart([]); setCartOpen(false); }, 4000);
+};
 
   return (
     <div className="product-modal-overlay" onClick={onClose}>
@@ -106,7 +132,7 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
               ))}
             </div>
           )}
-          <button className="modal-add-btn" onClick={handleAdd}>
+          <button className="modal-add-btn" onClick={() => { onAddToCart({ ...item, termino, opcion: opcionSel, adiciones }); onClose(); }}>
             Agregar al pedido — {fmtCOP(precioTotal)}
           </button>
         </div>
@@ -281,7 +307,7 @@ const Menu = () => {
         adiciones:[{nombre:"Pollo grillado",precio:8000},{nombre:"Camarones",precio:12000}],
       },
       {
-        nombre:"Lasaña de Carne", img:imagenes.lasana, categoria:"Pastas",
+        nombre:"Lasaña de Carne", img:imagenes.carbonara, categoria:"Pastas",
         descripcion:"Lasaña tradicional con carne de res, salsa bechamel y queso gratinado.",
         precio:32000, tiene_termino:false,
         opciones:[], adiciones:[{nombre:"Extra queso",precio:3000},{nombre:"Salsa extra",precio:2000}],
@@ -382,65 +408,12 @@ const Menu = () => {
       img:           imagenes.aguardiente,   // debe existir en imagenes.js
       categoria:     "Bar",
       descripcion:   "Aguardiente antioqueño botella personal, frío.",
-      precio:        50000,
+      precio:        12000,
       tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }, { nombre:"Azul", precio:5000 }, { nombre:"Verde", precio:5000 }, { nombre:"Amarillo", precio:5000 }],
+      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
       adiciones: [{ nombre:"Limón extra", precio:1000 }],
     },
-
-      { nombre:        "Smirnoff",
-      img:           imagenes.smirnoff,   // debe existir en imagenes.js
-      categoria:     "Bar",
-      descripcion:   "Delicioso licor refrecante, frío.",
-      precio:        12000,
-      tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
-      adiciones: [{ nombre:"Limón extra", precio:1000 }, { nombre:"Cereza", precio:500 }],
-      },
-
-      ],Cervezas:[
-       { nombre:        "Aguila",
-      img:           imagenes.aguila,   // debe existir en imagenes.js
-      categoria:     "Bar",
-      descripcion:   "Cerveza original, frío.",
-      precio:        7000,
-      tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
-      adiciones: [{ nombre:"Limón extra", precio:1000 }],
-      },
-
-      { nombre:        "Aguila Light",
-      img:           imagenes.aguilaLight,   // debe existir en imagenes.js
-      categoria:     "Bar",
-      descripcion:   "Cerveza refresacnte, frío.",
-      precio:        7000,
-      tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
-      adiciones: [{ nombre:"Limón extra", precio:1000 }],
-      },
-
-      { nombre:        "Corona",
-      img:           imagenes.corona,   // debe existir en imagenes.js
-      categoria:     "Bar",
-      descripcion:   "Cerveza tradicional, frío.",
-      precio:        12000,
-      tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
-      adiciones: [{ nombre:"Limón extra", precio:1000 }],
-      },
-
-       { nombre:        "Cuates",
-      img:           imagenes.cuates,   // debe existir en imagenes.js
-      categoria:     "Bar",
-      descripcion:   "Cerveza saborizada, frío.",
-      precio:        10000,
-      tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }, { nombre:"Manzana Verde", precio:0 }, { nombre:"Cereza", precio:0 }, { nombre:"Macuraya", precio:0 }],
-      adiciones: [{ nombre:"Limón extra", precio:1000 }],
-      },
-
-    
-      ],Jugos:[
+      ],Cervezas:[],Jugos:[
         {
           nombre:"Jugo Natural", img:imagenes.jugo, categoria:"Bar",
           descripcion:"Jugo natural de la fruta del día, sin azúcar o con azúcar al gusto.",
@@ -448,51 +421,7 @@ const Menu = () => {
           opciones:[{nombre:"Con azúcar",precio:0},{nombre:"Sin azúcar",precio:0},{nombre:"Con leche",precio:0}],
           adiciones:[],
         },
-
-                {
-          nombre:"Jugo Frutal", img:imagenes.jugos, categoria:"Bar",
-          descripcion:"Jugo natural de la fruta , sin azúcar o con azúcar al gusto.",
-          precio:9000, tiene_termino:false,
-          opciones:[{nombre:"Con azúcar",precio:0},{nombre:"Sin azúcar",precio:0},{nombre:"Con leche",precio:0},{nombre:"Mango",precio:0},{nombre:"Mora",precio:0},{nombre:"Naranja",precio:0},{nombre:"Mandarina",precio:0},{nombre:"Fresa",precio:0}],
-          adiciones:[],
-        },
-      ],Micheladas:[
-
-                        {
-          nombre:"Michelada", img:imagenes.michelada, categoria:"Bar",
-          descripcion:"Michelada tradicional",
-          precio:7000, tiene_termino:false,
-          opciones:[{nombre:"Aguila original",precio:0},{nombre:"Aguila Light",precio:0}],
-          adiciones:[],
-        },
-
-                                {
-          nombre:"Michelada", img:imagenes.micheladaSaborizada, categoria:"Bar",
-          descripcion:"Michelada Saborizada",
-          precio:7000, tiene_termino:false,
-          opciones:[{nombre:"Mango",precio:0},{nombre:"Cereza",precio:0}],
-          adiciones:[],
-        },
-
-
-      ],Gaseosas:[
-
-                                        {
-          nombre:"Gaseosas", img:imagenes.gaseosas, categoria:"Bar",
-          descripcion:"Gaseosas Colombianas",
-          precio:2500, tiene_termino:false,
-          opciones:[{nombre:"Colombiana",precio:0},{nombre:"uva",precio:0},{nombre:"Petsi",precio:0},{nombre:"Coca Cola",precio:0},{nombre:"Fanta",precio:0},{nombre:"Sprite",precio:0}],
-          adiciones:[],
-        },
-      ],Malteadas:[
-
-                                                {
-          nombre:"Malteada de chocolate", img:imagenes.malteadachp, categoria:"Bar",
-          descripcion:"Malteada de chocolate con chips de chocolate",
-          precio:7000, tiene_termino:false,
-          adiciones:[],
-        },
-      ],
+      ],Micheladas:[],Gaseosas:[],Malteadas:[],
     },
   };
 
@@ -504,14 +433,15 @@ const Menu = () => {
 
   const dataFinal = Object.keys(menuDB).length ? menuDB : menuData;
 
-  const addToCart = item => {
-    setCart(prev => {
-      const key = `${item.nombre}|${item.termino||""}|${item.opcion||""}|${(item.adiciones||[]).join(",")}`;
-      const existe = prev.find(c => c._key === key);
-      if (existe) return prev.map(c => c._key===key ? {...c,qty:c.qty+1} : c);
-      return [...prev, {...item,_key:key,qty:1}];
-    });
-  };
+const addToCart = item => {
+  const imgKey = Object.entries(imagenes).find(([k,v]) => v === item.img)?.[0] || null;
+  setCart(prev => {
+    const key = `${item.nombre}|${item.termino||""}|${item.opcion||""}|${(item.adiciones||[]).join(",")}`;
+    const existe = prev.find(c => c._key === key);
+    if (existe) return prev.map(c => c._key===key ? {...c,qty:c.qty+1} : c);
+    return [...prev, {...item, _key:key, qty:1, imgKey}];
+  });
+};
 
   const removeOne = key => {
     setCart(prev => {
@@ -524,10 +454,36 @@ const Menu = () => {
   const totalItems  = cart.reduce((a,c) => a+c.qty, 0);
   const totalPrecio = cart.reduce((a,c) => a+c.precio*c.qty, 0);
 
-  const handlePagar = () => {
-    setPagado(true);
-    setTimeout(() => { setPagado(false); setCart([]); setCartOpen(false); }, 4000);
-  };
+const handlePagar = async () => {
+  const bebidas = cart.filter(c =>
+    c.categoria === "Bar" || c.categoria === "Bebidas" ||
+    BAR_CATS.includes(c.categoria)
+  );
+
+  if (bebidas.length > 0) {
+    try {
+      await fetch("http://localhost:3001/api/bar/orden", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mesa: quejaMesa || "Sin mesa",
+          items: bebidas.map(b => ({
+            nombre:    b.nombre,
+            cantidad:  b.qty,
+            imgKey:    b.imgKey || null,
+            adiciones: b.adiciones || [],
+            opcion:    b.opcion || null,
+          })),
+        }),
+      });
+    } catch (err) {
+      console.error("Error enviando al bar:", err);
+    }
+  }
+
+  setPagado(true);
+  setTimeout(() => { setPagado(false); setCart([]); setCartOpen(false); }, 4000);
+};
 
   const toggleFav = item =>
     setFavs(prev => prev.find(f=>f.nombre===item.nombre) ? prev.filter(f=>f.nombre!==item.nombre) : [...prev,item]);
@@ -608,48 +564,69 @@ const Menu = () => {
       {/* CARRITO */}
       {cartOpen && <div className="overlay-bg" onClick={() => setCartOpen(false)}/>}
       <div className={`cart-panel ${cartOpen?"open":""}`}>
-        <div className="cart-panel-header">
-          <h2>Tu pedido 🛒</h2>
-          <button className="sidebar-close-btn" onClick={() => setCartOpen(false)}>✕</button>
-        </div>
-        {pagado ? (
-          <div className="cart-paid">
-            <div className="cart-paid-icon">✅</div>
-            <h3>¡Pedido registrado!</h3>
-            <p>Dirígete a caja a pagar 🎉</p>
+<div className="cart-panel-header">
+  <h2>Tu pedido 🛒</h2>
+  <button className="sidebar-close-btn" onClick={() => setCartOpen(false)}>✕</button>
+</div>
+{pagado ? (
+  <div className="cart-paid">
+    <div className="cart-paid-icon">✅</div>
+    <h3>¡Pedido registrado!</h3>
+    <p>Dirígete a caja a pagar 🎉</p>
+  </div>
+) : cart.length===0 ? (
+  <p className="cart-empty">Aún no has agregado nada 🍽️</p>
+) : (
+  <>
+    {/* ── INPUT DE MESA ── */}
+    <div style={{ padding: "14px 22px 0" }}>
+      <input
+        type="text"
+        placeholder="¿Cuál es tu mesa? (ej: Mesa 3)"
+        value={quejaMesa}
+        onChange={e => setQuejaMesa(e.target.value)}
+        style={{
+          width: "100%",
+          background: "rgba(255,255,255,0.07)",
+          border: "1.5px solid rgba(255,255,255,0.15)",
+          borderRadius: "12px",
+          padding: "12px 16px",
+          color: "#fff",
+          fontSize: "14px",
+          fontFamily: "DM Sans, sans-serif",
+          outline: "none",
+        }}
+      />
+    </div>
+
+    <ul className="cart-list">
+      {cart.map((c,i) => (
+        <li key={i} className="cart-item">
+          <div className="cart-item-info">
+            <span className="cart-item-name">{c.nombre}</span>
+            {(c.termino||c.opcion||c.adiciones?.length>0) && (
+              <span className="cart-item-meta">
+                {[c.termino,c.opcion,...(c.adiciones||[])].filter(Boolean).join(" · ")}
+              </span>
+            )}
+            <span className="cart-item-price">{fmtCOP(c.precio)}</span>
           </div>
-        ) : cart.length===0 ? (
-          <p className="cart-empty">Aún no has agregado nada 🍽️</p>
-        ) : (
-          <>
-            <ul className="cart-list">
-              {cart.map((c,i) => (
-                <li key={i} className="cart-item">
-                  <div className="cart-item-info">
-                    <span className="cart-item-name">{c.nombre}</span>
-                    {(c.termino||c.opcion||c.adiciones?.length>0) && (
-                      <span className="cart-item-meta">
-                        {[c.termino,c.opcion,...(c.adiciones||[])].filter(Boolean).join(" · ")}
-                      </span>
-                    )}
-                    <span className="cart-item-price">{fmtCOP(c.precio)}</span>
-                  </div>
-                  <div className="cart-item-controls">
-                    <button onClick={() => removeOne(c._key)}>−</button>
-                    <span>{c.qty}</span>
-                    <button onClick={() => addToCart(c)}>+</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="cart-total">
-              <span>Total</span>
-              <span className="cart-total-price">{fmtCOP(totalPrecio)}</span>
-            </div>
-            <button className="cart-pay-btn" onClick={handlePagar}>Pagar {fmtCOP(totalPrecio)}</button>
-          </>
-        )}
-      </div>
+          <div className="cart-item-controls">
+            <button onClick={() => removeOne(c._key)}>−</button>
+            <span>{c.qty}</span>
+            <button onClick={() => addToCart(c)}>+</button>
+          </div>
+        </li>
+      ))}
+    </ul>
+    <div className="cart-total">
+      <span>Total</span>
+      <span className="cart-total-price">{fmtCOP(totalPrecio)}</span>
+    </div>
+    <button className="cart-pay-btn" onClick={handlePagar}>Pagar {fmtCOP(totalPrecio)}</button>
+  </>
+)}
+</div>
 
       {/* HEADER */}
       <div className="top-bar">
