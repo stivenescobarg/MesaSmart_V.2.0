@@ -11,6 +11,7 @@ import { pedidoService }  from "../services/pedidoService";
 import { cajaService }    from "../services/cajaService";
 import { usuarioService } from "../services/usuarioService";
 
+import Quejas          from "../components/admin/Quejas";
 import Navbar          from "../components/admin/Navbar";
 import Dashboard       from "../components/admin/Dashboard";
 import Caja            from "../components/admin/Caja";
@@ -256,6 +257,11 @@ const handleEliminarUsuario = async (id) => {
           />
         )}
         {seccion === "historial" && <Historial historial={historial} />}
+
+        {seccion === "quejas" && (
+  <Quejas toast={toast} />
+)}
+
         {seccion === "usuarios"  && (
           <Usuarios
             usuarios={usuarios}

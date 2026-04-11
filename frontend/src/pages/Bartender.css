@@ -1,3 +1,8 @@
+/* ══════════════════════════════════════════════════════════════
+   Bartender.css — Panel de Bartender
+   Misma estética que Admin: dark industrial, ámbar, DM Sans
+   Variables heredadas del Admin.css via :root
+══════════════════════════════════════════════════════════════ */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 :root {
@@ -25,13 +30,51 @@ html body:has(.bd-container) #root {
   background: transparent !important;
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;600;700&display=swap');
 
-body {
-  font-family: "DM Sans", sans-serif;
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap');
+
+/* ── Variables locales (mismas que Admin) ────────────────────── */
+.bd-container {
+  --bg:           #0d0d0d;
+  --bg-card:      #141414;
+  --bg-hover:     #1a1a1a;
+  --border:       #242424;
+  --border-light: #303030;
+  --amber:        #f59e0b;
+  --amber-dim:    rgba(245, 158, 11, 0.10);
+  --amber-border: rgba(245, 158, 11, 0.28);
+  --green:        #22c55e;
+  --green-dim:    rgba(34, 197, 94, 0.10);
+  --green-border: rgba(34, 197, 94, 0.28);
+  --red:          #ef4444;
+  --red-dim:      rgba(239, 68, 68, 0.10);
+  --red-border:   rgba(239, 68, 68, 0.28);
+  --blue:         #3b82f6;
+  --blue-dim:     rgba(59, 130, 246, 0.10);
+  --text-1:       #f0ece3;
+  --text-2:       #848076;
+  --text-3:       #3d3b38;
+  --r-sm:         6px;
+  --r-md:         10px;
+  --r-lg:         14px;
+  --shadow:       0 1px 2px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.35);
+
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
 }
 
-/* CONTENEDOR */
-.bd-container {
-  min-height: 100vh;
+.bd-container *,
+.bd-container *::before,
+.bd-container *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
   width: 100%;
   padding: 30px 24px 100px;
   background:
@@ -51,7 +94,7 @@ body {
   z-index: 0;
 }
 
-/* HEADER */
+/* ── HEADER ──────────────────────────────────────────────────── */
 .bd-header {
   display: flex;
   justify-content: space-between;
@@ -70,21 +113,35 @@ body {
   letter-spacing: -0.5px;
   line-height: 1;
   align-items: center;
-
-  background: rgba(13,13,26,0.85);
-  backdrop-filter: blur(16px);
-  padding: 16px 20px;
-  border-radius: 18px;
-
-  border: 1px solid rgba(255,255,255,0.07);
-  margin-bottom: 30px;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(13, 13, 13, 0.97);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .bd-title {
-  font-family: "Playfair Display", serif;
-  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-1);
 }
 
+.bd-title::before {
+  content: "🍹 ";
+  font-size: 0.85rem;
+}
+
+.bd-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  font-family: 'DM Mono', monospace;
+  margin-top: 0.1rem;
 .bd-title span {
   color: var(--accent);
 }
@@ -112,26 +169,43 @@ body {
   color: rgba(255,255,255,0.5);
 }
 
-/* BOTÓN */
+/* ── BOTÓN SALIR (mismo que admin) ───────────────────────────── */
 .btn-salir {
-  border-radius: 14px;
-  padding: 10px 16px;
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: var(--red);
+  border: 1px solid var(--red-border);
+  border-radius: var(--r-sm);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+  font-family: 'DM Sans', sans-serif;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .btn-salir:hover {
+  background: var(--red-dim);
+  border-color: var(--red);
+}
+
+/* ── CONTENIDO PRINCIPAL ─────────────────────────────────────── */
+.bd-main {
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.75rem 1.25rem 4rem;
+  flex: 1;
   background: rgba(255,140,50,0.2);
   border-color: var(--accent);
   color: var(--accent);
   color: #ff8c32;
 }
 
-/* MÉTRICAS */
+/* ── MÉTRICAS ────────────────────────────────────────────────── */
 .bd-metrics {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1.75rem;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-bottom: 40px;
@@ -186,35 +260,64 @@ body {
 }
 
 .metric-card {
-  background: rgba(255,255,255,0.06);
-  border-radius: 18px;
-  padding: 20px;
-  text-align: center;
-
-  border: 1px solid rgba(255,255,255,0.1);
-  backdrop-filter: blur(10px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.1rem 1.25rem;
+  box-shadow: var(--shadow);
 }
 
 .metric-label {
-  color: rgba(255,255,255,0.4);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-2);
+  margin-bottom: 0.35rem;
 }
 
 .metric-value {
-  font-size: 28px;
-  font-weight: 800;
-  color: #ff8c32;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--amber);
+  font-family: 'DM Mono', monospace;
 }
 
-/* SECCIÓN */
+/* ── TÍTULO DE SECCIÓN ───────────────────────────────────────── */
 .bd-section-title {
-  color: #fff;
-  margin-bottom: 16px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: -0.01em;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-/* ÓRDENES */
+.bd-section-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── VACÍO ───────────────────────────────────────────────────── */
+.bd-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-2);
+  font-size: 0.9rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+/* ── GRID DE ÓRDENES ─────────────────────────────────────────── */
 .bd-orders {
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
   gap: 12px;
   position: relative;
   z-index: 1;
@@ -235,9 +338,29 @@ body {
 /* TARJETA DE PEDIDO */
 
 
+/* ── CARD DE ORDEN ───────────────────────────────────────────── */
 .order-card {
   display: flex;
   align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow);
+  transition: border-color 0.18s ease;
+  flex-wrap: wrap;
+}
+
+.order-card:hover {
+  border-color: var(--amber-border);
+}
+
+/* Número de mesa */
+.order-num {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
   gap: 16px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -291,22 +414,65 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: 'DM Mono', monospace;
+  flex-shrink: 0;
 }
 
+.order-num.pendiente {
+  background: var(--amber-dim);
+  color: var(--amber);
+  border: 1px solid var(--amber-border);
+}
+
+.order-num.listo {
+  background: var(--green-dim);
+  color: var(--green);
+  border: 1px solid var(--green-border);
+}
+
+/* Info de la orden */
+.order-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-mesa {
+  font-size: 0.875rem;
 .order-mesa {
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
   margin-bottom: 4px;
+  color: #fff;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 0.2rem;
 }
 
 .order-items {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 13px;
   color: var(--muted);
 }
 
-/* BADGE */
+/* ── BADGES ──────────────────────────────────────────────────── */
 .badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.2rem 0.65rem;
+  border-radius: 99px;
+  border: 1px solid;
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
   padding: 4px 12px;
   border-radius: 50px;
   font-size: 11px;
@@ -325,10 +491,16 @@ body {
 }
 
 .badge-pendiente {
-  background: rgba(255,140,50,0.2);
-  color: #ff8c32;
+  background: var(--amber-dim);
+  border-color: var(--amber-border);
+  color: var(--amber);
 }
 
+.badge-listo {
+  background: var(--green-dim);
+  border-color: var(--green-border);
+  color: var(--green);
+}
 /* BOTÓN LISTO */
 .btn-listo {
   margin-left: auto;
@@ -548,24 +720,31 @@ body {
   transform: scale(1.02);
   box-shadow: 0 8px 30px rgba(255,140,50,0.6);
 
-  background: linear-gradient(135deg, #ff8c32, #e86520);
+/* ── BOTÓN LISTO ─────────────────────────────────────────────── */
+.btn-listo {
+  background: var(--amber);
+  color: #0d0d0d;
   border: none;
-  color: #fff;
-
-  padding: 8px 14px;
-  border-radius: 12px;
+  border-radius: var(--r-sm);
+  padding: 0.5rem 1.1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
   cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .btn-listo:hover {
-  transform: scale(1.05);
+  background: #fbbf24;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
+  transform: translateY(-1px);
 }
 
-/* VACÍO */
-.bd-empty {
-  color: rgba(255,255,255,0.35);
-  text-align: center;
-  padding: 40px;
-  border: 2px dashed rgba(255,255,255,0.1);
-  border-radius: 16px;
+/* ── RESPONSIVE ──────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .bd-header  { padding: 0 0.9rem; height: auto; padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  .bd-main    { padding: 1.25rem 0.9rem 3rem; }
+  .bd-metrics { grid-template-columns: 1fr 1fr; }
+  .order-card { flex-wrap: wrap; }
 }

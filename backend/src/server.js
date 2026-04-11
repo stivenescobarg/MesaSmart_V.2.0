@@ -1,8 +1,8 @@
+// backend/src/server.js
 require("dotenv").config();
-const express = require('express');
-const cors    = require('cors');
 
-const app = express();
+const app           = require("./app");
+const { connectDB } = require("./config/db");
 
 app.use(cors({
   origin: "http://localhost:5173",
@@ -31,4 +31,9 @@ app.use('/api/metricas', require('./routes/admin/metricaRoutes'));
 
 app.listen(3001, () => {
   console.log('🔥 Servidor corriendo en http://localhost:3001');
+connectDB().then(() => {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () =>
+    console.log(`🚀 Servidor MesaSmart corriendo en http://localhost:${PORT}`)
+  );
 });
