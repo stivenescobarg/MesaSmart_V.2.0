@@ -26,25 +26,18 @@ const OrdenModal = ({ orden, onClose, onListo }) => {
             const adiciones = typeof item === "object" ? (item.adiciones || []) : [];
             const opcion    = typeof item === "object" ? item.opcion   : null;
             const imagen    = imgKey ? imagenes[imgKey] : null;
-
             return (
               <div key={i} className="bd-modal-item">
                 <div className="bd-modal-item-img">
-                  {imagen
-                    ? <img src={imagen} alt={nombre} />
-                    : <span>🍹</span>
-                  }
+                  {imagen ? <img src={imagen} alt={nombre} /> : <span>🍹</span>}
                 </div>
                 <div className="bd-modal-item-info">
                   <p className="bd-modal-item-name">{nombre}</p>
                   <p className="bd-modal-item-qty">Cantidad: {cantidad}</p>
-{typeof item === "object" && item.descripcion && (
-  <p className="bd-modal-item-desc">{item.descripcion}</p>
-)}
-                  
-                  {opcion && (
-                    <p className="bd-modal-item-opcion">📌 {opcion}</p>
+                  {typeof item === "object" && item.descripcion && (
+                    <p className="bd-modal-item-desc">{item.descripcion}</p>
                   )}
+                  {opcion && <p className="bd-modal-item-opcion">📌 {opcion}</p>}
                   {adiciones.length > 0 && (
                     <div className="bd-modal-item-adiciones">
                       {adiciones.map((a, j) => (
@@ -73,6 +66,7 @@ const BartenderDashboard = () => {
   const [ordenes,     setOrdenes]     = useState([]);
   const [ordenSel,    setOrdenSel]    = useState(null);
   const [completadas, setCompletadas] = useState(0);
+  const [filtro,      setFiltro]      = useState(null); // null = todas
 
   const cargarOrdenes = async () => {
     try {
@@ -111,9 +105,23 @@ const BartenderDashboard = () => {
   };
 
   const totalBebidas = ordenes.reduce((acc, o) => acc + (o.items?.length || 0), 0);
-
   const getNombreItem = item =>
     typeof item === "object" ? item.nombre : item.replace(/ x\d+$/, "");
+
+  // Filtrar según la tarjeta seleccionada
+  const ordenesFiltradas = filtro === "activas"     ? ordenes
+                         : filtro === "completadas" ? [] // las completadas no vienen del backend aún
+                         : filtro === "bebidas"     ? ordenes
+                         : ordenes;
+
+  const tituloFiltro = filtro === "activas"     ? "Órdenes activas"
+                     : filtro === "completadas" ? "Completadas hoy"
+                     : filtro === "bebidas"     ? "Total bebidas"
+                     : "Órdenes activas";
+
+  const handleFiltro = (tipo) => {
+    setFiltro(prev => prev === tipo ? null : tipo);
+  };
 
   return (
     <div className="bd-container">
@@ -131,27 +139,41 @@ const BartenderDashboard = () => {
       </div>
 
       <div className="bd-metrics">
-        <div className="metric-card">
+        <div
+          className="metric-card"
+          onClick={() => handleFiltro("activas")}
+          style={{ cursor: "pointer", border: filtro === "activas" ? "1px solid var(--accent)" : "" }}
+        >
           <p className="metric-label">Órdenes activas</p>
           <p className="metric-value">{ordenes.length}</p>
         </div>
-        <div className="metric-card">
+        <div
+          className="metric-card"
+          onClick={() => handleFiltro("completadas")}
+          style={{ cursor: "pointer", border: filtro === "completadas" ? "1px solid var(--accent)" : "" }}
+        >
           <p className="metric-label">Completadas hoy</p>
           <p className="metric-value">{completadas}</p>
         </div>
-        <div className="metric-card">
+        <div
+          className="metric-card"
+          onClick={() => handleFiltro("bebidas")}
+          style={{ cursor: "pointer", border: filtro === "bebidas" ? "1px solid var(--accent)" : "" }}
+        >
           <p className="metric-label">Total bebidas</p>
           <p className="metric-value">{totalBebidas}</p>
         </div>
       </div>
 
-      <h2 className="bd-section-title">Órdenes activas</h2>
+      <h2 className="bd-section-title">{tituloFiltro}</h2>
 
-      {ordenes.length === 0 ? (
+      {filtro === "completadas" ? (
+        <p className="bd-empty">No hay órdenes completadas aún 🍹</p>
+      ) : ordenesFiltradas.length === 0 ? (
         <p className="bd-empty">Sin órdenes pendientes 🍹</p>
       ) : (
         <div className="bd-orders">
-          {ordenes.map((orden) => (
+          {ordenesFiltradas.map((orden) => (
             <div key={orden.id} className="order-card" onClick={() => setOrdenSel(orden)}>
               <div className="order-num pendiente">
                 M{orden.mesa?.replace(/\D/g, "") || "?"}

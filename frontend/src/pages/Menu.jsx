@@ -159,6 +159,18 @@ const Menu = () => {
   const [quejaSent,    setQuejaSent]    = useState(false);
   const [quejaLoading, setQuejaLoading] = useState(false);
   const [searchText,   setSearchText]   = useState("");
+  const [addModal,     setAddModal]     = useState(false);
+  const [categoriasBD, setCategoriasBD] = useState([]);
+const [nuevoProducto, setNuevoProducto] = useState({
+  nombre: "", descripcion: "", precio: "", categoria_id: "", _catNombre: "", subcategoria: "", imagen: "", adiciones: []
+});
+  const [nuevaAdicion, setNuevaAdicion] = useState({ nombre: "", precio: "" });
+  const [guardando, setGuardando] = useState(false);
+  const [guardadoOk, setGuardadoOk] = useState(false);
+  const [editModal,     setEditModal]     = useState(false);
+const [editProducto,  setEditProducto]  = useState(null);
+const [editando,      setEditando]      = useState(false);
+const [editOk,        setEditOk]        = useState(false);
 
   useEffect(() => {
     fetch("http://localhost:3001/api/menu")
@@ -485,7 +497,100 @@ const handlePagar = async () => {
   setTimeout(() => { setPagado(false); setCart([]); setCartOpen(false); }, 4000);
 };
 
+useEffect(() => {
+    if (addModal && categoriasBD.length === 0) {
+      fetch("http://localhost:3001/api/menu/categorias")
+        .then(r => r.json())
+        .then(setCategoriasBD)
+        .catch(() => {});
+    }
+  }, [addModal]);
+
+  const handleGuardarProducto = async () => {
+    if (!nuevoProducto.nombre || !nuevoProducto.precio || !nuevoProducto.categoria_id) return;
+    setGuardando(true);
+    try {
+      const res = await fetch("http://localhost:3001/api/menu", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...nuevoProducto, precio: Number(nuevoProducto.precio) }),
+      });
+      if (res.ok) {
+        setGuardadoOk(true);
+        setNuevoProducto({ nombre: "", descripcion: "", precio: "", categoria_id: "", _catNombre: "", subcategoria: "", imagen: "", adiciones: [] });
+        setTimeout(() => {
+          setGuardadoOk(false);
+          setAddModal(false);
+          // Recargar menú desde BD
+          fetch("http://localhost:3001/api/menu")
+            .then(r => r.json())
+            .then(data => {
+              const organizado = {};
+              data.forEach(prod => {
+                const cat = prod.categoria || "Otros";
+                if (!organizado[cat]) organizado[cat] = [];
+                organizado[cat].push({
+                  nombre: prod.nombre, img: imagenes[prod.imagen] || null,
+                  descripcion: prod.descripcion, precio: prod.precio,
+                  tiene_termino: prod.tiene_termino, opciones: prod.opciones || [],
+                  adiciones: prod.adiciones || [], subcategoria: prod.subcategoria || null,
+                  categoria: prod.categoria,
+                });
+              });
+              setMenuDB(organizado);
+            });
+        }, 1500);
+      }
+    } catch (err) { console.error(err); }
+    setGuardando(false);
+  };
+
+  const handleEditarProducto = async () => {
+  if (!editProducto?.id || !editProducto.nombre || !editProducto.precio) return;
+  setEditando(true);
+  try {
+    const res = await fetch(`http://localhost:3001/api/menu/${editProducto.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre:      editProducto.nombre,
+        descripcion: editProducto.descripcion,
+        precio:      Number(editProducto.precio),
+        imagen:      editProducto.imagen,
+      }),
+    });
+    if (res.ok) {
+      setEditOk(true);
+      setTimeout(() => {
+        setEditOk(false);
+        setEditModal(false);
+        fetch("http://localhost:3001/api/menu")
+          .then(r => r.json())
+          .then(data => {
+            const organizado = {};
+            data.forEach(prod => {
+              const cat = prod.categoria || "Otros";
+              if (!organizado[cat]) organizado[cat] = [];
+              organizado[cat].push({
+                id: prod.id, nombre: prod.nombre,
+                img: imagenes[prod.imagen] || null,
+                descripcion: prod.descripcion, precio: prod.precio,
+                tiene_termino: prod.tiene_termino, opciones: prod.opciones || [],
+                adiciones: prod.adiciones || [], subcategoria: prod.subcategoria || null,
+                categoria: prod.categoria,
+              });
+            });
+            setMenuDB(organizado);
+          });
+      }, 1500);
+    }
+  } catch (err) { console.error(err); }
+  setEditando(false);
+};
+
   const toggleFav = item =>
+
+ 
     setFavs(prev => prev.find(f=>f.nombre===item.nombre) ? prev.filter(f=>f.nombre!==item.nombre) : [...prev,item]);
   const isFav = nombre => favs.some(f=>f.nombre===nombre);
 
@@ -510,18 +615,24 @@ const handlePagar = async () => {
     ? allProductos.filter(p => p.nombre?.toLowerCase().includes(searchText.toLowerCase()))
     : null;
 
-  const renderCard = (item, i) => (
-    <div key={i} className="food-card-wrapper">
-      <div onClick={() => setSelectedItem(item)}>
-        <FoodCard item={item} />
-      </div>
-      <button className={`fav-btn ${isFav(item.nombre)?"active":""}`}
-        onClick={e => { e.stopPropagation(); toggleFav(item); }}>
-        {isFav(item.nombre) ? "❤️" : "🤍"}
-      </button>
-      <button className="add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>+</button>
+const renderCard = (item, i) => (
+  <div key={i} className="food-card-wrapper">
+    <div onClick={() => setSelectedItem(item)}>
+      <FoodCard item={item} />
     </div>
-  );
+    <button className={`fav-btn ${isFav(item.nombre)?"active":""}`}
+      onClick={e => { e.stopPropagation(); toggleFav(item); }}>
+      {isFav(item.nombre) ? "❤️" : "🤍"}
+    </button>
+    <button className="add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>+</button>
+    {item.id && (
+      <button onClick={e => { e.stopPropagation(); setEditProducto({ ...item, imagen: Object.entries(imagenes).find(([,v]) => v === item.img)?.[0] || "" }); setEditModal(true); }}
+        style={{ position:"absolute", top:"8px", right:"8px", background:"rgba(0,0,0,0.6)", border:"none", color:"#fff", borderRadius:"50%", width:"28px", height:"28px", cursor:"pointer", fontSize:"13px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        ✏️
+      </button>
+    )}
+  </div>
+);
 
   // ✅ CORREGIDO: maneja array plano de BD y objeto anidado del fallback
   const getBarItems = (cat, sub) => {
@@ -537,6 +648,197 @@ const handlePagar = async () => {
 
   return (
     <div className="menu-container">
+
+      {/* MODAL AGREGAR PRODUCTO */}
+      {addModal && (
+        <div className="product-modal-overlay" onClick={() => setAddModal(false)}>
+          <div className="product-modal" onClick={e => e.stopPropagation()} style={{ maxHeight: "90vh", overflowY: "auto" }}>
+            <div className="modal-handle" />
+            <button className="modal-close-btn" onClick={() => setAddModal(false)}>✕</button>
+            <div className="product-modal-body" style={{ paddingTop: "20px" }}>
+              <h2 className="product-modal-title" style={{ marginBottom: "20px" }}>➕ Nuevo producto</h2>
+
+              <div className="modal-section">
+                <p className="modal-section-title">Nombre</p>
+                <input className="queja-mesa-input" placeholder="Ej: Arroz con pollo"
+                  value={nuevoProducto.nombre}
+                  onChange={e => setNuevoProducto(p => ({ ...p, nombre: e.target.value }))} />
+              </div>
+
+              <div className="modal-section">
+                <p className="modal-section-title">Descripción</p>
+                <textarea className="queja-input" style={{ minHeight: "70px" }} placeholder="Descripción del plato..."
+                  value={nuevoProducto.descripcion}
+                  onChange={e => setNuevoProducto(p => ({ ...p, descripcion: e.target.value }))} />
+              </div>
+
+              <div className="modal-section">
+                <p className="modal-section-title">Precio (COP)</p>
+                <input className="queja-mesa-input" type="number" placeholder="Ej: 25000"
+                  value={nuevoProducto.precio}
+                  onChange={e => setNuevoProducto(p => ({ ...p, precio: e.target.value }))} />
+              </div>
+
+              {/* MODAL EDITAR PRODUCTO */}
+{editModal && editProducto && (
+  <div className="product-modal-overlay" onClick={() => setEditModal(false)}>
+    <div className="product-modal" onClick={e => e.stopPropagation()} style={{ maxHeight: "90vh", overflowY: "auto" }}>
+      <div className="modal-handle" />
+      <button className="modal-close-btn" onClick={() => setEditModal(false)}>✕</button>
+      <div className="product-modal-body" style={{ paddingTop: "20px" }}>
+        <h2 className="product-modal-title" style={{ marginBottom: "20px" }}>✏️ Editar producto</h2>
+
+        <div className="modal-section">
+          <p className="modal-section-title">Nombre</p>
+          <input className="queja-mesa-input" value={editProducto.nombre}
+            onChange={e => setEditProducto(p => ({ ...p, nombre: e.target.value }))} />
+        </div>
+
+        <div className="modal-section">
+          <p className="modal-section-title">Descripción</p>
+          <textarea className="queja-input" style={{ minHeight: "70px" }} value={editProducto.descripcion || ""}
+            onChange={e => setEditProducto(p => ({ ...p, descripcion: e.target.value }))} />
+        </div>
+
+        <div className="modal-section">
+          <p className="modal-section-title">Precio (COP)</p>
+          <input className="queja-mesa-input" type="number" value={editProducto.precio}
+            onChange={e => setEditProducto(p => ({ ...p, precio: e.target.value }))} />
+        </div>
+
+        <div className="modal-section">
+          <p className="modal-section-title">Imagen</p>
+          <select className="queja-mesa-input" value={editProducto.imagen || ""}
+            onChange={e => setEditProducto(p => ({ ...p, imagen: e.target.value }))}
+            style={{ cursor: "pointer" }}>
+            <option value="" style={{ color: "#000" }}>Sin imagen</option>
+            {Object.keys(imagenes).map(k => (
+              <option key={k} value={k} style={{ color: "#000" }}>{k}</option>
+            ))}
+          </select>
+          {editProducto.imagen && imagenes[editProducto.imagen] && (
+            <img src={imagenes[editProducto.imagen]} alt={editProducto.imagen}
+              style={{ width: "100%", maxHeight: "140px", objectFit: "cover", borderRadius: "12px", marginTop: "10px" }} />
+          )}
+        </div>
+
+        {editOk && <div className="queja-success">✅ ¡Producto actualizado!</div>}
+
+        <button className="modal-add-btn" onClick={handleEditarProducto}
+          disabled={editando || !editProducto.nombre || !editProducto.precio}>
+          {editando ? "Guardando..." : "💾 Guardar cambios"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+<div className="modal-section">
+  <p className="modal-section-title">Categoría</p>
+  <select className="queja-mesa-input"
+    value={nuevoProducto.categoria_id}
+    onChange={e => {
+      const sel = categoriasBD.find(c => c.id === Number(e.target.value));
+      setNuevoProducto(p => ({ ...p, categoria_id: e.target.value, _catNombre: sel?.nombre || "", subcategoria: "" }));
+    }}
+    style={{ cursor: "pointer" }}>
+    <option value="" style={{ color: "#000" }}>Selecciona una categoría</option>
+    {categoriasBD.length > 0
+      ? categoriasBD.map(c => (
+          <option key={c.id} value={c.id} style={{ color: "#000" }}>
+            {catIconos[c.nombre] || "🍴"} {c.nombre}
+          </option>
+        ))
+      : (
+        <>
+          <option value="1" style={{ color: "#000" }}>🍽️ Platos fuertes</option>
+          <option value="2" style={{ color: "#000" }}>🥗 Entradas</option>
+          <option value="3" style={{ color: "#000" }}>🫕 Platos típicos</option>
+          <option value="4" style={{ color: "#000" }}>🍝 Pastas</option>
+          <option value="5" style={{ color: "#000" }}>🥩 Cortes</option>
+          <option value="6" style={{ color: "#000" }}>🍣 Sushi</option>
+          <option value="7" style={{ color: "#000" }}>🌱 Comida Vegana</option>
+          <option value="8" style={{ color: "#000" }}>🧀 Quesos</option>
+          <option value="9" style={{ color: "#000" }}>🍹 Bar</option>
+        </>
+      )
+    }
+  </select>
+  {nuevoProducto._catNombre === "Bar" && (
+    <select className="queja-mesa-input" style={{ cursor: "pointer", marginTop: "8px" }}
+      value={nuevoProducto.subcategoria || ""}
+      onChange={e => setNuevoProducto(p => ({ ...p, subcategoria: e.target.value }))}>
+      <option value="" style={{ color: "#000" }}>Selecciona subcategoría del Bar</option>
+      {BAR_SUBS.map(s => <option key={s} value={s} style={{ color: "#000" }}>{BAR_ICONS[s]} {s}</option>)}
+    </select>
+  )}
+</div>
+
+<div className="modal-section">
+  <p className="modal-section-title">Imagen</p>
+  <select className="queja-mesa-input"
+    value={nuevoProducto.imagen}
+    onChange={e => setNuevoProducto(p => ({ ...p, imagen: e.target.value }))}
+    style={{ cursor: "pointer" }}>
+    <option value="" style={{ color: "#000" }}>Sin imagen</option>
+    {Object.keys(imagenes).map(k => (
+      <option key={k} value={k} style={{ color: "#000" }}>{k}</option>
+    ))}
+  </select>
+  {nuevoProducto.imagen && imagenes[nuevoProducto.imagen] && (
+    <img
+      src={imagenes[nuevoProducto.imagen]}
+      alt={nuevoProducto.imagen}
+      style={{ width: "100%", maxHeight: "140px", objectFit: "cover", borderRadius: "12px", marginTop: "10px" }}
+    />
+  )}
+</div>
+
+              <div className="modal-section">
+                <p className="modal-section-title">Adiciones</p>
+                {nuevoProducto.adiciones.map((ad, i) => (
+                  <div key={i} style={{ display: "flex", gap: "8px", marginBottom: "8px", alignItems: "center" }}>
+                    <span style={{ flex: 1, color: "rgba(255,255,255,0.7)", fontSize: "13px" }}>
+                      {ad.nombre} — {fmtCOP(ad.precio)}
+                    </span>
+                    <button onClick={() => setNuevoProducto(p => ({ ...p, adiciones: p.adiciones.filter((_, j) => j !== i) }))}
+                      style={{ background: "rgba(239,68,68,0.2)", border: "none", color: "#ef4444", borderRadius: "6px", padding: "4px 8px", cursor: "pointer" }}>
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                  <input className="queja-mesa-input" placeholder="Nombre adición"
+                    value={nuevaAdicion.nombre}
+                    onChange={e => setNuevaAdicion(a => ({ ...a, nombre: e.target.value }))}
+                    style={{ flex: 2 }} />
+                  <input className="queja-mesa-input" type="number" placeholder="Precio"
+                    value={nuevaAdicion.precio}
+                    onChange={e => setNuevaAdicion(a => ({ ...a, precio: e.target.value }))}
+                    style={{ flex: 1 }} />
+                  <button onClick={() => {
+                    if (!nuevaAdicion.nombre) return;
+                    setNuevoProducto(p => ({ ...p, adiciones: [...p.adiciones, { nombre: nuevaAdicion.nombre, precio: Number(nuevaAdicion.precio) || 0 }] }));
+                    setNuevaAdicion({ nombre: "", precio: "" });
+                  }} style={{ background: "#ff8c32", border: "none", color: "#fff", borderRadius: "10px", padding: "0 14px", cursor: "pointer", fontSize: "18px" }}>
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {guardadoOk && (
+                <div className="queja-success">✅ ¡Producto guardado correctamente!</div>
+              )}
+
+              <button className="modal-add-btn"
+                onClick={handleGuardarProducto}
+                disabled={guardando || !nuevoProducto.nombre || !nuevoProducto.precio || !nuevoProducto.categoria_id}>
+                {guardando ? "Guardando..." : "💾 Guardar producto"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedItem && (
         <ProductModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={addToCart} />
@@ -662,7 +964,8 @@ const handlePagar = async () => {
       {activeTab==="home" && !searchText.trim() && (
         <>
           <div className="section-header">
-            <h2>Categorías</h2>
+           <h2>Categorías</h2>
+            <button onClick={() => setAddModal(true)} style={{ background: "#ff8c32", border: "none", color: "#fff", borderRadius: "50%", width: "32px", height: "32px", fontSize: "20px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "8px" }}>+</button>
             <span className="show-all" onClick={() => setActiveTab("menu")}>Ver todo ›</span>
           </div>
           <div className="categories">
@@ -690,6 +993,7 @@ const handlePagar = async () => {
         <>
           <div className="section-header">
             <h2>Categorías</h2>
+            <button onClick={() => setAddModal(true)} style={{ background: "#ff8c32", border: "none", color: "#fff", borderRadius: "50%", width: "32px", height: "32px", fontSize: "20px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "8px" }}>+</button>
             <span className="show-all" onClick={() => { setCategoria(null); setSubCategoria(null); }}>Ver todo ›</span>
           </div>
           <div className="categories">

@@ -39,6 +39,8 @@ import michelada  from "../assets/images/Michelada.jpg";
 import micheladaSaborizada  from "../assets/images/MicheladaSaborizada.jpg";
 import gaseosas  from "../assets/images/Gaseosas.jpg";
 import malteadachp  from "../assets/images/MalteadaChp.jpg";
+import perroCaliente from "../assets/images/PerroCaliente.jpg";
+import polloAsado from "../assets/images/PolloAsado.jpg";
 
 export const imagenes = {
   hamburguesa,
@@ -81,5 +83,7 @@ export const imagenes = {
   michelada,
   micheladaSaborizada,
   gaseosas,
-  malteadachp
+  malteadachp,
+  perroCaliente,
+  polloAsado
 };
