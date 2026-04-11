@@ -1,4 +1,4 @@
-// backend/src/config/db.js
+require("dotenv").config();
 const mysql = require("mysql2/promise");
 
 const pool = mysql.createPool({
@@ -22,12 +22,5 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
-  })
-  .catch(err => {
-    console.error("❌ Error MySQL:", err.message);
-    process.exit(1);
-  });
 
-module.exports = { pool };
-// Exporta pool Y connectDB para compatibilidad con admin y menú
 module.exports = { pool, connectDB };

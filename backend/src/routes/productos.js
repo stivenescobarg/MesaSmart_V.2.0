@@ -1,9 +1,8 @@
-// backend/src/routes/productos.js
-const express    = require("express");
-const router     = express.Router();
-const { pool }   = require("../config/db"); // ← mismo pool que usa el admin
+const express = require("express");
+const router  = express.Router();
+const { pool } = require("../config/db");
 
-// GET /api/menu — devuelve el menú completo agrupado por producto
+// GET /api/menu
 router.get("/", async (req, res) => {
   const sql = `
     SELECT
@@ -28,9 +27,8 @@ router.get("/", async (req, res) => {
   `;
 
   try {
-    const [results] = await pool.execute(sql);
+    const [results] = await pool.query(sql);
 
-    // Agrupar productos (misma lógica de antes)
     const productosMap = {};
 
     results.forEach(row => {
@@ -60,8 +58,75 @@ router.get("/", async (req, res) => {
 
     res.json(Object.values(productosMap));
   } catch (err) {
-    console.error("❌ Error SQL productos:", err);
+    console.error("❌ Error SQL:", err);
     res.status(500).json({ error: "Error en el servidor" });
+  }
+});
+
+// POST /api/menu — agregar nuevo producto
+router.post("/", async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const { nombre, descripcion, precio, categoria_id, imagen, tiene_termino, adiciones } = req.body;
+
+    if (!nombre || !precio || !categoria_id)
+      return res.status(400).json({ error: "Nombre, precio y categoría son requeridos" });
+
+    const [result] = await conn.execute(
+      `INSERT INTO productos (nombre, descripcion, precio, categoria_id, imagen, tiene_termino)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [nombre, descripcion || "", precio, categoria_id, imagen || null, tiene_termino ? 1 : 0]
+    );
+    const productoId = result.insertId;
+
+    if (adiciones?.length > 0) {
+      for (const ad of adiciones) {
+        const [opResult] = await conn.execute(
+          `INSERT INTO opciones (nombre, precio, tipo) VALUES (?, ?, 'adicion')`,
+          [ad.nombre, ad.precio || 0]
+        );
+        await conn.execute(
+          `INSERT INTO productos_opciones (producto_id, opcion_id) VALUES (?, ?)`,
+          [productoId, opResult.insertId]
+        );
+      }
+    }
+
+    await conn.commit();
+    res.json({ ok: true, id: productoId });
+  } catch (err) {
+    await conn.rollback();
+    console.error("❌ Error al guardar producto:", err);
+    res.status(500).json({ error: "Error al guardar producto" });
+  } finally {
+    conn.release();
+  }
+});
+
+// GET /api/menu/categorias — lista de categorías
+router.get("/categorias", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT id, nombre FROM categorias ORDER BY nombre");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener categorías" });
+  }
+});
+
+// PUT /api/menu/:id — editar producto
+router.put("/:id", async (req, res) => {
+  try {
+    const { nombre, descripcion, precio, imagen } = req.body;
+    await pool.execute(
+      `UPDATE productos SET nombre=?, descripcion=?, precio=?, imagen=? WHERE id=?`,
+      [nombre, descripcion || "", precio, imagen || null, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("❌ Error al editar producto:", err);
+    res.status(500).json({ error: "Error al editar producto" });
   }
 });
 

@@ -28,53 +28,10 @@ html body:has(.bd-container) #root {
   margin: 0 !important;
   border: none !important;
   background: transparent !important;
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;600;700&display=swap');
-
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap');
-
-/* ── Variables locales (mismas que Admin) ────────────────────── */
-.bd-container {
-  --bg:           #0d0d0d;
-  --bg-card:      #141414;
-  --bg-hover:     #1a1a1a;
-  --border:       #242424;
-  --border-light: #303030;
-  --amber:        #f59e0b;
-  --amber-dim:    rgba(245, 158, 11, 0.10);
-  --amber-border: rgba(245, 158, 11, 0.28);
-  --green:        #22c55e;
-  --green-dim:    rgba(34, 197, 94, 0.10);
-  --green-border: rgba(34, 197, 94, 0.28);
-  --red:          #ef4444;
-  --red-dim:      rgba(239, 68, 68, 0.10);
-  --red-border:   rgba(239, 68, 68, 0.28);
-  --blue:         #3b82f6;
-  --blue-dim:     rgba(59, 130, 246, 0.10);
-  --text-1:       #f0ece3;
-  --text-2:       #848076;
-  --text-3:       #3d3b38;
-  --r-sm:         6px;
-  --r-md:         10px;
-  --r-lg:         14px;
-  --shadow:       0 1px 2px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.35);
-
-  min-height: 100vh;
-  background: var(--bg);
-  color: var(--text-1);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 15px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  display: flex;
-  flex-direction: column;
 }
 
-.bd-container *,
-.bd-container *::before,
-.bd-container *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+.bd-container {
+  min-height: 100vh;
   width: 100%;
   padding: 30px 24px 100px;
   background:
@@ -112,39 +69,9 @@ html body:has(.bd-container) #root {
   color: var(--text);
   letter-spacing: -0.5px;
   line-height: 1;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 1.5rem;
-  height: 56px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(13, 13, 13, 0.97);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  gap: 1rem;
-  flex-wrap: wrap;
 }
 
-.bd-title {
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--text-1);
-}
-
-.bd-title::before {
-  content: "🍹 ";
-  font-size: 0.85rem;
-}
-
-.bd-subtitle {
-  font-size: 0.72rem;
-  color: var(--text-2);
-  font-family: 'DM Mono', monospace;
-  margin-top: 0.1rem;
-.bd-title span {
-  color: var(--accent);
-}
+.bd-title span { color: var(--accent); }
 
 .bd-subtitle {
   font-size: 14px;
@@ -157,47 +84,20 @@ html body:has(.bd-container) #root {
 .btn-salir {
   padding: 10px 24px;
   border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 14px;
-  background: rgba(255,255,255,0.08);
+  border-radius: 50px;
+  background: rgba(255,255,255,0.06);
   color: var(--text);
   cursor: pointer;
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
   font-weight: 600;
   transition: all 0.2s ease;
-  font-size: 13px;
-  color: rgba(255,255,255,0.5);
-}
-
-/* ── BOTÓN SALIR (mismo que admin) ───────────────────────────── */
-.btn-salir {
-  background: transparent;
-  color: var(--red);
-  border: 1px solid var(--red-border);
-  border-radius: var(--r-sm);
-  padding: 0.4rem 0.85rem;
-  font-size: 0.82rem;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  transition: all 0.15s ease;
 }
 
 .btn-salir:hover {
-  background: var(--red-dim);
-  border-color: var(--red);
-}
-
-/* ── CONTENIDO PRINCIPAL ─────────────────────────────────────── */
-.bd-main {
-  max-width: 1080px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 1.75rem 1.25rem 4rem;
-  flex: 1;
-  background: rgba(255,140,50,0.2);
+  background: rgba(255,140,50,0.15);
   border-color: var(--accent);
   color: var(--accent);
-  color: #ff8c32;
 }
 
 /* ── MÉTRICAS ────────────────────────────────────────────────── */
@@ -240,7 +140,7 @@ html body:has(.bd-container) #root {
   font-family: 'Playfair Display', serif;
   font-size: 40px;
   font-weight: 800;
-  color: var(--accent);
+  color: var(--text);
   line-height: 1;
 }
 
@@ -255,65 +155,7 @@ html body:has(.bd-container) #root {
   z-index: 1;
 }
 
-/* LISTA DE ÓRDENES */
-  margin-bottom: 30px;
-}
-
-.metric-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: 1.1rem 1.25rem;
-  box-shadow: var(--shadow);
-}
-
-.metric-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-2);
-  margin-bottom: 0.35rem;
-}
-
-.metric-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--amber);
-  font-family: 'DM Mono', monospace;
-}
-
-/* ── TÍTULO DE SECCIÓN ───────────────────────────────────────── */
-.bd-section-title {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--text-1);
-  letter-spacing: -0.01em;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.bd-section-title::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-/* ── VACÍO ───────────────────────────────────────────────────── */
-.bd-empty {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: var(--text-2);
-  font-size: 0.9rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-}
-
-/* ── GRID DE ÓRDENES ─────────────────────────────────────────── */
+/* LISTA */
 .bd-orders {
   display: flex;
   flex-direction: column;
@@ -336,9 +178,6 @@ html body:has(.bd-container) #root {
 }
 
 /* TARJETA DE PEDIDO */
-
-
-/* ── CARD DE ORDEN ───────────────────────────────────────────── */
 .order-card {
   display: flex;
   align-items: center;
@@ -376,16 +215,8 @@ html body:has(.bd-container) #root {
   background: rgba(255,140,50,0.06);
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-
-  background: rgba(255,255,255,0.05);
-  border-radius: 16px;
-  padding: 14px;
-
-  border: 1px solid rgba(255,255,255,0.08);
-  backdrop-filter: blur(8px);
 }
 
-/* NÚMERO DE MESA */
 .order-num {
   width: 48px;
   height: 48px;
@@ -406,19 +237,6 @@ html body:has(.bd-container) #root {
 }
 
 .order-info { flex: 1; }
-
-.order-num {
-  width: 45px;
-  height: 45px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.85rem;
-  font-family: 'DM Mono', monospace;
-  flex-shrink: 0;
-}
 
 .order-num.pendiente {
   background: var(--amber-dim);
@@ -445,10 +263,6 @@ html body:has(.bd-container) #root {
   font-weight: 700;
   color: var(--text);
   margin-bottom: 4px;
-  color: #fff;
-  font-weight: 600;
-  color: var(--text-1);
-  margin-bottom: 0.2rem;
 }
 
 .order-items {
@@ -485,15 +299,6 @@ html body:has(.bd-container) #root {
   background: rgba(255,140,50,0.15);
   color: var(--accent);
   border: 1px solid rgba(255,140,50,0.25);
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 10px;
-}
-
-.badge-pendiente {
-  background: var(--amber-dim);
-  border-color: var(--amber-border);
-  color: var(--amber);
 }
 
 .badge-listo {
@@ -503,7 +308,6 @@ html body:has(.bd-container) #root {
 }
 /* BOTÓN LISTO */
 .btn-listo {
-  margin-left: auto;
   padding: 8px 18px;
   border: 1px solid rgba(16,185,129,0.4);
   color: #10b981;
@@ -517,7 +321,6 @@ html body:has(.bd-container) #root {
 
 .btn-listo:hover {
   background: rgba(16,185,129,0.18);
-  transform: scale(1.05);
 }
 
 /* MODAL OVERLAY */
@@ -719,32 +522,4 @@ html body:has(.bd-container) #root {
 .bd-modal-btn-listo:hover {
   transform: scale(1.02);
   box-shadow: 0 8px 30px rgba(255,140,50,0.6);
-
-/* ── BOTÓN LISTO ─────────────────────────────────────────────── */
-.btn-listo {
-  background: var(--amber);
-  color: #0d0d0d;
-  border: none;
-  border-radius: var(--r-sm);
-  padding: 0.5rem 1.1rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-}
-
-.btn-listo:hover {
-  background: #fbbf24;
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
-  transform: translateY(-1px);
-}
-
-/* ── RESPONSIVE ──────────────────────────────────────────────── */
-@media (max-width: 640px) {
-  .bd-header  { padding: 0 0.9rem; height: auto; padding-top: 0.75rem; padding-bottom: 0.75rem; }
-  .bd-main    { padding: 1.25rem 0.9rem 3rem; }
-  .bd-metrics { grid-template-columns: 1fr 1fr; }
-  .order-card { flex-wrap: wrap; }
 }

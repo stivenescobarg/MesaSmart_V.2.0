@@ -1,0 +1,348 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.kd-container {
+  min-height: 100vh;
+  width: 100%;
+  padding: 30px 24px 100px;
+  background:
+    radial-gradient(ellipse 80% 40% at 50% -10%, rgba(255,140,50,0.15) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 30% at 80% 80%, rgba(43,47,168,0.18) 0%, transparent 60%),
+    linear-gradient(160deg, #0d0d1a 0%, #13112b 40%, #1a0e2e 70%, #0d1520 100%);
+  font-family: 'DM Sans', sans-serif;
+}
+
+.kd-container::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── HEADER ─────────────────────────────────── */
+.kd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 36px;
+  position: relative;
+  z-index: 1;
+}
+
+.kd-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+}
+
+.kd-subtitle {
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 6px;
+}
+
+.kd-salir {
+  padding: 10px 22px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.07);
+  color: #fff;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.kd-salir:hover {
+  background: rgba(255,80,50,0.2);
+  border-color: rgba(255,80,50,0.5);
+  color: #ff6b4a;
+}
+
+/* ── MÉTRICAS ────────────────────────────────── */
+.kd-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 32px;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 700px) {
+  .kd-metrics { grid-template-columns: repeat(2, 1fr); }
+}
+
+.kd-metric {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 20px 16px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.kd-metric-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.kd-metric-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 38px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.7);
+  line-height: 1;
+}
+
+.kd-metric-value.orange { color: #ff8c32; }
+.kd-metric-value.blue   { color: #60a5fa; }
+.kd-metric-value.green  { color: #34d399; }
+
+/* ── FILTROS ─────────────────────────────────── */
+.kd-filtros {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.kd-filtro-btn {
+  padding: 8px 20px;
+  border-radius: 50px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.kd-filtro-btn.active,
+.kd-filtro-btn:hover {
+  background: rgba(255,140,50,0.15);
+  border-color: rgba(255,140,50,0.4);
+  color: #ff8c32;
+}
+
+/* ── TÍTULO SECCIÓN ──────────────────────────── */
+.kd-section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ff8c32;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── VACÍO ───────────────────────────────────── */
+.kd-empty {
+  color: rgba(255,255,255,0.35);
+  text-align: center;
+  padding: 60px 20px;
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 20px;
+  font-size: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── GRID DE CARDS ───────────────────────────── */
+.kd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── CARD ────────────────────────────────────── */
+.kd-card {
+  background: rgba(255,255,255,0.06);
+  border-radius: 20px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  backdrop-filter: blur(10px);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.kd-card.estado-recibido      { border-color: rgba(255,140,50,0.35); }
+.kd-card.estado-en_preparacion{ border-color: rgba(96,165,250,0.35); }
+.kd-card.estado-listo         { border-color: rgba(52,211,153,0.3); opacity: 0.75; }
+
+.kd-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+/* ── CARD HEADER ─────────────────────────────── */
+.kd-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kd-card-mesa {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.kd-num {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.kd-num.estado-recibido       { background: rgba(255,140,50,0.15); color: #ff8c32; border: 1px solid rgba(255,140,50,0.3); }
+.kd-num.estado-en_preparacion { background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+.kd-num.estado-listo          { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+
+.kd-card-mesa-nombre {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.kd-card-tiempo {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 2px;
+}
+
+/* ── BADGE ───────────────────────────────────── */
+.kd-badge {
+  padding: 5px 12px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kd-badge.estado-recibido       { background: rgba(255,140,50,0.15); color: #ff8c32; border: 1px solid rgba(255,140,50,0.25); }
+.kd-badge.estado-en_preparacion { background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid rgba(96,165,250,0.25); }
+.kd-badge.estado-listo          { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.25); }
+
+/* ── NOTA ────────────────────────────────────── */
+.kd-card-nota {
+  font-size: 12px;
+  color: #ff8c32;
+  background: rgba(255,140,50,0.08);
+  border: 1px solid rgba(255,140,50,0.2);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+/* ── ITEMS ───────────────────────────────────── */
+.kd-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kd-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.kd-item-qty {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ff8c32;
+  min-width: 28px;
+  flex-shrink: 0;
+}
+
+.kd-item-nombre {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.kd-item-cat {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kd-item-nota {
+  font-size: 12px;
+  color: rgba(255,200,100,0.8);
+  margin-top: 4px;
+}
+
+/* ── BOTÓN AVANZAR ───────────────────────────── */
+.kd-btn-avanzar {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.14s, box-shadow 0.14s;
+  letter-spacing: 0.2px;
+}
+
+.kd-btn-avanzar.estado-recibido {
+  background: linear-gradient(135deg, #ff8c32, #e86520);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(255,140,50,0.4);
+}
+
+.kd-btn-avanzar.estado-en_preparacion {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(52,211,153,0.4);
+}
+
+.kd-btn-avanzar:hover {
+  transform: scale(1.02);
+}
+
+html body:has(.kd-container) {
+  background: #0d0d1a !important;
+  margin: 0;
+  padding: 0;
+}
+
+html body:has(.kd-container) #root {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  background: transparent !important;
+}

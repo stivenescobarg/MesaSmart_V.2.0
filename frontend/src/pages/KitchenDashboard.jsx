@@ -1,190 +1,187 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { kitchenService } from "../services/kitchenService";
-import OrderCard from "../components/kitchen/OrderCard";
-import KitchenHeader from "../components/kitchen/KitchenHeader";
-import "./KitchenDashboard.css";
+import "./Kitchen.css";
 
-const ESTADOS_ORDEN = { pendiente: 0, en_preparacion: 1, listo: 2 };
+const ESTADOS = ["recibido", "en_preparacion", "listo"];
+const ESTADO_LABEL = { recibido: "Recibido", en_preparacion: "En preparación", listo: "Listo" };
+const ESTADO_NEXT  = { recibido: "en_preparacion", en_preparacion: "listo" };
+const ESTADO_BTN   = { recibido: "Iniciar preparación", en_preparacion: "Marcar listo" };
 
-export default function KitchenDashboard() {
+const KitchenDashboard = () => {
   const navigate   = useNavigate();
   const { logout } = useAuth();
 
-  const [theme, setTheme]             = useState(() => localStorage.getItem("kitchen-theme") || "dark");
-  const [orders, setOrders]           = useState([]);
-  const [filtro, setFiltro]           = useState("todos");
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState(null);
-  const [nuevoPedido, setNuevoPedido] = useState(false);
-  const [cocinero, setCocinero]       = useState(null);
+  const [pedidos,    setPedidos]    = useState([]);
+  const [filtro,     setFiltro]     = useState("todos");
+  const [expandido,  setExpandido]  = useState(null);
+  const [cargando,   setCargando]   = useState(true);
 
-  const prevOrderIds = useRef(new Set());
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login", { replace: true });
-  };
-
-  useEffect(() => {
-    localStorage.setItem("kitchen-theme", theme);
-    document.documentElement.setAttribute("data-kitchen-theme", theme);
-  }, [theme]);
-
-  const toggleTheme = useCallback(() => {
-    setTheme(t => t === "dark" ? "light" : "dark");
-  }, []);
-
-  useEffect(() => {
-    kitchenService.getCocineroTurno()
-      .then(setCocinero)
-      .catch(() => setCocinero({ nombre: "Sin asignar", turno: "mock" }));
-  }, []);
-
-  const cargarPedidos = useCallback(async () => {
+  const cargar = async () => {
     try {
-      setError(null);
-      const data = await kitchenService.getOrders();
-      const pedidos = data.pedidos || [];
-      setOrders(pedidos);
-      prevOrderIds.current = new Set(pedidos.map(o => o.id));
-    } catch (err) {
-      setError("No se pudo conectar con el servidor. Reintentando...");
-      console.error("[KitchenDashboard]", err);
+      const res  = await fetch("http://localhost:3001/api/pedidos");
+      const data = await res.json();
+      setPedidos(Array.isArray(data) ? data : []);
+    } catch {
+      // fallback mock para demostración
+      setPedidos([
+        {
+          id: 1, mesa: "Mesa 3", estado: "recibido",
+          hora: new Date().toISOString(), notas: "Sin cebolla",
+          items: [
+            { nombre: "Hamburguesa Especial", cantidad: 2, notas: "Sin cebolla", categoria_label: "Platos fuertes" },
+            { nombre: "Alitas BBQ",           cantidad: 1, notas: "",            categoria_label: "Platos fuertes" },
+          ],
+        },
+        {
+          id: 2, mesa: "Mesa 7", estado: "en_preparacion",
+          hora: new Date(Date.now() - 8 * 60000).toISOString(), notas: "",
+          items: [
+            { nombre: "Bandeja Paisa",  cantidad: 1, notas: "",         categoria_label: "Platos típicos" },
+            { nombre: "Carbonara Clásica", cantidad: 2, notas: "Extra queso", categoria_label: "Pastas" },
+          ],
+        },
+        {
+          id: 3, mesa: "Mesa 1", estado: "listo",
+          hora: new Date(Date.now() - 20 * 60000).toISOString(), notas: "",
+          items: [
+            { nombre: "Roll California", cantidad: 3, notas: "", categoria_label: "Sushi" },
+          ],
+        },
+      ]);
     } finally {
-      setLoading(false);
+      setCargando(false);
     }
-  }, []);
-
-  useEffect(() => {
-    cargarPedidos();
-  }, [cargarPedidos]);
-
-  useEffect(() => {
-    const unsub = kitchenService.subscribe((updatedOrders) => {
-      const newIds = new Set(updatedOrders.map(o => o.id));
-      const hayNuevo = [...newIds].some(id => !prevOrderIds.current.has(id));
-
-      if (hayNuevo) {
-        setNuevoPedido(true);
-        playAlerta();
-        setTimeout(() => setNuevoPedido(false), 3000);
-      }
-
-      prevOrderIds.current = newIds;
-      setOrders(updatedOrders);
-      setError(null);
-    });
-
-    return () => unsub();
-  }, []);
-
-  const playAlerta = () => {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      [0, 150, 300].forEach((delay) => {
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = 880;
-        osc.type = "sine";
-        const t = ctx.currentTime + delay / 1000;
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.3, t + 0.05);
-        gain.gain.linearRampToValueAtTime(0, t + 0.2);
-        osc.start(t);
-        osc.stop(t + 0.25);
-      });
-    } catch (_) {}
   };
 
-  const handleUpdateStatus = useCallback(async (orderId, nuevoEstado) => {
-    try {
-      await kitchenService.updateOrderStatus(orderId, nuevoEstado);
-      setOrders(prev =>
-        prev.map(o => o.id === orderId ? { ...o, estado: nuevoEstado } : o)
-      );
-      const data = await kitchenService.getOrders();
-      setOrders(data.pedidos || []);
-    } catch (err) {
-      console.error("[handleUpdateStatus]", err);
-      alert("Error al actualizar el estado. Intenta de nuevo.");
-    }
+  useEffect(() => {
+    cargar();
+    const id = setInterval(cargar, 8000);
+    return () => clearInterval(id);
   }, []);
 
-  const ordenesFiltradas = orders
-    .filter(o => filtro === "todos" || o.estado === filtro)
-    .sort((a, b) => (ESTADOS_ORDEN[a.estado] ?? 99) - (ESTADOS_ORDEN[b.estado] ?? 99));
-
-  if (loading) {
-    return (
-      <div className="kd-root" data-theme={theme}>
-        <div className="kd-loading">
-          <div className="kd-spinner" />
-          <p>Cargando pedidos...</p>
-        </div>
-      </div>
+  const avanzarEstado = async (pedido) => {
+    const nuevoEstado = ESTADO_NEXT[pedido.estado];
+    if (!nuevoEstado) return;
+    try {
+      await fetch(`http://localhost:3001/api/pedidos/${pedido.id}/estado`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+    } catch {}
+    setPedidos(prev =>
+      prev.map(p => p.id === pedido.id ? { ...p, estado: nuevoEstado } : p)
     );
-  }
+  };
+
+  const handleSalir = async () => { await logout(); navigate("/login", { replace: true }); };
+
+  const tiempoTranscurrido = (hora) => {
+    const min = Math.floor((Date.now() - new Date(hora)) / 60000);
+    if (min < 1)  return "ahora";
+    if (min < 60) return `${min} min`;
+    return `${Math.floor(min / 60)}h ${min % 60}m`;
+  };
+
+  const filtrados = pedidos.filter(p =>
+    filtro === "todos" ? p.estado !== "listo" : p.estado === filtro
+  );
+  const listos    = pedidos.filter(p => p.estado === "listo");
+  const activos   = pedidos.filter(p => p.estado !== "listo");
 
   return (
-    <div className="kd-root" data-theme={theme}>
-      {nuevoPedido && (
-        <div className="kd-alerta" role="alert">
-          🔔 ¡Nuevo pedido entrante!
+    <div className="kd-container">
+      <div className="kd-header">
+        <div>
+          <h1 className="kd-title">Panel de Cocina</h1>
+          <p className="kd-subtitle">Panel de cocina — turno activo</p>
+        </div>
+        <button className="kd-salir" onClick={handleSalir}>Salir</button>
+      </div>
+
+      <div className="kd-metrics">
+        <div className="kd-metric">
+          <p className="kd-metric-label">Pendientes</p>
+          <p className="kd-metric-value orange">{pedidos.filter(p => p.estado === "recibido").length}</p>
+        </div>
+        <div className="kd-metric">
+          <p className="kd-metric-label">En preparación</p>
+          <p className="kd-metric-value blue">{pedidos.filter(p => p.estado === "en_preparacion").length}</p>
+        </div>
+        <div className="kd-metric">
+          <p className="kd-metric-label">Listos hoy</p>
+          <p className="kd-metric-value green">{listos.length}</p>
+        </div>
+        <div className="kd-metric">
+          <p className="kd-metric-label">Total activos</p>
+          <p className="kd-metric-value">{activos.length}</p>
+        </div>
+      </div>
+
+      <div className="kd-filtros">
+        {["todos", "recibido", "en_preparacion", "listo"].map(f => (
+          <button key={f} className={`kd-filtro-btn ${filtro === f ? "active" : ""}`} onClick={() => setFiltro(f)}>
+            {f === "todos" ? "Activos" : ESTADO_LABEL[f]}
+          </button>
+        ))}
+      </div>
+
+      <h2 className="kd-section-title">
+        {filtro === "todos" ? "Órdenes activas" : ESTADO_LABEL[filtro]}
+      </h2>
+
+      {cargando ? (
+        <p className="kd-empty">Cargando pedidos...</p>
+      ) : filtrados.length === 0 ? (
+        <p className="kd-empty">Sin pedidos en este estado</p>
+      ) : (
+        <div className="kd-grid">
+          {filtrados.map(pedido => (
+            <div key={pedido.id} className={`kd-card estado-${pedido.estado}`}>
+              <div className="kd-card-header">
+                <div className="kd-card-mesa">
+                  <span className={`kd-num estado-${pedido.estado}`}>
+                    {pedido.mesa?.replace(/\D/g, "") || "?"}
+                  </span>
+                  <div>
+                    <p className="kd-card-mesa-nombre">{pedido.mesa}</p>
+                    <p className="kd-card-tiempo">{tiempoTranscurrido(pedido.hora)}</p>
+                  </div>
+                </div>
+                <span className={`kd-badge estado-${pedido.estado}`}>
+                  {ESTADO_LABEL[pedido.estado]}
+                </span>
+              </div>
+
+              {pedido.notas && (
+                <p className="kd-card-nota">Nota: {pedido.notas}</p>
+              )}
+
+              <div className="kd-items">
+                {pedido.items?.map((item, i) => (
+                  <div key={i} className="kd-item">
+                    <div className="kd-item-qty">{item.cantidad}x</div>
+                    <div className="kd-item-info">
+                      <p className="kd-item-nombre">{item.nombre}</p>
+                      <p className="kd-item-cat">{item.categoria_label}</p>
+                      {item.notas && <p className="kd-item-nota">{item.notas}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {ESTADO_BTN[pedido.estado] && (
+                <button className={`kd-btn-avanzar estado-${pedido.estado}`} onClick={() => avanzarEstado(pedido)}>
+                  {ESTADO_BTN[pedido.estado]}
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       )}
-
-      {error && (
-        <div className="kd-error-banner" role="alert">
-          ⚠ {error}
-          <button onClick={cargarPedidos}>Reintentar</button>
-        </div>
-      )}
-
-      <KitchenHeader
-        orders={orders}
-        filtro={filtro}
-        onFiltroChange={setFiltro}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        cocinero={cocinero}
-        onLogout={handleLogout}
-      />
-
-      <main className="kd-main">
-        {ordenesFiltradas.length === 0 ? (
-          <div className="kd-empty">
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.5">
-              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-              <rect x="9" y="3" width="6" height="4" rx="2"/>
-              <line x1="9" y1="12" x2="15" y2="12"/>
-              <line x1="9" y1="16" x2="13" y2="16"/>
-            </svg>
-            <p>
-              {filtro === "todos"
-                ? "No hay pedidos activos"
-                : `No hay pedidos ${filtro === "pendiente" ? "pendientes"
-                  : filtro === "en_preparacion" ? "en preparación"
-                  : "listos"}`}
-            </p>
-          </div>
-        ) : (
-          <div className="kd-grid">
-            {ordenesFiltradas.map(order => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                onUpdateStatus={handleUpdateStatus}
-                theme={theme}
-              />
-            ))}
-          </div>
-        )}
-      </main>
     </div>
   );
-}
+};
+
+export default KitchenDashboard;
