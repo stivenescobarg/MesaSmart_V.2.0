@@ -2,6 +2,7 @@ const express  = require("express");
 const cors     = require("cors");
 const { pool } = require("./config/db");
 
+// ── Rutas del admin (tuyas) ───────────────────────────────────────
 const authRoutes    = require("./routes/authRoutes");
 const userRoutes    = require("./routes/admin/userRoutes");
 const mesaRoutes    = require("./routes/admin/mesaRoutes");
@@ -13,9 +14,19 @@ const sesionRoutes  = require("./routes/admin/sesionRoutes");
 const barRoutes     = require("./routes/admin/barRoutes");
 const menuRoutes    = require("./routes/productos");
 
+// ── Rutas del menú (compañera) ────────────────────────────────────
+const productosRoutes = require("./routes/productos");
+
 const app = express();
 
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+// ── CORS ──────────────────────────────────────────────────────────
+app.use(cors({
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+}));
+
 app.use(express.json());
 
 app.use("/api/auth",      authRoutes);

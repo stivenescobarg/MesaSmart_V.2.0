@@ -1,3 +1,8 @@
+/* ══════════════════════════════════════════════════════════════
+   Bartender.css — Panel de Bartender
+   Misma estética que Admin: dark industrial, ámbar, DM Sans
+   Variables heredadas del Admin.css via :root
+══════════════════════════════════════════════════════════════ */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 :root {
@@ -46,7 +51,7 @@ html body:has(.bd-container) #root {
   z-index: 0;
 }
 
-/* HEADER */
+/* ── HEADER ──────────────────────────────────────────────────── */
 .bd-header {
   display: flex;
   justify-content: space-between;
@@ -95,9 +100,12 @@ html body:has(.bd-container) #root {
   color: var(--accent);
 }
 
-/* MÉTRICAS */
+/* ── MÉTRICAS ────────────────────────────────────────────────── */
 .bd-metrics {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1.75rem;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-bottom: 40px;
@@ -151,6 +159,7 @@ html body:has(.bd-container) #root {
 .bd-orders {
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
   gap: 12px;
   position: relative;
   z-index: 1;
@@ -172,6 +181,25 @@ html body:has(.bd-container) #root {
 .order-card {
   display: flex;
   align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow);
+  transition: border-color 0.18s ease;
+  flex-wrap: wrap;
+}
+
+.order-card:hover {
+  border-color: var(--amber-border);
+}
+
+/* Número de mesa */
+.order-num {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
   gap: 16px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -210,6 +238,26 @@ html body:has(.bd-container) #root {
 
 .order-info { flex: 1; }
 
+.order-num.pendiente {
+  background: var(--amber-dim);
+  color: var(--amber);
+  border: 1px solid var(--amber-border);
+}
+
+.order-num.listo {
+  background: var(--green-dim);
+  color: var(--green);
+  border: 1px solid var(--green-border);
+}
+
+/* Info de la orden */
+.order-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-mesa {
+  font-size: 0.875rem;
 .order-mesa {
   font-size: 15px;
   font-weight: 700;
@@ -218,12 +266,27 @@ html body:has(.bd-container) #root {
 }
 
 .order-items {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 13px;
   color: var(--muted);
 }
 
-/* BADGE */
+/* ── BADGES ──────────────────────────────────────────────────── */
 .badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.2rem 0.65rem;
+  border-radius: 99px;
+  border: 1px solid;
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
   padding: 4px 12px;
   border-radius: 50px;
   font-size: 11px;
@@ -238,6 +301,11 @@ html body:has(.bd-container) #root {
   border: 1px solid rgba(255,140,50,0.25);
 }
 
+.badge-listo {
+  background: var(--green-dim);
+  border-color: var(--green-border);
+  color: var(--green);
+}
 /* BOTÓN LISTO */
 .btn-listo {
   padding: 8px 18px;

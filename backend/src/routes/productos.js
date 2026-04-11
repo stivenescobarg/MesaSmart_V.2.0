@@ -5,7 +5,7 @@ const { pool } = require("../config/db");
 // GET /api/menu
 router.get("/", async (req, res) => {
   const sql = `
-    SELECT 
+    SELECT
       p.id,
       p.nombre,
       p.descripcion,

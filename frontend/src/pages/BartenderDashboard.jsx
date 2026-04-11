@@ -1,3 +1,4 @@
+// frontend/src/pages/BartenderDashboard.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -135,7 +136,7 @@ const BartenderDashboard = () => {
           <h1 className="bd-title"><span>Bartender</span></h1>
           <p className="bd-subtitle">Bartender {id} — turno activo</p>
         </div>
-        <button className="btn-salir" onClick={handleSalir}>Salir</button>
+        <button className="btn-salir" onClick={handleSalir}>Salir →</button>
       </div>
 
       <div className="bd-metrics">
@@ -192,6 +193,34 @@ const BartenderDashboard = () => {
           ))}
         </div>
       )}
+              ) : null
+            )}
+          </div>
+        )}
+
+        {/* Completadas */}
+        {completadas.length > 0 && (
+          <>
+            <h2 className="bd-section-title" style={{ marginTop: "1.75rem" }}>
+              Completadas
+            </h2>
+            <div className="bd-orders">
+              {ordenes.map((orden, i) =>
+                orden.estado === "listo" ? (
+                  <div key={i} className="order-card" style={{ opacity: 0.6 }}>
+                    <div className="order-num listo">M{orden.mesa}</div>
+                    <div className="order-info">
+                      <p className="order-mesa">Mesa {orden.mesa}</p>
+                      <p className="order-items">{orden.items?.join(" · ")}</p>
+                    </div>
+                    <span className="badge badge-listo">Listo</span>
+                  </div>
+                ) : null
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };
