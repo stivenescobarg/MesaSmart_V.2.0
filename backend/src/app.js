@@ -4,8 +4,7 @@ const cors    = require("cors");
 const db      = require("./config/db");
 
 // ── Rutas existentes ──────────────────────────────────────────────────────
-const authRoutes = require("./routes/authRoutes");
-const userRoutes = require("./routes/userRoutes");
+
 
 const authRoutes    = require("./routes/authRoutes");
 const userRoutes    = require("./routes/admin/userRoutes");
