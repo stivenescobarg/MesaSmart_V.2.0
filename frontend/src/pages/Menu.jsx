@@ -42,10 +42,36 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
 
   const precioTotal = Number(item.precio || 0) + precioAdiciones;
 
-  const handleAdd = () => {
-    onAddToCart({ ...item, termino, opcion: opcionSel, adiciones, precio: precioTotal });
-    onClose();
-  };
+const handlePagar = async () => {
+  const bebidas = cart.filter(c =>
+    c.categoria === "Bar" || c.categoria === "Bebidas" ||
+    BAR_CATS.includes(c.categoria)
+  );
+
+  if (bebidas.length > 0) {
+    try {
+      await fetch("http://localhost:3001/api/bar/orden", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mesa: quejaMesa || "Sin mesa",
+items: bebidas.map(b => ({
+  nombre:    b.nombre,
+  cantidad:  b.qty,
+  imgKey:    b.imgKey || null,   // ← clave string, no el import
+  adiciones: b.adiciones || [],
+  opcion:    b.opcion || null,
+})),
+        }),
+      });
+    } catch (err) {
+      console.error("Error enviando al bar:", err);
+    }
+  }
+
+  setPagado(true);
+  setTimeout(() => { setPagado(false); setCart([]); setCartOpen(false); }, 4000);
+};
 
   return (
     <div className="product-modal-overlay" onClick={onClose}>
@@ -106,7 +132,7 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
               ))}
             </div>
           )}
-          <button className="modal-add-btn" onClick={handleAdd}>
+          <button className="modal-add-btn" onClick={() => { onAddToCart({ ...item, termino, opcion: opcionSel, adiciones }); onClose(); }}>
             Agregar al pedido — {fmtCOP(precioTotal)}
           </button>
         </div>
@@ -133,6 +159,18 @@ const Menu = () => {
   const [quejaSent,    setQuejaSent]    = useState(false);
   const [quejaLoading, setQuejaLoading] = useState(false);
   const [searchText,   setSearchText]   = useState("");
+  const [addModal,     setAddModal]     = useState(false);
+  const [categoriasBD, setCategoriasBD] = useState([]);
+const [nuevoProducto, setNuevoProducto] = useState({
+  nombre: "", descripcion: "", precio: "", categoria_id: "", _catNombre: "", subcategoria: "", imagen: "", adiciones: []
+});
+  const [nuevaAdicion, setNuevaAdicion] = useState({ nombre: "", precio: "" });
+  const [guardando, setGuardando] = useState(false);
+  const [guardadoOk, setGuardadoOk] = useState(false);
+  const [editModal,     setEditModal]     = useState(false);
+const [editProducto,  setEditProducto]  = useState(null);
+const [editando,      setEditando]      = useState(false);
+const [editOk,        setEditOk]        = useState(false);
 
   useEffect(() => {
     fetch("http://localhost:3001/api/menu")
@@ -281,7 +319,7 @@ const Menu = () => {
         adiciones:[{nombre:"Pollo grillado",precio:8000},{nombre:"Camarones",precio:12000}],
       },
       {
-        nombre:"Lasaña de Carne", img:imagenes.lasana, categoria:"Pastas",
+        nombre:"Lasaña de Carne", img:imagenes.carbonara, categoria:"Pastas",
         descripcion:"Lasaña tradicional con carne de res, salsa bechamel y queso gratinado.",
         precio:32000, tiene_termino:false,
         opciones:[], adiciones:[{nombre:"Extra queso",precio:3000},{nombre:"Salsa extra",precio:2000}],
@@ -382,65 +420,12 @@ const Menu = () => {
       img:           imagenes.aguardiente,   // debe existir en imagenes.js
       categoria:     "Bar",
       descripcion:   "Aguardiente antioqueño botella personal, frío.",
-      precio:        50000,
+      precio:        12000,
       tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }, { nombre:"Azul", precio:5000 }, { nombre:"Verde", precio:5000 }, { nombre:"Amarillo", precio:5000 }],
+      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
       adiciones: [{ nombre:"Limón extra", precio:1000 }],
     },
-
-      { nombre:        "Smirnoff",
-      img:           imagenes.smirnoff,   // debe existir en imagenes.js
-      categoria:     "Bar",
-      descripcion:   "Delicioso licor refrecante, frío.",
-      precio:        12000,
-      tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
-      adiciones: [{ nombre:"Limón extra", precio:1000 }, { nombre:"Cereza", precio:500 }],
-      },
-
-      ],Cervezas:[
-       { nombre:        "Aguila",
-      img:           imagenes.aguila,   // debe existir en imagenes.js
-      categoria:     "Bar",
-      descripcion:   "Cerveza original, frío.",
-      precio:        7000,
-      tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
-      adiciones: [{ nombre:"Limón extra", precio:1000 }],
-      },
-
-      { nombre:        "Aguila Light",
-      img:           imagenes.aguilaLight,   // debe existir en imagenes.js
-      categoria:     "Bar",
-      descripcion:   "Cerveza refresacnte, frío.",
-      precio:        7000,
-      tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
-      adiciones: [{ nombre:"Limón extra", precio:1000 }],
-      },
-
-      { nombre:        "Corona",
-      img:           imagenes.corona,   // debe existir en imagenes.js
-      categoria:     "Bar",
-      descripcion:   "Cerveza tradicional, frío.",
-      precio:        12000,
-      tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
-      adiciones: [{ nombre:"Limón extra", precio:1000 }],
-      },
-
-       { nombre:        "Cuates",
-      img:           imagenes.cuates,   // debe existir en imagenes.js
-      categoria:     "Bar",
-      descripcion:   "Cerveza saborizada, frío.",
-      precio:        10000,
-      tiene_termino: false,
-      opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }, { nombre:"Manzana Verde", precio:0 }, { nombre:"Cereza", precio:0 }, { nombre:"Macuraya", precio:0 }],
-      adiciones: [{ nombre:"Limón extra", precio:1000 }],
-      },
-
-    
-      ],Jugos:[
+      ],Cervezas:[],Jugos:[
         {
           nombre:"Jugo Natural", img:imagenes.jugo, categoria:"Bar",
           descripcion:"Jugo natural de la fruta del día, sin azúcar o con azúcar al gusto.",
@@ -448,51 +433,7 @@ const Menu = () => {
           opciones:[{nombre:"Con azúcar",precio:0},{nombre:"Sin azúcar",precio:0},{nombre:"Con leche",precio:0}],
           adiciones:[],
         },
-
-                {
-          nombre:"Jugo Frutal", img:imagenes.jugos, categoria:"Bar",
-          descripcion:"Jugo natural de la fruta , sin azúcar o con azúcar al gusto.",
-          precio:9000, tiene_termino:false,
-          opciones:[{nombre:"Con azúcar",precio:0},{nombre:"Sin azúcar",precio:0},{nombre:"Con leche",precio:0},{nombre:"Mango",precio:0},{nombre:"Mora",precio:0},{nombre:"Naranja",precio:0},{nombre:"Mandarina",precio:0},{nombre:"Fresa",precio:0}],
-          adiciones:[],
-        },
-      ],Micheladas:[
-
-                        {
-          nombre:"Michelada", img:imagenes.michelada, categoria:"Bar",
-          descripcion:"Michelada tradicional",
-          precio:7000, tiene_termino:false,
-          opciones:[{nombre:"Aguila original",precio:0},{nombre:"Aguila Light",precio:0}],
-          adiciones:[],
-        },
-
-                                {
-          nombre:"Michelada", img:imagenes.micheladaSaborizada, categoria:"Bar",
-          descripcion:"Michelada Saborizada",
-          precio:7000, tiene_termino:false,
-          opciones:[{nombre:"Mango",precio:0},{nombre:"Cereza",precio:0}],
-          adiciones:[],
-        },
-
-
-      ],Gaseosas:[
-
-                                        {
-          nombre:"Gaseosas", img:imagenes.gaseosas, categoria:"Bar",
-          descripcion:"Gaseosas Colombianas",
-          precio:2500, tiene_termino:false,
-          opciones:[{nombre:"Colombiana",precio:0},{nombre:"uva",precio:0},{nombre:"Petsi",precio:0},{nombre:"Coca Cola",precio:0},{nombre:"Fanta",precio:0},{nombre:"Sprite",precio:0}],
-          adiciones:[],
-        },
-      ],Malteadas:[
-
-                                                {
-          nombre:"Malteada de chocolate", img:imagenes.malteadachp, categoria:"Bar",
-          descripcion:"Malteada de chocolate con chips de chocolate",
-          precio:7000, tiene_termino:false,
-          adiciones:[],
-        },
-      ],
+      ],Micheladas:[],Gaseosas:[],Malteadas:[],
     },
   };
 
@@ -504,14 +445,15 @@ const Menu = () => {
 
   const dataFinal = Object.keys(menuDB).length ? menuDB : menuData;
 
-  const addToCart = item => {
-    setCart(prev => {
-      const key = `${item.nombre}|${item.termino||""}|${item.opcion||""}|${(item.adiciones||[]).join(",")}`;
-      const existe = prev.find(c => c._key === key);
-      if (existe) return prev.map(c => c._key===key ? {...c,qty:c.qty+1} : c);
-      return [...prev, {...item,_key:key,qty:1}];
-    });
-  };
+const addToCart = item => {
+  const imgKey = Object.entries(imagenes).find(([k,v]) => v === item.img)?.[0] || null;
+  setCart(prev => {
+    const key = `${item.nombre}|${item.termino||""}|${item.opcion||""}|${(item.adiciones||[]).join(",")}`;
+    const existe = prev.find(c => c._key === key);
+    if (existe) return prev.map(c => c._key===key ? {...c,qty:c.qty+1} : c);
+    return [...prev, {...item, _key:key, qty:1, imgKey}];
+  });
+};
 
   const removeOne = key => {
     setCart(prev => {
@@ -524,12 +466,131 @@ const Menu = () => {
   const totalItems  = cart.reduce((a,c) => a+c.qty, 0);
   const totalPrecio = cart.reduce((a,c) => a+c.precio*c.qty, 0);
 
-  const handlePagar = () => {
-    setPagado(true);
-    setTimeout(() => { setPagado(false); setCart([]); setCartOpen(false); }, 4000);
+const handlePagar = async () => {
+  const bebidas = cart.filter(c =>
+    c.categoria === "Bar" || c.categoria === "Bebidas" ||
+    BAR_CATS.includes(c.categoria)
+  );
+
+  if (bebidas.length > 0) {
+    try {
+      await fetch("http://localhost:3001/api/bar/orden", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mesa: quejaMesa || "Sin mesa",
+          items: bebidas.map(b => ({
+            nombre:    b.nombre,
+            cantidad:  b.qty,
+            imgKey:    b.imgKey || null,
+            adiciones: b.adiciones || [],
+            opcion:    b.opcion || null,
+          })),
+        }),
+      });
+    } catch (err) {
+      console.error("Error enviando al bar:", err);
+    }
+  }
+
+  setPagado(true);
+  setTimeout(() => { setPagado(false); setCart([]); setCartOpen(false); }, 4000);
+};
+
+useEffect(() => {
+    if (addModal && categoriasBD.length === 0) {
+      fetch("http://localhost:3001/api/menu/categorias")
+        .then(r => r.json())
+        .then(setCategoriasBD)
+        .catch(() => {});
+    }
+  }, [addModal]);
+
+  const handleGuardarProducto = async () => {
+    if (!nuevoProducto.nombre || !nuevoProducto.precio || !nuevoProducto.categoria_id) return;
+    setGuardando(true);
+    try {
+      const res = await fetch("http://localhost:3001/api/menu", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...nuevoProducto, precio: Number(nuevoProducto.precio) }),
+      });
+      if (res.ok) {
+        setGuardadoOk(true);
+        setNuevoProducto({ nombre: "", descripcion: "", precio: "", categoria_id: "", _catNombre: "", subcategoria: "", imagen: "", adiciones: [] });
+        setTimeout(() => {
+          setGuardadoOk(false);
+          setAddModal(false);
+          // Recargar menú desde BD
+          fetch("http://localhost:3001/api/menu")
+            .then(r => r.json())
+            .then(data => {
+              const organizado = {};
+              data.forEach(prod => {
+                const cat = prod.categoria || "Otros";
+                if (!organizado[cat]) organizado[cat] = [];
+                organizado[cat].push({
+                  nombre: prod.nombre, img: imagenes[prod.imagen] || null,
+                  descripcion: prod.descripcion, precio: prod.precio,
+                  tiene_termino: prod.tiene_termino, opciones: prod.opciones || [],
+                  adiciones: prod.adiciones || [], subcategoria: prod.subcategoria || null,
+                  categoria: prod.categoria,
+                });
+              });
+              setMenuDB(organizado);
+            });
+        }, 1500);
+      }
+    } catch (err) { console.error(err); }
+    setGuardando(false);
   };
 
+  const handleEditarProducto = async () => {
+  if (!editProducto?.id || !editProducto.nombre || !editProducto.precio) return;
+  setEditando(true);
+  try {
+    const res = await fetch(`http://localhost:3001/api/menu/${editProducto.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre:      editProducto.nombre,
+        descripcion: editProducto.descripcion,
+        precio:      Number(editProducto.precio),
+        imagen:      editProducto.imagen,
+      }),
+    });
+    if (res.ok) {
+      setEditOk(true);
+      setTimeout(() => {
+        setEditOk(false);
+        setEditModal(false);
+        fetch("http://localhost:3001/api/menu")
+          .then(r => r.json())
+          .then(data => {
+            const organizado = {};
+            data.forEach(prod => {
+              const cat = prod.categoria || "Otros";
+              if (!organizado[cat]) organizado[cat] = [];
+              organizado[cat].push({
+                id: prod.id, nombre: prod.nombre,
+                img: imagenes[prod.imagen] || null,
+                descripcion: prod.descripcion, precio: prod.precio,
+                tiene_termino: prod.tiene_termino, opciones: prod.opciones || [],
+                adiciones: prod.adiciones || [], subcategoria: prod.subcategoria || null,
+                categoria: prod.categoria,
+              });
+            });
+            setMenuDB(organizado);
+          });
+      }, 1500);
+    }
+  } catch (err) { console.error(err); }
+  setEditando(false);
+};
+
   const toggleFav = item =>
+
+ 
     setFavs(prev => prev.find(f=>f.nombre===item.nombre) ? prev.filter(f=>f.nombre!==item.nombre) : [...prev,item]);
   const isFav = nombre => favs.some(f=>f.nombre===nombre);
 
@@ -554,18 +615,24 @@ const Menu = () => {
     ? allProductos.filter(p => p.nombre?.toLowerCase().includes(searchText.toLowerCase()))
     : null;
 
-  const renderCard = (item, i) => (
-    <div key={i} className="food-card-wrapper">
-      <div onClick={() => setSelectedItem(item)}>
-        <FoodCard item={item} />
-      </div>
-      <button className={`fav-btn ${isFav(item.nombre)?"active":""}`}
-        onClick={e => { e.stopPropagation(); toggleFav(item); }}>
-        {isFav(item.nombre) ? "❤️" : "🤍"}
-      </button>
-      <button className="add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>+</button>
+const renderCard = (item, i) => (
+  <div key={i} className="food-card-wrapper">
+    <div onClick={() => setSelectedItem(item)}>
+      <FoodCard item={item} />
     </div>
-  );
+    <button className={`fav-btn ${isFav(item.nombre)?"active":""}`}
+      onClick={e => { e.stopPropagation(); toggleFav(item); }}>
+      {isFav(item.nombre) ? "❤️" : "🤍"}
+    </button>
+    <button className="add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>+</button>
+    {item.id && (
+      <button onClick={e => { e.stopPropagation(); setEditProducto({ ...item, imagen: Object.entries(imagenes).find(([,v]) => v === item.img)?.[0] || "" }); setEditModal(true); }}
+        style={{ position:"absolute", top:"8px", right:"8px", background:"rgba(0,0,0,0.6)", border:"none", color:"#fff", borderRadius:"50%", width:"28px", height:"28px", cursor:"pointer", fontSize:"13px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        ✏️
+      </button>
+    )}
+  </div>
+);
 
   // ✅ CORREGIDO: maneja array plano de BD y objeto anidado del fallback
   const getBarItems = (cat, sub) => {
@@ -581,6 +648,197 @@ const Menu = () => {
 
   return (
     <div className="menu-container">
+
+      {/* MODAL AGREGAR PRODUCTO */}
+      {addModal && (
+        <div className="product-modal-overlay" onClick={() => setAddModal(false)}>
+          <div className="product-modal" onClick={e => e.stopPropagation()} style={{ maxHeight: "90vh", overflowY: "auto" }}>
+            <div className="modal-handle" />
+            <button className="modal-close-btn" onClick={() => setAddModal(false)}>✕</button>
+            <div className="product-modal-body" style={{ paddingTop: "20px" }}>
+              <h2 className="product-modal-title" style={{ marginBottom: "20px" }}>➕ Nuevo producto</h2>
+
+              <div className="modal-section">
+                <p className="modal-section-title">Nombre</p>
+                <input className="queja-mesa-input" placeholder="Ej: Arroz con pollo"
+                  value={nuevoProducto.nombre}
+                  onChange={e => setNuevoProducto(p => ({ ...p, nombre: e.target.value }))} />
+              </div>
+
+              <div className="modal-section">
+                <p className="modal-section-title">Descripción</p>
+                <textarea className="queja-input" style={{ minHeight: "70px" }} placeholder="Descripción del plato..."
+                  value={nuevoProducto.descripcion}
+                  onChange={e => setNuevoProducto(p => ({ ...p, descripcion: e.target.value }))} />
+              </div>
+
+              <div className="modal-section">
+                <p className="modal-section-title">Precio (COP)</p>
+                <input className="queja-mesa-input" type="number" placeholder="Ej: 25000"
+                  value={nuevoProducto.precio}
+                  onChange={e => setNuevoProducto(p => ({ ...p, precio: e.target.value }))} />
+              </div>
+
+              {/* MODAL EDITAR PRODUCTO */}
+{editModal && editProducto && (
+  <div className="product-modal-overlay" onClick={() => setEditModal(false)}>
+    <div className="product-modal" onClick={e => e.stopPropagation()} style={{ maxHeight: "90vh", overflowY: "auto" }}>
+      <div className="modal-handle" />
+      <button className="modal-close-btn" onClick={() => setEditModal(false)}>✕</button>
+      <div className="product-modal-body" style={{ paddingTop: "20px" }}>
+        <h2 className="product-modal-title" style={{ marginBottom: "20px" }}>✏️ Editar producto</h2>
+
+        <div className="modal-section">
+          <p className="modal-section-title">Nombre</p>
+          <input className="queja-mesa-input" value={editProducto.nombre}
+            onChange={e => setEditProducto(p => ({ ...p, nombre: e.target.value }))} />
+        </div>
+
+        <div className="modal-section">
+          <p className="modal-section-title">Descripción</p>
+          <textarea className="queja-input" style={{ minHeight: "70px" }} value={editProducto.descripcion || ""}
+            onChange={e => setEditProducto(p => ({ ...p, descripcion: e.target.value }))} />
+        </div>
+
+        <div className="modal-section">
+          <p className="modal-section-title">Precio (COP)</p>
+          <input className="queja-mesa-input" type="number" value={editProducto.precio}
+            onChange={e => setEditProducto(p => ({ ...p, precio: e.target.value }))} />
+        </div>
+
+        <div className="modal-section">
+          <p className="modal-section-title">Imagen</p>
+          <select className="queja-mesa-input" value={editProducto.imagen || ""}
+            onChange={e => setEditProducto(p => ({ ...p, imagen: e.target.value }))}
+            style={{ cursor: "pointer" }}>
+            <option value="" style={{ color: "#000" }}>Sin imagen</option>
+            {Object.keys(imagenes).map(k => (
+              <option key={k} value={k} style={{ color: "#000" }}>{k}</option>
+            ))}
+          </select>
+          {editProducto.imagen && imagenes[editProducto.imagen] && (
+            <img src={imagenes[editProducto.imagen]} alt={editProducto.imagen}
+              style={{ width: "100%", maxHeight: "140px", objectFit: "cover", borderRadius: "12px", marginTop: "10px" }} />
+          )}
+        </div>
+
+        {editOk && <div className="queja-success">✅ ¡Producto actualizado!</div>}
+
+        <button className="modal-add-btn" onClick={handleEditarProducto}
+          disabled={editando || !editProducto.nombre || !editProducto.precio}>
+          {editando ? "Guardando..." : "💾 Guardar cambios"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+<div className="modal-section">
+  <p className="modal-section-title">Categoría</p>
+  <select className="queja-mesa-input"
+    value={nuevoProducto.categoria_id}
+    onChange={e => {
+      const sel = categoriasBD.find(c => c.id === Number(e.target.value));
+      setNuevoProducto(p => ({ ...p, categoria_id: e.target.value, _catNombre: sel?.nombre || "", subcategoria: "" }));
+    }}
+    style={{ cursor: "pointer" }}>
+    <option value="" style={{ color: "#000" }}>Selecciona una categoría</option>
+    {categoriasBD.length > 0
+      ? categoriasBD.map(c => (
+          <option key={c.id} value={c.id} style={{ color: "#000" }}>
+            {catIconos[c.nombre] || "🍴"} {c.nombre}
+          </option>
+        ))
+      : (
+        <>
+          <option value="1" style={{ color: "#000" }}>🍽️ Platos fuertes</option>
+          <option value="2" style={{ color: "#000" }}>🥗 Entradas</option>
+          <option value="3" style={{ color: "#000" }}>🫕 Platos típicos</option>
+          <option value="4" style={{ color: "#000" }}>🍝 Pastas</option>
+          <option value="5" style={{ color: "#000" }}>🥩 Cortes</option>
+          <option value="6" style={{ color: "#000" }}>🍣 Sushi</option>
+          <option value="7" style={{ color: "#000" }}>🌱 Comida Vegana</option>
+          <option value="8" style={{ color: "#000" }}>🧀 Quesos</option>
+          <option value="9" style={{ color: "#000" }}>🍹 Bar</option>
+        </>
+      )
+    }
+  </select>
+  {nuevoProducto._catNombre === "Bar" && (
+    <select className="queja-mesa-input" style={{ cursor: "pointer", marginTop: "8px" }}
+      value={nuevoProducto.subcategoria || ""}
+      onChange={e => setNuevoProducto(p => ({ ...p, subcategoria: e.target.value }))}>
+      <option value="" style={{ color: "#000" }}>Selecciona subcategoría del Bar</option>
+      {BAR_SUBS.map(s => <option key={s} value={s} style={{ color: "#000" }}>{BAR_ICONS[s]} {s}</option>)}
+    </select>
+  )}
+</div>
+
+<div className="modal-section">
+  <p className="modal-section-title">Imagen</p>
+  <select className="queja-mesa-input"
+    value={nuevoProducto.imagen}
+    onChange={e => setNuevoProducto(p => ({ ...p, imagen: e.target.value }))}
+    style={{ cursor: "pointer" }}>
+    <option value="" style={{ color: "#000" }}>Sin imagen</option>
+    {Object.keys(imagenes).map(k => (
+      <option key={k} value={k} style={{ color: "#000" }}>{k}</option>
+    ))}
+  </select>
+  {nuevoProducto.imagen && imagenes[nuevoProducto.imagen] && (
+    <img
+      src={imagenes[nuevoProducto.imagen]}
+      alt={nuevoProducto.imagen}
+      style={{ width: "100%", maxHeight: "140px", objectFit: "cover", borderRadius: "12px", marginTop: "10px" }}
+    />
+  )}
+</div>
+
+              <div className="modal-section">
+                <p className="modal-section-title">Adiciones</p>
+                {nuevoProducto.adiciones.map((ad, i) => (
+                  <div key={i} style={{ display: "flex", gap: "8px", marginBottom: "8px", alignItems: "center" }}>
+                    <span style={{ flex: 1, color: "rgba(255,255,255,0.7)", fontSize: "13px" }}>
+                      {ad.nombre} — {fmtCOP(ad.precio)}
+                    </span>
+                    <button onClick={() => setNuevoProducto(p => ({ ...p, adiciones: p.adiciones.filter((_, j) => j !== i) }))}
+                      style={{ background: "rgba(239,68,68,0.2)", border: "none", color: "#ef4444", borderRadius: "6px", padding: "4px 8px", cursor: "pointer" }}>
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                  <input className="queja-mesa-input" placeholder="Nombre adición"
+                    value={nuevaAdicion.nombre}
+                    onChange={e => setNuevaAdicion(a => ({ ...a, nombre: e.target.value }))}
+                    style={{ flex: 2 }} />
+                  <input className="queja-mesa-input" type="number" placeholder="Precio"
+                    value={nuevaAdicion.precio}
+                    onChange={e => setNuevaAdicion(a => ({ ...a, precio: e.target.value }))}
+                    style={{ flex: 1 }} />
+                  <button onClick={() => {
+                    if (!nuevaAdicion.nombre) return;
+                    setNuevoProducto(p => ({ ...p, adiciones: [...p.adiciones, { nombre: nuevaAdicion.nombre, precio: Number(nuevaAdicion.precio) || 0 }] }));
+                    setNuevaAdicion({ nombre: "", precio: "" });
+                  }} style={{ background: "#ff8c32", border: "none", color: "#fff", borderRadius: "10px", padding: "0 14px", cursor: "pointer", fontSize: "18px" }}>
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {guardadoOk && (
+                <div className="queja-success">✅ ¡Producto guardado correctamente!</div>
+              )}
+
+              <button className="modal-add-btn"
+                onClick={handleGuardarProducto}
+                disabled={guardando || !nuevoProducto.nombre || !nuevoProducto.precio || !nuevoProducto.categoria_id}>
+                {guardando ? "Guardando..." : "💾 Guardar producto"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedItem && (
         <ProductModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={addToCart} />
@@ -608,48 +866,69 @@ const Menu = () => {
       {/* CARRITO */}
       {cartOpen && <div className="overlay-bg" onClick={() => setCartOpen(false)}/>}
       <div className={`cart-panel ${cartOpen?"open":""}`}>
-        <div className="cart-panel-header">
-          <h2>Tu pedido 🛒</h2>
-          <button className="sidebar-close-btn" onClick={() => setCartOpen(false)}>✕</button>
-        </div>
-        {pagado ? (
-          <div className="cart-paid">
-            <div className="cart-paid-icon">✅</div>
-            <h3>¡Pedido registrado!</h3>
-            <p>Dirígete a caja a pagar 🎉</p>
+<div className="cart-panel-header">
+  <h2>Tu pedido 🛒</h2>
+  <button className="sidebar-close-btn" onClick={() => setCartOpen(false)}>✕</button>
+</div>
+{pagado ? (
+  <div className="cart-paid">
+    <div className="cart-paid-icon">✅</div>
+    <h3>¡Pedido registrado!</h3>
+    <p>Dirígete a caja a pagar 🎉</p>
+  </div>
+) : cart.length===0 ? (
+  <p className="cart-empty">Aún no has agregado nada 🍽️</p>
+) : (
+  <>
+    {/* ── INPUT DE MESA ── */}
+    <div style={{ padding: "14px 22px 0" }}>
+      <input
+        type="text"
+        placeholder="¿Cuál es tu mesa? (ej: Mesa 3)"
+        value={quejaMesa}
+        onChange={e => setQuejaMesa(e.target.value)}
+        style={{
+          width: "100%",
+          background: "rgba(255,255,255,0.07)",
+          border: "1.5px solid rgba(255,255,255,0.15)",
+          borderRadius: "12px",
+          padding: "12px 16px",
+          color: "#fff",
+          fontSize: "14px",
+          fontFamily: "DM Sans, sans-serif",
+          outline: "none",
+        }}
+      />
+    </div>
+
+    <ul className="cart-list">
+      {cart.map((c,i) => (
+        <li key={i} className="cart-item">
+          <div className="cart-item-info">
+            <span className="cart-item-name">{c.nombre}</span>
+            {(c.termino||c.opcion||c.adiciones?.length>0) && (
+              <span className="cart-item-meta">
+                {[c.termino,c.opcion,...(c.adiciones||[])].filter(Boolean).join(" · ")}
+              </span>
+            )}
+            <span className="cart-item-price">{fmtCOP(c.precio)}</span>
           </div>
-        ) : cart.length===0 ? (
-          <p className="cart-empty">Aún no has agregado nada 🍽️</p>
-        ) : (
-          <>
-            <ul className="cart-list">
-              {cart.map((c,i) => (
-                <li key={i} className="cart-item">
-                  <div className="cart-item-info">
-                    <span className="cart-item-name">{c.nombre}</span>
-                    {(c.termino||c.opcion||c.adiciones?.length>0) && (
-                      <span className="cart-item-meta">
-                        {[c.termino,c.opcion,...(c.adiciones||[])].filter(Boolean).join(" · ")}
-                      </span>
-                    )}
-                    <span className="cart-item-price">{fmtCOP(c.precio)}</span>
-                  </div>
-                  <div className="cart-item-controls">
-                    <button onClick={() => removeOne(c._key)}>−</button>
-                    <span>{c.qty}</span>
-                    <button onClick={() => addToCart(c)}>+</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="cart-total">
-              <span>Total</span>
-              <span className="cart-total-price">{fmtCOP(totalPrecio)}</span>
-            </div>
-            <button className="cart-pay-btn" onClick={handlePagar}>Pagar {fmtCOP(totalPrecio)}</button>
-          </>
-        )}
-      </div>
+          <div className="cart-item-controls">
+            <button onClick={() => removeOne(c._key)}>−</button>
+            <span>{c.qty}</span>
+            <button onClick={() => addToCart(c)}>+</button>
+          </div>
+        </li>
+      ))}
+    </ul>
+    <div className="cart-total">
+      <span>Total</span>
+      <span className="cart-total-price">{fmtCOP(totalPrecio)}</span>
+    </div>
+    <button className="cart-pay-btn" onClick={handlePagar}>Pagar {fmtCOP(totalPrecio)}</button>
+  </>
+)}
+</div>
 
       {/* HEADER */}
       <div className="top-bar">
@@ -685,7 +964,8 @@ const Menu = () => {
       {activeTab==="home" && !searchText.trim() && (
         <>
           <div className="section-header">
-            <h2>Categorías</h2>
+           <h2>Categorías</h2>
+            <button onClick={() => setAddModal(true)} style={{ background: "#ff8c32", border: "none", color: "#fff", borderRadius: "50%", width: "32px", height: "32px", fontSize: "20px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "8px" }}>+</button>
             <span className="show-all" onClick={() => setActiveTab("menu")}>Ver todo ›</span>
           </div>
           <div className="categories">
@@ -713,6 +993,7 @@ const Menu = () => {
         <>
           <div className="section-header">
             <h2>Categorías</h2>
+            <button onClick={() => setAddModal(true)} style={{ background: "#ff8c32", border: "none", color: "#fff", borderRadius: "50%", width: "32px", height: "32px", fontSize: "20px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "8px" }}>+</button>
             <span className="show-all" onClick={() => { setCategoria(null); setSubCategoria(null); }}>Ver todo ›</span>
           </div>
           <div className="categories">

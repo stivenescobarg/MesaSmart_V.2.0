@@ -1,0 +1,232 @@
+/* ─────────────────────────────────────────────
+   KitchenHeader
+───────────────────────────────────────────── */
+.kdh-root {
+  background:    var(--kd-bg-header);
+  border-bottom: 1px solid var(--kd-border);
+  padding:       14px 24px;
+  position:      sticky;
+  top:           0;
+  z-index:       50;
+  transition:    background 0.25s ease, border-color 0.25s ease;
+}
+
+/* ── Fila superior ── */
+.kdh-top {
+  display:     flex;
+  align-items: center;
+  gap:         12px;
+  flex-wrap:   wrap;
+  margin-bottom: 12px;
+}
+
+/* Brand */
+.kdh-brand {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+  flex-shrink: 0;
+}
+
+.kdh-brand-icon {
+  width:          36px;
+  height:         36px;
+  background:     var(--kd-bg-card);
+  border:         1px solid var(--kd-border);
+  border-radius:  8px;
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  flex-shrink:    0;
+}
+
+.kdh-title {
+  margin:      0;
+  font-size:   18px;
+  font-weight: 700;
+  color:       var(--kd-text-primary);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.kdh-subtitle {
+  margin:    3px 0 0;
+  font-size: 11px;
+  color:     var(--kd-text-muted);
+  line-height: 1;
+}
+
+/* Stats */
+.kdh-stats {
+  display:   flex;
+  gap:       8px;
+  flex-wrap: nowrap;
+}
+
+.kdh-stat {
+  border:        1px solid;
+  border-radius: 8px;
+  padding:       6px 12px;
+  text-align:    center;
+  min-width:     56px;
+  transition:    background 0.25s ease;
+}
+
+.kdh-stat-value {
+  display:     block;
+  font-size:   22px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  line-height: 1;
+}
+
+.kdh-stat-label {
+  display:     block;
+  font-size:   10px;
+  color:       var(--kd-text-muted);
+  margin-top:  3px;
+  white-space: nowrap;
+}
+
+/* Actions */
+.kdh-actions {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+  margin-left: auto;
+  flex-wrap:   wrap;
+}
+
+/* Cocinero en turno */
+.kdh-cocinero {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  background:  var(--kd-bg-card);
+  border:      1px solid var(--kd-border);
+  border-radius: 8px;
+  padding:     6px 10px;
+}
+
+.kdh-cocinero-avatar {
+  width:          28px;
+  height:         28px;
+  border-radius:  50%;
+  background:     var(--kd-pending-bg);
+  border:         1px solid var(--kd-pending-border);
+  color:          var(--kd-pending-color);
+  font-size:      13px;
+  font-weight:    700;
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  flex-shrink:    0;
+  font-family:    'DM Mono', monospace;
+}
+
+.kdh-cocinero-info {
+  display:        flex;
+  flex-direction: column;
+  gap:            1px;
+}
+
+.kdh-cocinero-nombre {
+  font-size:   12px;
+  font-weight: 600;
+  color:       var(--kd-text-primary);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.kdh-cocinero-badge {
+  font-size:  10px;
+  color:      var(--kd-text-muted);
+  font-style: italic;
+  line-height: 1;
+}
+
+/* Reloj */
+.kdh-clock {
+  font-family:   'DM Mono', monospace;
+  font-size:     13px;
+  color:         var(--kd-text-muted);
+  background:    var(--kd-bg-card);
+  border:        1px solid var(--kd-border);
+  border-radius: 6px;
+  padding:       6px 10px;
+  white-space:   nowrap;
+  transition:    background 0.25s ease;
+}
+
+/* Toggle de tema */
+.kdh-toggle {
+  width:          34px;
+  height:         34px;
+  border-radius:  8px;
+  border:         1px solid var(--kd-border);
+  background:     var(--kd-toggle-bg);
+  color:          var(--kd-toggle-icon);
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  cursor:         pointer;
+  transition:     all 0.2s ease;
+  flex-shrink:    0;
+}
+
+.kdh-toggle:hover {
+  border-color: var(--kd-pending-color);
+  color:        var(--kd-pending-color);
+}
+
+/* ── Filtros ── */
+.kdh-filters {
+  display:   flex;
+  gap:       6px;
+  flex-wrap: wrap;
+}
+
+.kdh-filter-btn {
+  padding:       5px 13px;
+  border-radius: 20px;
+  border:        1px solid var(--kd-border);
+  background:    transparent;
+  color:         var(--kd-text-muted);
+  font-size:     12px;
+  font-weight:   500;
+  font-family:   'DM Sans', sans-serif;
+  cursor:        pointer;
+  transition:    all 0.15s ease;
+  white-space:   nowrap;
+}
+
+.kdh-filter-btn:hover {
+  color:        var(--kd-text-secondary);
+  border-color: var(--kd-text-muted);
+}
+
+.kdh-filter-btn.active {
+  border-color: var(--kd-pending-color);
+  background:   var(--kd-pending-bg);
+  color:        var(--kd-pending-color);
+  font-weight:  600;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .kdh-cocinero-info { display: none; }
+}
+
+@media (max-width: 768px) {
+  .kdh-root     { padding: 12px 14px; }
+  .kdh-top      { gap: 8px; }
+  .kdh-stats    { gap: 6px; }
+  .kdh-stat     { min-width: 48px; padding: 5px 8px; }
+  .kdh-stat-value { font-size: 18px; }
+  .kdh-cocinero   { display: none; }
+  .kdh-clock      { display: none; }
+}
+
+@media (max-width: 480px) {
+  .kdh-stats { display: none; }
+}

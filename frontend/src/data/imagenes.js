@@ -8,10 +8,10 @@ import pesto        from "../assets/images/PastaPesto.jpg";
 import ribeye       from "../assets/images/Ribeye.jpg";
 import strip        from "../assets/images/Solomito.jpg";
 import california   from "../assets/images/California.jpg";
-import spicytuna    from "../assets/images/spicytuna.jpg";
+import spicytuna    from "../assets/images/SpicyTuna.jpg";
 import quinoa       from "../assets/images/BowlQuinoa.jpg";
 import burgerVeg    from "../assets/images/BurgerVeg.jpg";
-import tablaQuesos  from "../assets/images/tablaQuesos.jpg";
+import tablaQuesos  from "../assets/images/TablaQuesos.jpg";
 import fondue       from "../assets/images/Fondue.jpg";
 import crispetas    from "../assets/images/Crispetas.jpg";
 import chicharron   from "../assets/images/Chicharron.jpg";
@@ -39,6 +39,8 @@ import michelada  from "../assets/images/Michelada.jpg";
 import micheladaSaborizada  from "../assets/images/MicheladaSaborizada.jpg";
 import gaseosas  from "../assets/images/Gaseosas.jpg";
 import malteadachp  from "../assets/images/MalteadaChp.jpg";
+import perroCaliente from "../assets/images/PerroCaliente.jpg";
+import polloAsado from "../assets/images/PolloAsado.jpg";
 
 export const imagenes = {
   hamburguesa,
@@ -81,5 +83,7 @@ export const imagenes = {
   michelada,
   micheladaSaborizada,
   gaseosas,
-  malteadachp
+  malteadachp,
+  perroCaliente,
+  polloAsado
 };
