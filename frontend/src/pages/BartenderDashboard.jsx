@@ -67,7 +67,7 @@ const BartenderDashboard = () => {
   const [ordenes,     setOrdenes]     = useState([]);
   const [ordenSel,    setOrdenSel]    = useState(null);
   const [completadas, setCompletadas] = useState(0);
-  const [filtro,      setFiltro]      = useState(null); // null = todas
+  const [filtro,      setFiltro]      = useState(null);
 
   const cargarOrdenes = async () => {
     try {
@@ -109,11 +109,7 @@ const BartenderDashboard = () => {
   const getNombreItem = item =>
     typeof item === "object" ? item.nombre : item.replace(/ x\d+$/, "");
 
-  // Filtrar según la tarjeta seleccionada
-  const ordenesFiltradas = filtro === "activas"     ? ordenes
-                         : filtro === "completadas" ? [] // las completadas no vienen del backend aún
-                         : filtro === "bebidas"     ? ordenes
-                         : ordenes;
+  const ordenesFiltradas = filtro === "completadas" ? [] : ordenes;
 
   const tituloFiltro = filtro === "activas"     ? "Órdenes activas"
                      : filtro === "completadas" ? "Completadas hoy"
@@ -193,34 +189,7 @@ const BartenderDashboard = () => {
           ))}
         </div>
       )}
-              ) : null
-            )}
-          </div>
-        )}
 
-        {/* Completadas */}
-        {completadas.length > 0 && (
-          <>
-            <h2 className="bd-section-title" style={{ marginTop: "1.75rem" }}>
-              Completadas
-            </h2>
-            <div className="bd-orders">
-              {ordenes.map((orden, i) =>
-                orden.estado === "listo" ? (
-                  <div key={i} className="order-card" style={{ opacity: 0.6 }}>
-                    <div className="order-num listo">M{orden.mesa}</div>
-                    <div className="order-info">
-                      <p className="order-mesa">Mesa {orden.mesa}</p>
-                      <p className="order-items">{orden.items?.join(" · ")}</p>
-                    </div>
-                    <span className="badge badge-listo">Listo</span>
-                  </div>
-                ) : null
-              )}
-            </div>
-          </>
-        )}
-      </div>
     </div>
   );
 };
