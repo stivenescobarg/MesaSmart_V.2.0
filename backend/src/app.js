@@ -13,6 +13,7 @@ const egresoRoutes  = require("./routes/admin/egresoRoutes");
 const sesionRoutes  = require("./routes/admin/sesionRoutes");
 const barRoutes     = require("./routes/admin/barRoutes");
 const menuRoutes    = require("./routes/productos");
+const pedidosRoutes = require("./routes/pedidos"); // ← nueva ruta cocina
 
 // ── Rutas del menú (compañera) ────────────────────────────────────
 const productosRoutes = require("./routes/productos");
@@ -39,6 +40,7 @@ app.use("/api/egresos",   egresoRoutes);
 app.use("/api/sesiones",  sesionRoutes);
 app.use("/api/bar",       barRoutes);
 app.use("/api/menu",      menuRoutes);
+app.use("/api/pedidos-cocina", pedidosRoutes); // ← ruta diferente
 
 app.post("/api/quejas", async (req, res) => {
   const { mesa, mensaje } = req.body;
