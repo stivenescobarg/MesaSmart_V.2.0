@@ -8,7 +8,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from "recharts";
 import { metricaService } from "../../services/metricaService";
-
+import { stockService } from "../../services/stockService";
 // ── Colores ───────────────────────────────────────────────────────
 const COLORES_METODO = {
   efectivo:      "#22c55e",
@@ -52,17 +52,20 @@ const Dashboard = ({ cajaAbierta }) => {
   const [ventasDia,    setVentasDia]    = useState([]);
   const [metodosPago,  setMetodosPago]  = useState([]);
   const [cargando,     setCargando]     = useState(true);
+  const [bajoStock, setBajoStock] = useState([]);
 
   const cargar = useCallback(async () => {
     try {
-      const [r, vd, mp] = await Promise.all([
+      const [r, vd, mp, bs] = await Promise.all([
         metricaService.getResumen(),
         metricaService.getVentasPorDia(),
         metricaService.getMetodosPago(),
+        stockService.getBajoStock(),
       ]);
       setResumen(r.resumen);
       setVentasDia(vd.datos || []);
       setMetodosPago(mp.datos || []);
+      setBajoStock(bs.productos || []);
     } catch {
       // silencioso — la caja puede estar cerrada
     } finally {
@@ -236,6 +239,8 @@ const Dashboard = ({ cajaAbierta }) => {
                 <Bar dataKey="total" name="Ventas" fill="var(--amber)" radius={[4,4,0,0]}>
                   {ventasDia.map((_, i) => (
                     <Cell key={i} fill={COLORES_BAR[i % COLORES_BAR.length]} />
+
+                    
                   ))}
                 </Bar>
               </BarChart>
@@ -243,6 +248,51 @@ const Dashboard = ({ cajaAbierta }) => {
           </div>
         )}
       </div>
+      {bajoStock.length > 0 && (
+  <div className="admin-card" style={{
+    marginTop: "1rem",
+    borderLeft: "3px solid var(--red)",
+  }}>
+    <h3 className="subtitulo" style={{ marginBottom: "0.75rem", color: "var(--red)" }}>
+      ⚠️ Alertas de stock — {bajoStock.length} producto{bajoStock.length > 1 ? "s" : ""} bajo mínimo
+    </h3>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+      {bajoStock.slice(0, 5).map(p => (
+        <div key={p.id} style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "0.45rem 0.6rem", background: "var(--bg)",
+          borderRadius: "var(--r-sm)", border: "1px solid var(--border)",
+          gap: "0.5rem", flexWrap: "wrap",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.8rem" }}>
+              {p.categoria === "bar" ? "🍹" : "🍳"}
+            </span>
+            <span style={{ fontSize: "0.82rem", fontWeight: 500 }}>{p.nombre}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{
+              fontFamily: "'DM Mono', monospace", fontSize: "0.75rem",
+              color: p.cantidad_actual <= 0 ? "var(--red)" : "var(--amber)",
+              fontWeight: 600,
+            }}>
+              {p.cantidad_actual <= 0 ? "AGOTADO" : `${p.cantidad_actual}/${p.cantidad_minima} ${p.unidad}`}
+            </span>
+            <span className={`chip ${p.cantidad_actual <= 0 ? "chip-rojo" : "chip-amber"}`}
+              style={{ fontSize: "0.65rem" }}>
+              {p.cantidad_actual <= 0 ? "Agotado" : "Bajo"}
+            </span>
+          </div>
+        </div>
+      ))}
+      {bajoStock.length > 5 && (
+        <p className="texto-muted" style={{ fontSize: "0.75rem", textAlign: "center", marginTop: "0.25rem" }}>
+          +{bajoStock.length - 5} productos más con stock bajo — revisa la sección Stock
+        </p>
+      )}
+    </div>
+  </div>
+)}
     </div>
   );
 };
