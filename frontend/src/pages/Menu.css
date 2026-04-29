@@ -1,11 +1,20 @@
 /* ══════════════════════════════════════════════════════════════
-   Menu.css — AISLADO dentro de .menu-container
-   Ningún selector aquí aplica fuera del menú del restaurante
+   Menu.css — Estilos de la página del menú del restaurante
+   
+   IMPORTANTE: Todos los selectores que modifican elementos
+   internos del menú están dentro de `.menu-container` para
+   que estos estilos NO afecten otras páginas de la app
+   (como el panel del admin o el bartender).
 ══════════════════════════════════════════════════════════════ */
 
+/* Importamos las fuentes de Google:
+   - Playfair Display: para títulos elegantes (nombres de sección, logo)
+   - DM Sans: para texto general (descripciones, precios, botones) */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 /* ── Reset SOLO para el menú ─────────────────────────────────── */
+/* Eliminamos márgenes y paddings por defecto solo dentro del menú
+   para evitar interferir con los estilos de otras páginas */
 .menu-container *,
 .menu-container *::before,
 .menu-container *::after {
@@ -14,6 +23,9 @@
   padding: 0;
 }
 
+/* Configuración base del HTML y body:
+   - Ocupan el 100% del ancho y alto de la pantalla
+   - Sin scroll horizontal */
 html, body, #root {
   width: 100%;
   height: 100%;
@@ -22,21 +34,25 @@ html, body, #root {
   padding: 0;
 }
 
+/* Fondo del body — gradiente oscuro con toque morado/naranja
+   Solo aplica FUERA del contenedor del menú (fondo general de la app) */
 body {
   font-family: "DM Sans", sans-serif;
   background:
   radial-gradient(ellipse 80% 40% at 50% -10%, rgba(255,140,50,0.18) 0%, transparent 70%),
   radial-gradient(ellipse 60% 30% at 80% 80%, rgba(43,47,168,0.2) 0%, transparent 60%),
   linear-gradient(160deg, #0d0d1a 0%, #13112b 40%, #1a0e2e 70%, #0d1520 100%);
-  /* 🔥 FONDO MORADO SOLO AFUERA */
   min-height: 100vh;
 }
 
 /* ── CONTENEDOR PRINCIPAL ────────────────────────────────────── */
+/* Envuelve toda la página del menú.
+   Tiene el mismo fondo que el body pero está aislado
+   para no afectar otros componentes de la app. */
 .menu-container {
   width: 100%;
   min-height: 100vh;
-  padding-bottom: 90px;
+  padding-bottom: 90px; /* Espacio para que el contenido no quede detrás de la bottom nav */
   position: relative;
   font-family: "DM Sans", sans-serif;
   background:
@@ -45,31 +61,37 @@ body {
     linear-gradient(160deg, #0d0d1a 0%, #13112b 40%, #1a0e2e 70%, #0d1520 100%);
 }
 
+/* Patrón de puntos decorativo que cubre toda la pantalla
+   Se hace con un pseudo-elemento para no afectar el contenido.
+   El z-index: 0 asegura que quede detrás de todo lo demás. */
 .menu-container::before {
   content: "";
   position: fixed;
   inset: 0;
   background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
   background-size: 28px 28px;
-  pointer-events: none;
+  pointer-events: none; /* No interfiere con clicks */
   z-index: 0;
 }
 
 /* ── TOP BAR ─────────────────────────────────────────────────── */
+/* Barra superior fija que siempre es visible al hacer scroll.
+   Contiene: botón de menú lateral, logo y botón del carrito. */
 .top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px 14px;
-  background: rgba(13,13,26,0.85);
-  backdrop-filter: blur(16px);
+  background: rgba(13,13,26,0.85); /* Fondo semitransparente oscuro */
+  backdrop-filter: blur(16px);     /* Efecto de cristal esmerilado */
   -webkit-backdrop-filter: blur(16px);
-  position: sticky;
+  position: sticky; /* Se queda fija al hacer scroll */
   top: 0;
   z-index: 10;
   border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 
+/* Ícono de hamburguesa (☰) para abrir el sidebar */
 .menu-icon {
   font-size: 26px;
   cursor: pointer;
@@ -77,6 +99,7 @@ body {
   flex-shrink: 0;
 }
 
+/* Logo "MesaSmart" — usa Playfair Display para elegancia */
 .top-bar h1 {
   font-family: "Playfair Display", serif;
   font-size: 22px;
@@ -88,8 +111,10 @@ body {
   letter-spacing: -0.3px;
 }
 
+/* La palabra "Smart" en naranja para dar carácter visual al logo */
 .top-bar h1 span { color: #ff8c32; }
 
+/* Botón del carrito con fondo semitransparente */
 .cart-icon-btn {
   position: relative;
   background: rgba(255,255,255,0.08);
@@ -106,6 +131,7 @@ body {
 
 .cart-icon-btn:hover { background: rgba(255,255,255,0.14); }
 
+/* Globito naranja con el número de items en el carrito */
 .cart-badge {
   position: absolute;
   top: -7px; right: -8px;
@@ -116,10 +142,11 @@ body {
   border-radius: 50%;
   width: 20px; height: 20px;
   display: flex; align-items: center; justify-content: center;
-  border: 2px solid #0d0d1a;
+  border: 2px solid #0d0d1a; /* Borde del mismo color del fondo para efecto flotante */
 }
 
 /* ── BUSCADOR ─────────────────────────────────────────────────── */
+/* Fila que contiene el input de búsqueda */
 .search-row {
   display: flex;
   align-items: center;
@@ -128,6 +155,7 @@ body {
   z-index: 1;
 }
 
+/* Contenedor del input con ícono de lupa incluido */
 .search-box {
   flex: 1;
   display: flex;
@@ -141,6 +169,7 @@ body {
   transition: border-color 0.18s;
 }
 
+/* Cuando el input está enfocado, el borde se vuelve naranja */
 .search-box:focus-within { border-color: #ff8c32; }
 
 .search-box input {
@@ -157,6 +186,8 @@ body {
 .search-icon { font-size: 17px; opacity: 0.45; flex-shrink: 0; }
 
 /* ── CABECERA DE SECCIÓN ──────────────────────────────────────── */
+/* Fila con título y enlace "Ver todo ›" que aparece antes
+   de una sección del menú (ej: "Categorías", "Recomendados") */
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -173,6 +204,7 @@ body {
   color: #fff;
 }
 
+/* Enlace "Ver todo ›" en naranja */
 .section-header .show-all {
   font-size: 14px;
   color: #ff8c32;
@@ -180,6 +212,7 @@ body {
   cursor: pointer;
 }
 
+/* Título de sección (sin el enlace "Ver todo") */
 .section-title {
   font-family: "Playfair Display", serif;
   font-size: 20px;
@@ -191,6 +224,7 @@ body {
 }
 
 /* ── CATEGORÍAS ───────────────────────────────────────────────── */
+/* Grid de tarjetas de categoría que se envuelven en varias filas */
 .categories {
   display: flex;
   flex-wrap: wrap;
@@ -200,6 +234,7 @@ body {
   z-index: 1;
 }
 
+/* Tarjeta individual de categoría (emoji + nombre) */
 .category-card {
   display: flex;
   flex-direction: column;
@@ -217,6 +252,7 @@ body {
   flex-shrink: 0;
 }
 
+/* Al hacer hover: sube un poco y aparece borde naranja */
 .category-card:hover {
   border-color: #ff8c32;
   background: rgba(255,140,50,0.1);
@@ -224,14 +260,17 @@ body {
   box-shadow: 0 8px 24px rgba(255,140,50,0.2);
 }
 
+/* Estado activo (categoría seleccionada actualmente) */
 .category-card.active {
   border-color: #ff8c32;
   background: rgba(255,140,50,0.15);
   box-shadow: 0 6px 20px rgba(255,140,50,0.25);
 }
 
+/* Emoji grande de la categoría */
 .cat-icon { font-size: 36px; line-height: 1; display: block; }
 
+/* Nombre de la categoría en texto pequeño debajo del emoji */
 .category-card span:not(.cat-icon) {
   font-size: 12px;
   font-weight: 700;
@@ -241,25 +280,32 @@ body {
   display: block;
 }
 
+/* El nombre se vuelve naranja cuando la tarjeta está activa */
 .category-card.active span:not(.cat-icon) { color: #ff8c32; }
 
 /* ── GRID DE CARDS ────────────────────────────────────────────── */
+/* Grid responsivo de tarjetas de producto.
+   Por defecto 2 columnas en móvil, aumenta con el ancho de pantalla. */
 .cards {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, 1fr); /* 2 columnas en móvil */
   gap: 18px;
   padding: 4px 24px 24px;
   position: relative;
   z-index: 1;
 }
 
+/* Responsive: más columnas en pantallas más anchas */
 @media (min-width: 650px)  { .cards { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 950px)  { .cards { grid-template-columns: repeat(4, 1fr); } }
 @media (min-width: 1250px) { .cards { grid-template-columns: repeat(5, 1fr); } }
 
 /* ── FOOD CARD ────────────────────────────────────────────────── */
+/* Contenedor relativo de la tarjeta para posicionar los botones
+   flotantes (favorito, agregar, editar) con position: absolute */
 .food-card-wrapper { position: relative; }
 
+/* Botón "+" para agregar al carrito — esquina inferior derecha */
 .add-btn {
   position: absolute;
   bottom: 12px; right: 10px;
@@ -279,6 +325,7 @@ body {
 
 .add-btn:hover { transform: scale(1.14); box-shadow: 0 6px 20px rgba(255,140,50,0.65); }
 
+/* Botón de favorito (corazón) — esquina superior izquierda */
 .fav-btn {
   position: absolute;
   top: 10px; left: 10px;
@@ -296,8 +343,11 @@ body {
 }
 
 .fav-btn:hover { transform: scale(1.18); }
+
+/* Cuando el producto está en favoritos, el fondo se vuelve rojo */
 .fav-btn.active { background: rgba(220,50,80,0.85); color: #fff; }
 
+/* Tarjeta de producto: fondo semitransparente con borde sutil */
 .food-card {
   border-radius: 20px;
   overflow: hidden;
@@ -308,19 +358,22 @@ body {
   transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
 }
 
+/* Efecto hover: la tarjeta sube y aparece sombra */
 .food-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 30px rgba(0,0,0,0.4);
   border-color: rgba(255,140,50,0.3);
 }
 
+/* Imagen del producto — ocupa todo el ancho con height fijo */
 .food-card img {
   width: 100%;
   height: 170px;
-  object-fit: cover;
+  object-fit: cover; /* La imagen se recorta para no deformarse */
   display: block;
 }
 
+/* Overlay degradado sobre la imagen para que el texto sea legible */
 .overlay {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -332,12 +385,13 @@ body {
 .overlay h3 { font-size: 14px; font-weight: 700; margin: 0; line-height: 1.3; }
 
 /* ── MODAL DE PRODUCTO ────────────────────────────────────────── */
+/* Overlay oscuro detrás del modal — cubre toda la pantalla */
 .product-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 2000;
   display: flex;
-  align-items: flex-end;
+  align-items: flex-end; /* El modal aparece desde abajo (bottom sheet) */
   justify-content: center;
   background:
     radial-gradient(ellipse 80% 40% at 50% -10%, rgba(255,140,50,0.15) 0%, transparent 70%),
@@ -345,11 +399,12 @@ body {
     rgba(6,6,18,0.82);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  animation: fadeIn 0.22s ease;
+  animation: fadeIn 0.22s ease; /* Aparece con fade suave */
 }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+/* Modal como "bottom sheet" que ocupa el 95% de la altura de pantalla */
 .product-modal {
   width: 100%;
   max-width: 600px;
@@ -357,12 +412,13 @@ body {
   background:
     radial-gradient(ellipse 120% 40% at 50% 0%, rgba(255,140,50,0.10) 0%, transparent 60%),
     linear-gradient(170deg, #0f0f22 0%, #161330 45%, #1a0e2e 100%);
-  border-radius: 28px 28px 0 0;
+  border-radius: 28px 28px 0 0; /* Bordes redondeados solo arriba */
   border-top: 1px solid rgba(255,255,255,0.12);
   border-left: 1px solid rgba(255,255,255,0.07);
   border-right: 1px solid rgba(255,255,255,0.07);
   padding: 0 0 32px;
-  overflow-y: auto;
+  overflow-y: auto; /* Scroll interno si el contenido es largo */
+  /* Animación de entrada desde abajo con efecto rebote (1.4 en cubic-bezier) */
   animation: slideUp 0.3s cubic-bezier(0.34,1.4,0.64,1);
   position: relative;
   background-image:
@@ -372,11 +428,13 @@ body {
   background-size: 28px 28px, auto, auto;
 }
 
+/* Animación: el modal sube desde abajo */
 @keyframes slideUp {
   from { transform: translateY(100%); opacity: 0.5; }
   to   { transform: translateY(0);    opacity: 1; }
 }
 
+/* Imagen del producto en el modal con filtros para que se vea mejor */
 .product-modal-img {
   width: 100%; height: 280px; object-fit: cover;
   border-radius: 20px 20px 0 0; display: block;
@@ -385,6 +443,7 @@ body {
 
 .product-modal-img-wrap { position: relative; }
 
+/* Degradado sobre la imagen para que el contenido debajo sea legible */
 .product-modal-img-wrap::after {
   content: "";
   position: absolute;
@@ -394,6 +453,7 @@ body {
   pointer-events: none;
 }
 
+/* Placeholder cuando el producto no tiene imagen — fondo degradado con emoji */
 .product-modal-img-placeholder {
   width: 100%; height: 280px;
   background: linear-gradient(135deg, #1e1e3a 0%, #2b2fa8 50%, #ff8c32 100%);
@@ -403,14 +463,17 @@ body {
   position: relative; overflow: hidden;
 }
 
+/* Brillo decorativo en el placeholder */
 .product-modal-img-placeholder::before {
   content: "";
   position: absolute; inset: 0;
   background: radial-gradient(circle at 30% 40%, rgba(255,140,50,0.3) 0%, transparent 60%);
 }
 
+/* Contenedor del texto del modal */
 .product-modal-body { padding: 20px 22px 0; }
 
+/* Header del modal: nombre del producto a la izquierda, precio a la derecha */
 .product-modal-header {
   display: flex; justify-content: space-between; align-items: flex-start;
   margin-bottom: 8px;
@@ -423,19 +486,23 @@ body {
   text-shadow: 0 2px 12px rgba(0,0,0,0.5);
 }
 
+/* Precio grande en naranja con efecto de brillo */
 .product-modal-price {
   font-size: 24px; font-weight: 800; color: #ff8c32;
   margin-left: 14px; flex-shrink: 0;
   text-shadow: 0 0 20px rgba(255,140,50,0.4);
 }
 
+/* Descripción del producto en tono gris claro */
 .product-modal-desc {
   font-size: 14px; color: rgba(255,255,255,0.6);
   line-height: 1.6; margin-bottom: 22px;
 }
 
+/* Sección dentro del modal (opciones, adiciones, término) */
 .modal-section { margin-bottom: 22px; }
 
+/* Título de cada sección — pequeño, naranja, mayúsculas */
 .modal-section-title {
   font-size: 11px; font-weight: 800; color: #ff8c32;
   text-transform: uppercase; letter-spacing: 1.2px;
@@ -443,13 +510,16 @@ body {
   display: flex; align-items: center; gap: 6px;
 }
 
+/* Línea decorativa que extiende el título hasta el borde */
 .modal-section-title::after {
   content: ""; flex: 1;
   height: 1px; background: rgba(255,140,50,0.2);
 }
 
+/* ── Términos de cocción ────────────── */
 .termino-options { display: flex; gap: 10px; flex-wrap: wrap; }
 
+/* Botones de término: poco hecho, término medio, etc. */
 .termino-btn {
   padding: 9px 18px; border-radius: 50px;
   border: 1.5px solid rgba(255,255,255,0.15);
@@ -461,12 +531,15 @@ body {
 
 .termino-btn:hover { border-color: #ff8c32; color: #ff8c32; background: rgba(255,140,50,0.07); }
 
+/* Botón seleccionado — fondo degradado naranja */
 .termino-btn.selected {
   background: linear-gradient(135deg, #ff8c32, #e86520);
   border-color: #ff8c32; color: #fff;
   box-shadow: 0 4px 14px rgba(255,140,50,0.4);
 }
 
+/* ── Filas de opciones (acompañamientos) ── */
+/* Comportan como radio buttons visuales */
 .opcion-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; border-radius: 14px;
@@ -481,6 +554,7 @@ body {
 
 .opcion-label { display: flex; align-items: center; gap: 10px; font-size: 14px; color: rgba(255,255,255,0.85); font-weight: 500; }
 
+/* Círculo del radio button personalizado */
 .opcion-radio {
   width: 18px; height: 18px; border-radius: 50%;
   border: 2px solid rgba(255,255,255,0.25);
@@ -488,12 +562,18 @@ body {
   flex-shrink: 0; transition: all 0.18s;
 }
 
+/* Cuando está seleccionado, el radio se rellena de naranja */
 .opcion-row.selected .opcion-radio { border-color: #ff8c32; background: #ff8c32; }
+
+/* El punto interior del radio */
 .opcion-radio-dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; display: none; }
 .opcion-row.selected .opcion-radio-dot { display: block; }
+
+/* Precio de la opción: gris si es incluido, naranja si tiene costo */
 .opcion-precio { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.35); }
 .opcion-precio.pagado { color: #ff8c32; }
 
+/* ── Filas de adiciones (checkboxes) ── */
 .adicion-row {
   display: flex; align-items: center;
   padding: 12px 14px; border-radius: 14px;
@@ -506,6 +586,7 @@ body {
 .adicion-row:hover { border-color: rgba(255,140,50,0.4); background: rgba(255,140,50,0.05); }
 .adicion-row.selected { border-color: #ff8c32; background: rgba(255,140,50,0.1); }
 
+/* Cuadro del checkbox personalizado */
 .adicion-check {
   width: 20px; height: 20px; border-radius: 6px;
   border: 2px solid rgba(255,255,255,0.2);
@@ -514,10 +595,13 @@ body {
   font-size: 12px; color: transparent; transition: all 0.18s;
 }
 
+/* Cuando está seleccionado, el checkbox se rellena de naranja con ✓ blanco */
 .adicion-row.selected .adicion-check { background: #ff8c32; border-color: #ff8c32; color: #fff; }
+
 .adicion-label { flex: 1; font-size: 14px; color: rgba(255,255,255,0.85); font-weight: 500; }
 .adicion-precio { font-size: 13px; font-weight: 700; color: #ff8c32; }
 
+/* Botón "Agregar al pedido" — naranja degradado, ancho completo */
 .modal-add-btn {
   width: calc(100% - 44px);
   margin: 22px 22px 0;
@@ -531,6 +615,7 @@ body {
 
 .modal-add-btn:hover { transform: scale(1.02); box-shadow: 0 8px 30px rgba(255,140,50,0.6); }
 
+/* Botón "✕" para cerrar el modal — esquina superior derecha */
 .modal-close-btn {
   position: absolute; top: 14px; right: 14px;
   width: 36px; height: 36px; border-radius: 50%;
@@ -542,10 +627,15 @@ body {
   transition: background 0.15s, transform 0.15s;
 }
 
+/* Al hover se vuelve rojo para indicar "cerrar" */
 .modal-close-btn:hover { background: rgba(255,80,50,0.7); transform: scale(1.1); }
+
+/* Barra pequeña en la parte superior del modal (indicador de arrastre visual) */
 .modal-handle { width: 40px; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.15); margin: 14px auto 0; }
 
 /* ── SIDEBAR ──────────────────────────────────────────────────── */
+/* Panel lateral izquierdo — empieza fuera de pantalla (-300px)
+   y se desliza hacia adentro cuando `open` está activo */
 .sidebar {
   position: fixed; top: 0; left: -300px;
   width: 280px; height: 100%;
@@ -556,8 +646,10 @@ body {
   border-right: 1px solid rgba(255,255,255,0.06);
 }
 
+/* Cuando el sidebar está abierto, se mueve a posición 0 (visible) */
 .sidebar.open { left: 0; }
 
+/* Cabecera del sidebar con el logo y el botón de cerrar */
 .sidebar-top {
   display: flex; align-items: center; justify-content: space-between;
   padding: 24px 22px 18px;
@@ -566,6 +658,7 @@ body {
 
 .sidebar-title { font-family: "Playfair Display", serif; font-size: 22px; font-weight: 800; color: #ff8c32; }
 
+/* Botón de cerrar el sidebar (✕) */
 .sidebar-close-btn {
   background: rgba(255,255,255,0.08); border: none;
   font-size: 16px; cursor: pointer;
@@ -576,6 +669,7 @@ body {
 
 .sidebar-close-btn:hover { background: rgba(255,255,255,0.14); }
 
+/* Lista de links de navegación en el sidebar */
 .sidebar-nav { padding: 16px 14px; flex: 1; overflow-y: auto; }
 
 .sidebar-nav p {
@@ -586,10 +680,16 @@ body {
 }
 
 .sidebar-nav p:hover { background: rgba(255,140,50,0.1); color: #ff8c32; }
+
+/* Línea separadora en el sidebar */
 .sidebar-hr { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 12px 0; }
+
+/* El link de "Cerrar sesión" es rojo para diferenciarlo */
 .sidebar-logout { color: #e74c3c !important; }
 
 /* ── OVERLAY ──────────────────────────────────────────────────── */
+/* Fondo semitransparente que aparece detrás del sidebar o carrito
+   Al hacer click sobre él, se cierra el panel abierto */
 .overlay-bg {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.6);
@@ -598,8 +698,10 @@ body {
 }
 
 /* ── CARRITO ──────────────────────────────────────────────────── */
+/* Panel lateral derecho del carrito — mismo comportamiento que el sidebar
+   pero desde la derecha */
 .cart-panel {
-  position: fixed; top: 0; right: -380px;
+  position: fixed; top: 0; right: -380px; /* Empieza fuera de pantalla */
   width: 360px; height: 100%;
   background: #13112b; z-index: 1000;
   transition: right 0.28s ease;
@@ -608,6 +710,7 @@ body {
   border-left: 1px solid rgba(255,255,255,0.06);
 }
 
+/* Cuando el carrito está abierto */
 .cart-panel.open { right: 0; }
 
 .cart-panel-header {
@@ -618,10 +721,13 @@ body {
 
 .cart-panel-header h2 { font-family: "Playfair Display", serif; font-size: 20px; font-weight: 800; color: #fff; }
 
+/* Mensaje cuando el carrito está vacío */
 .cart-empty { padding: 60px 24px; text-align: center; color: rgba(255,255,255,0.35); font-size: 16px; }
 
+/* Lista de items del carrito con scroll interno */
 .cart-list { list-style: none; flex: 1; overflow-y: auto; padding: 8px 0; }
 
+/* Cada item del carrito: info a la izquierda, controles a la derecha */
 .cart-item {
   display: flex; justify-content: space-between; align-items: center;
   padding: 14px 22px; border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -629,9 +735,12 @@ body {
 
 .cart-item-info { display: flex; flex-direction: column; gap: 3px; flex: 1; margin-right: 12px; }
 .cart-item-name { font-size: 14px; font-weight: 600; color: #fff; line-height: 1.3; }
+
+/* Las opciones seleccionadas (término, acompañamiento, adiciones) en gris */
 .cart-item-meta { font-size: 11px; color: rgba(255,255,255,0.38); line-height: 1.4; }
 .cart-item-price { font-size: 13px; color: #ff8c32; font-weight: 700; }
 
+/* Controles +/- para modificar la cantidad en el carrito */
 .cart-item-controls { display: flex; align-items: center; gap: 10px; }
 
 .cart-item-controls button {
@@ -646,14 +755,17 @@ body {
 .cart-item-controls button:hover { background: rgba(255,140,50,0.15); border-color: #ff8c32; }
 .cart-item-controls span { font-weight: 700; font-size: 16px; min-width: 20px; text-align: center; color: #fff; }
 
+/* Fila del total en la parte inferior del carrito */
 .cart-total {
   display: flex; justify-content: space-between; align-items: center;
   padding: 18px 22px; border-top: 1px solid rgba(255,255,255,0.08);
   font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.6);
 }
 
+/* Número del total — grande y naranja para destacar */
 .cart-total-price { font-size: 22px; color: #ff8c32; font-weight: 800; }
 
+/* Botón de "Pagar" — naranja degradado */
 .cart-pay-btn {
   margin: 10px 22px 30px; padding: 18px; border: none; border-radius: 18px;
   background: linear-gradient(135deg, #ff8c32, #e86520);
@@ -665,15 +777,20 @@ body {
 
 .cart-pay-btn:hover { transform: scale(1.02); box-shadow: 0 8px 28px rgba(255,140,50,0.55); }
 
+/* Pantalla de confirmación de pedido enviado (✅) */
 .cart-paid { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 40px 24px; text-align: center; gap: 14px; }
 .cart-paid-icon { font-size: 70px; }
 .cart-paid h3 { font-family: "Playfair Display", serif; font-size: 24px; color: #fff; }
 .cart-paid p { font-size: 16px; color: rgba(255,255,255,0.55); line-height: 1.5; }
 
 /* ── FAVORITOS y QUEJAS ───────────────────────────────────────── */
+/* Contenedores de los tabs de favoritos y avisos */
 .favs-container, .avisos-container { padding: 16px 24px; position: relative; z-index: 1; }
+
+/* Mensaje cuando no hay favoritos */
 .favs-empty { text-align: center; color: rgba(255,255,255,0.35); padding: 60px 0; font-size: 16px; line-height: 1.6; }
 
+/* Tarjeta del formulario de quejas */
 .queja-form {
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.09);
@@ -683,6 +800,7 @@ body {
 .queja-form h3 { font-family: "Playfair Display", serif; font-size: 18px; color: #fff; margin-bottom: 6px; }
 .queja-form p { font-size: 13px; color: rgba(255,255,255,0.45); margin-bottom: 18px; line-height: 1.5; }
 
+/* Inputs del formulario de quejas (textarea y campo de mesa) */
 .queja-input, .queja-mesa-input {
   width: 100%; background: rgba(255,255,255,0.06);
   border: 1.5px solid rgba(255,255,255,0.1); border-radius: 14px;
@@ -691,10 +809,14 @@ body {
   transition: border-color 0.18s; margin-bottom: 12px;
 }
 
+/* El textarea puede redimensionarse verticalmente */
 .queja-input { resize: vertical; min-height: 110px; }
 .queja-input::placeholder, .queja-mesa-input::placeholder { color: rgba(255,255,255,0.3); }
+
+/* Al enfocar, el borde se vuelve naranja */
 .queja-input:focus, .queja-mesa-input:focus { border-color: #ff8c32; }
 
+/* Botón de enviar queja */
 .queja-send-btn {
   width: 100%; padding: 15px; border: none; border-radius: 14px;
   background: linear-gradient(135deg, #ff8c32, #e86520);
@@ -705,8 +827,11 @@ body {
 }
 
 .queja-send-btn:hover { transform: scale(1.02); box-shadow: 0 6px 20px rgba(255,140,50,0.5); }
+
+/* Deshabilitado cuando no hay texto o está enviando */
 .queja-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
+/* Mensaje verde de confirmación de envío exitoso */
 .queja-success {
   background: rgba(34,197,94,0.1);
   border: 1.5px solid rgba(34,197,94,0.3);
@@ -716,19 +841,21 @@ body {
 }
 
 /* ── BARRA INFERIOR ───────────────────────────────────────────── */
+/* Bottom navigation fija en la parte inferior de la pantalla.
+   Siempre visible, con 4 botones: Inicio, Menú, Favoritos, Avisos */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
   height: 70px;
   background: rgba(13,13,26,0.97);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px); /* Efecto de cristal */
   -webkit-backdrop-filter: blur(16px);
   display: flex; justify-content: space-around; align-items: center;
   border-top: 1px solid rgba(255,255,255,0.07);
   z-index: 50;
 }
 
-/* ── BARRA INFERIOR: nav-btn del MENÚ (no del admin) ─────────── */
-/* Usar selector más específico para no pisar el .nav-btn del admin */
+/* Botones de la barra inferior — usamos selector específico `.bottom-nav .nav-btn`
+   para no interferir con posibles `.nav-btn` de otras páginas (ej: admin) */
 .bottom-nav .nav-btn {
   display: flex;
   flex-direction: column;
@@ -737,7 +864,7 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.35); /* Gris por defecto */
   font-size: 11px;
   font-weight: 600;
   padding: 6px 20px;
@@ -745,5 +872,8 @@ body {
   font-family: "DM Sans", sans-serif;
 }
 
+/* Tab activo se vuelve naranja */
 .bottom-nav .nav-btn.active { color: #ff8c32; }
+
+/* Emoji del tab */
 .bottom-nav .nav-icon { font-size: 22px; line-height: 1; }

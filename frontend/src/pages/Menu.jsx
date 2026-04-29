@@ -1,9 +1,25 @@
+// ============================================================
+// Menu.jsx — Página principal del menú del restaurante
+// ============================================================
+// Este es el componente más grande e importante del proyecto.
+// Se encarga de mostrarle al cliente TODO lo relacionado con
+// el menú: categorías, productos, carrito de compras, búsqueda,
+// favoritos y el formulario de quejas/sugerencias.
+//
+// También permite a los administradores agregar y editar
+// productos directamente desde la interfaz del cliente.
+// ============================================================
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Menu.css";
 import FoodCard from "../components/FoodCard";
 import { imagenes } from "../data/imagenes";
 
+// ── Íconos por categoría ─────────────────────────────────────
+// Objeto que mapea cada nombre de categoría con su emoji
+// correspondiente. Se usa para mostrar el ícono visual en las
+// tarjetas de categoría y en los títulos de sección.
 const catIconos = {
   "Platos fuertes": "🍽️",
   "Entradas":       "🥗",
@@ -17,35 +33,77 @@ const catIconos = {
   "Quesos":         "🧀",
 };
 
+// ── Constantes del Bar ───────────────────────────────────────
+// BAR_CATS: categorías que se consideran "del bar" (bebidas).
+// Se usan para separar los pedidos: comidas van a cocina,
+// bebidas van al bar.
 const BAR_CATS  = ["Bar", "Bebidas"];
+
+// BAR_SUBS: subcategorías dentro del Bar. Se muestran como
+// un segundo nivel de navegación cuando el usuario selecciona
+// la categoría "Bar".
 const BAR_SUBS  = ["Licores","Cervezas","Jugos","Micheladas","Gaseosas","Malteadas"];
+
+// BAR_ICONS: íconos emoji para cada subcategoría del bar
 const BAR_ICONS = { Licores:"🥃", Cervezas:"🍺", Jugos:"🍊", Micheladas:"🍻", Gaseosas:"🥤", Malteadas:"🍦" };
+
+// TERMINOS: opciones de cocción para los cortes de carne.
+// Solo se muestran cuando el producto tiene `tiene_termino: true`
 const TERMINOS  = ["Poco hecho","Término medio","Bien hecho","Muy bien hecho"];
+
+// fmtCOP: función auxiliar para formatear números como precios
+// en pesos colombianos. Ejemplo: 28000 → "$28.000"
 const fmtCOP    = n => `$${Number(n).toLocaleString("es-CO")}`;
 
+
+// ============================================================
+// Componente: ProductModal
+// ============================================================
+// Modal que se abre cuando el usuario toca una tarjeta de
+// producto. Muestra la imagen, descripción, precio, opciones
+// de acompañamiento, adiciones y el botón para agregar al carrito.
+//
+// Props:
+//   - item: objeto del producto seleccionado
+//   - onClose: función para cerrar el modal
+//   - onAddToCart: función para agregar el producto al carrito
+// ============================================================
 const ProductModal = ({ item, onClose, onAddToCart }) => {
+  // Estado local del modal: término de cocción seleccionado
   const [termino,   setTermino]   = useState(null);
+  // Opción de acompañamiento seleccionada (radio button)
   const [opcionSel, setOpcionSel] = useState(null);
+  // Lista de adiciones seleccionadas (checkboxes)
   const [adiciones, setAdiciones] = useState([]);
 
+  // Si no hay item seleccionado, no renderizamos nada
   if (!item) return null;
 
   const opciones      = item.opciones  || [];
   const adicionesDisp = item.adiciones || [];
 
+  // toggleAdicion: agrega o quita una adición de la lista
+  // Si ya estaba seleccionada la quita, si no estaba la agrega
   const toggleAdicion = nombre =>
     setAdiciones(prev => prev.includes(nombre) ? prev.filter(a=>a!==nombre) : [...prev,nombre]);
 
+  // Calculamos el precio extra sumando el precio de cada adición
+  // que el usuario haya seleccionado
   const precioAdiciones = adicionesDisp
     .filter(a => adiciones.includes(a.nombre))
     .reduce((s,a) => s + Number(a.precio), 0);
 
+  // El precio total es el precio base del producto + adiciones
   const precioTotal = Number(item.precio || 0) + precioAdiciones;
 
   return (
     <div className="product-modal-overlay" onClick={onClose}>
+      {/* Detenemos la propagación del click para que el modal
+          no se cierre al hacer click dentro de él */}
       <div className="product-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-handle" />
+
+        {/* Imagen del producto o placeholder con emoji si no tiene imagen */}
         {item.img
           ? <div className="product-modal-img-wrap">
               <img src={item.img} alt={item.nombre} className="product-modal-img" />
@@ -54,15 +112,22 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
               {catIconos[item.categoria] || "🍽️"}
             </div>
         }
+
         <button className="modal-close-btn" onClick={onClose}>✕</button>
+
         <div className="product-modal-body">
           <div className="product-modal-header">
             <h2 className="product-modal-title">{item.nombre}</h2>
+            {/* El precio se actualiza en tiempo real con las adiciones */}
             <span className="product-modal-price">{fmtCOP(precioTotal)}</span>
           </div>
+
           <p className="product-modal-desc">
             {item.descripcion || "Delicioso plato preparado con los mejores ingredientes."}
           </p>
+
+          {/* Sección de término de cocción — solo visible si el producto
+              tiene la propiedad `tiene_termino: true` (carnes) */}
           {item.tiene_termino && (
             <div className="modal-section">
               <p className="modal-section-title">🥩 Término de cocción</p>
@@ -73,6 +138,8 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
               </div>
             </div>
           )}
+
+          {/* Sección de acompañamientos — solo si el producto tiene opciones */}
           {opciones.length > 0 && (
             <div className="modal-section">
               <p className="modal-section-title">🍟 ¿Con qué lo acompañas?</p>
@@ -82,6 +149,7 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
                     <span className="opcion-radio"><span className="opcion-radio-dot"/></span>
                     {op.nombre}
                   </span>
+                  {/* Si el precio es 0 muestra "Incluido", si no muestra el precio extra */}
                   <span className={`opcion-precio ${Number(op.precio)>0?"pagado":""}`}>
                     {Number(op.precio)>0 ? `+${fmtCOP(op.precio)}` : "Incluido"}
                   </span>
@@ -89,6 +157,8 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
               ))}
             </div>
           )}
+
+          {/* Sección de adiciones — checkboxes con precio extra */}
           {adicionesDisp.length > 0 && (
             <div className="modal-section">
               <p className="modal-section-title">➕ Adiciones</p>
@@ -101,6 +171,9 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
               ))}
             </div>
           )}
+
+          {/* Botón principal: agrega el producto al carrito con todas
+              las opciones seleccionadas y cierra el modal */}
           <button className="modal-add-btn" onClick={() => { onAddToCart({ ...item, termino, opcion: opcionSel, adiciones }); onClose(); }}>
             Agregar al pedido — {fmtCOP(precioTotal)}
           </button>
@@ -110,37 +183,72 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
   );
 };
 
+
+// ============================================================
+// Componente principal: Menu
+// ============================================================
+// Este es el componente "padre" que controla toda la página.
+// Maneja el estado global de la vista: qué categoría está
+// seleccionada, qué hay en el carrito, qué tab está activo,
+// qué producto está en el modal, etc.
+// ============================================================
 const Menu = () => {
   const navigate = useNavigate();
 
-  const [categoria,    setCategoria]    = useState(null);
-  const [subCategoria, setSubCategoria] = useState(null);
-  const [menuOpen,     setMenuOpen]     = useState(false);
-  const [menuDB,       setMenuDB]       = useState({});
-  const [cartOpen,     setCartOpen]     = useState(false);
-  const [cart,         setCart]         = useState([]);
-  const [pagado,       setPagado]       = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [favs,         setFavs]         = useState([]);
-  const [activeTab,    setActiveTab]    = useState("home");
-  const [quejaMsg,     setQuejaMsg]     = useState("");
-  const [quejaMesa,    setQuejaMesa]    = useState("");
-  const [quejaSent,    setQuejaSent]    = useState(false);
-  const [quejaLoading, setQuejaLoading] = useState(false);
-  const [searchText,   setSearchText]   = useState("");
-  const [addModal,     setAddModal]     = useState(false);
-  const [categoriasBD, setCategoriasBD] = useState([]);
-  const [nuevoProducto, setNuevoProducto] = useState({
-    nombre: "", descripcion: "", precio: "", categoria_id: "", _catNombre: "", subcategoria: "", imagen: "", adiciones: []
-  });
-  const [nuevaAdicion, setNuevaAdicion] = useState({ nombre: "", precio: "" });
-  const [guardando, setGuardando] = useState(false);
-  const [guardadoOk, setGuardadoOk] = useState(false);
-  const [editModal,     setEditModal]     = useState(false);
-  const [editProducto,  setEditProducto]  = useState(null);
-  const [editando,      setEditando]      = useState(false);
-  const [editOk,        setEditOk]        = useState(false);
+  // ── Estados de navegación ──────────────────────────────────
+  const [categoria,    setCategoria]    = useState(null);      // Categoría activa (ej: "Cortes")
+  const [subCategoria, setSubCategoria] = useState(null);      // Subcategoría del bar activa
+  const [menuOpen,     setMenuOpen]     = useState(false);     // Sidebar lateral abierto/cerrado
+  const [activeTab,    setActiveTab]    = useState("home");    // Tab activo: home | menu | favs | notif
 
+  // ── Estado del menú (datos) ────────────────────────────────
+  // menuDB: datos que vienen de la base de datos (API)
+  // Si está vacío, se usa menuData (datos estáticos de respaldo)
+  const [menuDB, setMenuDB] = useState({});
+
+  // ── Estados del carrito ────────────────────────────────────
+  const [cartOpen, setCartOpen] = useState(false);   // Panel del carrito abierto/cerrado
+  const [cart,     setCart]     = useState([]);       // Array de productos en el carrito
+  const [pagado,   setPagado]   = useState(false);    // true cuando el pedido fue enviado
+
+  // ── Estado del modal de producto ──────────────────────────
+  const [selectedItem, setSelectedItem] = useState(null);  // Producto seleccionado para el modal
+
+  // ── Estado de favoritos ────────────────────────────────────
+  const [favs, setFavs] = useState([]);  // Lista de productos marcados como favoritos
+
+  // ── Estados del formulario de quejas ──────────────────────
+  const [quejaMsg,     setQuejaMsg]     = useState("");     // Texto del mensaje
+  const [quejaMesa,    setQuejaMesa]    = useState("");     // Número de mesa del cliente
+  const [quejaSent,    setQuejaSent]    = useState(false);  // Confirmación de envío
+  const [quejaLoading, setQuejaLoading] = useState(false);  // Estado de carga del envío
+
+  // ── Estado de búsqueda ────────────────────────────────────
+  const [searchText, setSearchText] = useState("");  // Texto del buscador
+
+  // ── Estados del modal "Agregar producto" (admin) ──────────
+  const [addModal,      setAddModal]      = useState(false);   // Modal abierto/cerrado
+  const [categoriasBD,  setCategoriasBD]  = useState([]);      // Categorías cargadas desde la BD
+  const [nuevoProducto, setNuevoProducto] = useState({         // Formulario del nuevo producto
+    nombre: "", descripcion: "", precio: "", categoria_id: "",
+    _catNombre: "", subcategoria: "", imagen: "", adiciones: []
+  });
+  const [nuevaAdicion, setNuevaAdicion] = useState({ nombre: "", precio: "" }); // Input temporal para adiciones
+  const [guardando,    setGuardando]    = useState(false);  // Cargando mientras guarda
+  const [guardadoOk,   setGuardadoOk]  = useState(false);  // Confirmación de guardado exitoso
+
+  // ── Estados del modal "Editar producto" (admin) ───────────
+  const [editModal,    setEditModal]    = useState(false);   // Modal abierto/cerrado
+  const [editProducto, setEditProducto] = useState(null);    // Producto que se está editando
+  const [editando,     setEditando]     = useState(false);   // Cargando mientras edita
+  const [editOk,       setEditOk]       = useState(false);   // Confirmación de edición exitosa
+
+
+  // ── useEffect: cargar menú desde la API ───────────────────
+  // Al montar el componente, hacemos una petición GET al backend
+  // para obtener los productos de la base de datos.
+  // Organizamos los productos en un objeto por categoría:
+  // { "Platos fuertes": [...], "Entradas": [...], ... }
   useEffect(() => {
     fetch("http://localhost:3001/api/menu")
       .then(res => res.json())
@@ -151,7 +259,7 @@ const Menu = () => {
           if (!organizado[cat]) organizado[cat] = [];
           organizado[cat].push({
             nombre:        prod.nombre,
-            img:           imagenes[prod.imagen] || null,
+            img:           imagenes[prod.imagen] || null,  // Buscamos la imagen en el objeto imagenes
             descripcion:   prod.descripcion,
             precio:        prod.precio,
             tiene_termino: prod.tiene_termino,
@@ -166,6 +274,11 @@ const Menu = () => {
       .catch(err => console.error("Error BD:", err));
   }, []);
 
+
+  // ── menuData: datos estáticos de respaldo ─────────────────
+  // Si la API falla o no hay datos en la BD, se usan estos datos
+  // hardcodeados para que la app siga funcionando.
+  // Cada categoría es un array de productos con sus propiedades.
   const menuData = {
     "Platos fuertes": [
       {
@@ -297,7 +410,7 @@ const Menu = () => {
       {
         nombre:"Punta de Anca", img:imagenes.ribeye, categoria:"Cortes",
         descripcion:"Corte de res premium, jugoso y tierno. Cocinado a la parrilla de carbón.",
-        precio:58000, tiene_termino:true,
+        precio:58000, tiene_termino:true,  // tiene_termino: true → muestra selector de cocción
         opciones:[{nombre:"Papas al romero",precio:0},{nombre:"Puré de papa",precio:0},{nombre:"Ensalada mixta",precio:0}],
         adiciones:[{nombre:"Salsa chimichurri",precio:4000},{nombre:"Salsa de pimienta",precio:4000}],
       },
@@ -381,6 +494,8 @@ const Menu = () => {
         adiciones:[{nombre:"Salsa BBQ",precio:1500},{nombre:"Salsa rosada",precio:1500}],
       },
     ],
+    // Bar tiene una estructura diferente: en vez de ser un array plano,
+    // es un objeto con una clave por subcategoría, cada una con su array
     "Bar": {
       Licores:[
         {
@@ -410,15 +525,28 @@ const Menu = () => {
     },
   };
 
+  // ── Productos destacados en la pantalla de inicio ─────────
+  // Son los 3 productos que aparecen en la sección "Recomendados"
+  // del tab Home. Se toman directamente de menuData (datos estáticos).
   const destacados = [
-    menuData["Platos fuertes"][0],
-    menuData["Cortes"][0],
-    menuData["Platos típicos"][1],
+    menuData["Platos fuertes"][0],  // Hamburguesa Especial
+    menuData["Cortes"][0],          // Punta de Anca
+    menuData["Platos típicos"][1],  // Mondongo
   ];
 
+  // ── Decisión: ¿qué datos usar? ────────────────────────────
+  // Si la base de datos respondió con datos, los usamos.
+  // Si no, usamos el menuData estático como respaldo.
   const dataFinal = Object.keys(menuDB).length ? menuDB : menuData;
 
+
+  // ── addToCart: agregar producto al carrito ─────────────────
+  // Si el mismo producto (con las mismas opciones) ya está en
+  // el carrito, incrementa su cantidad. Si no, lo agrega nuevo.
+  // La clave única (_key) combina nombre + término + opción + adiciones
+  // para diferenciar, por ejemplo, un solomito "bien hecho" de uno "poco hecho".
   const addToCart = item => {
+    // Buscamos la clave del nombre de imagen para guardarla en el pedido
     const imgKey = Object.entries(imagenes).find(([k,v]) => v === item.img)?.[0] || null;
     setCart(prev => {
       const key = `${item.nombre}|${item.termino||""}|${item.opcion||""}|${(item.adiciones||[]).join(",")}`;
@@ -428,6 +556,8 @@ const Menu = () => {
     });
   };
 
+  // ── removeOne: quitar una unidad del carrito ───────────────
+  // Si la cantidad llega a 0, elimina el producto del carrito
   const removeOne = key => {
     setCart(prev => {
       const existe = prev.find(c => c._key===key);
@@ -436,16 +566,24 @@ const Menu = () => {
     });
   };
 
-  const totalItems  = cart.reduce((a,c) => a+c.qty, 0);
-  const totalPrecio = cart.reduce((a,c) => a+c.precio*c.qty, 0);
+  // ── Totales del carrito ────────────────────────────────────
+  const totalItems  = cart.reduce((a,c) => a+c.qty, 0);         // Cantidad total de productos
+  const totalPrecio = cart.reduce((a,c) => a+c.precio*c.qty, 0); // Precio total
 
-  // ── handlePagar CORREGIDO — envía comidas a cocina y bebidas al bar ──
+
+  // ── handlePagar: confirmar y enviar el pedido ──────────────
+  // Separa los items del carrito en dos grupos:
+  //   - comidas → se envían a la API de cocina
+  //   - bebidas → se envían a la API del bar
+  // Luego muestra la pantalla de confirmación y limpia el carrito.
   const handlePagar = async () => {
+    // Validación: el número de mesa es obligatorio
     if (!quejaMesa.trim()) {
       alert("Por favor ingresa el número de tu mesa antes de confirmar el pedido.");
       return;
     }
 
+    // Separamos comidas (van a cocina) y bebidas (van al bar)
     const comidas = cart.filter(c => !BAR_CATS.includes(c.categoria));
     const bebidas = cart.filter(c =>  BAR_CATS.includes(c.categoria));
 
@@ -465,6 +603,7 @@ const Menu = () => {
               categoria:   "comida",
               imgKey:      c.imgKey || null,
               imagen:      c.imgKey || null,
+              // La observación combina: término de cocción + opción + adiciones
               observacion: [c.termino, c.opcion, ...(c.adiciones || [])]
                 .filter(Boolean).join(", ") || null,
             })),
@@ -497,6 +636,7 @@ const Menu = () => {
       }
     }
 
+    // Mostramos la pantalla de éxito por 4 segundos y luego limpiamos todo
     setPagado(true);
     setTimeout(() => {
       setPagado(false);
@@ -506,6 +646,10 @@ const Menu = () => {
     }, 4000);
   };
 
+
+  // ── useEffect: cargar categorías para el modal de admin ───
+  // Solo se cargan cuando el modal de "agregar producto" se abre
+  // y si aún no se han cargado antes (para no hacer peticiones repetidas)
   useEffect(() => {
     if (addModal && categoriasBD.length === 0) {
       fetch("http://localhost:3001/api/menu/categorias")
@@ -515,6 +659,10 @@ const Menu = () => {
     }
   }, [addModal]);
 
+
+  // ── handleGuardarProducto: crear nuevo producto en la BD ──
+  // Valida que los campos obligatorios estén llenos,
+  // hace POST a la API y recarga el menú al terminar.
   const handleGuardarProducto = async () => {
     if (!nuevoProducto.nombre || !nuevoProducto.precio || !nuevoProducto.categoria_id) return;
     setGuardando(true);
@@ -526,10 +674,12 @@ const Menu = () => {
       });
       if (res.ok) {
         setGuardadoOk(true);
+        // Limpiamos el formulario
         setNuevoProducto({ nombre: "", descripcion: "", precio: "", categoria_id: "", _catNombre: "", subcategoria: "", imagen: "", adiciones: [] });
         setTimeout(() => {
           setGuardadoOk(false);
           setAddModal(false);
+          // Recargamos el menú completo para que aparezca el nuevo producto
           fetch("http://localhost:3001/api/menu")
             .then(r => r.json())
             .then(data => {
@@ -553,6 +703,9 @@ const Menu = () => {
     setGuardando(false);
   };
 
+
+  // ── handleEditarProducto: actualizar producto existente ───
+  // Hace PUT a la API con los datos modificados y recarga el menú.
   const handleEditarProducto = async () => {
     if (!editProducto?.id || !editProducto.nombre || !editProducto.precio) return;
     setEditando(true);
@@ -572,6 +725,7 @@ const Menu = () => {
         setTimeout(() => {
           setEditOk(false);
           setEditModal(false);
+          // Recargamos el menú para reflejar los cambios
           fetch("http://localhost:3001/api/menu")
             .then(r => r.json())
             .then(data => {
@@ -596,10 +750,18 @@ const Menu = () => {
     setEditando(false);
   };
 
+
+  // ── toggleFav: agregar/quitar favorito ────────────────────
+  // Si el producto ya está en favoritos lo quita, si no lo agrega
   const toggleFav = item =>
     setFavs(prev => prev.find(f=>f.nombre===item.nombre) ? prev.filter(f=>f.nombre!==item.nombre) : [...prev,item]);
+
+  // isFav: retorna true si el producto está en favoritos
   const isFav = nombre => favs.some(f=>f.nombre===nombre);
 
+
+  // ── handleEnviarQueja: enviar mensaje al administrador ────
+  // Hace POST a la API de quejas con el mensaje y la mesa.
   const handleEnviarQueja = async () => {
     if (!quejaMsg.trim()) return;
     setQuejaLoading(true);
@@ -614,23 +776,41 @@ const Menu = () => {
     setQuejaLoading(false);
   };
 
+
+  // ── Lógica del buscador ───────────────────────────────────
+  // Aplana todos los productos de todas las categorías en un array
+  // para poder filtrar por nombre sin importar la categoría.
   const allProductos = Object.values(dataFinal).flatMap(val =>
     typeof val==="object" && !Array.isArray(val) ? Object.values(val).flat() : Array.isArray(val) ? val : []
   );
+  // Si hay texto en el buscador, filtramos. Si no, retornamos null
+  // (null significa "no mostrar resultados, mostrar el menú normal")
   const productosFiltrados = searchText.trim()
     ? allProductos.filter(p => p.nombre?.toLowerCase().includes(searchText.toLowerCase()))
     : null;
 
+
+  // ── renderCard: función para renderizar una tarjeta de producto
+  // Envuelve el componente FoodCard con los botones de favorito,
+  // agregar al carrito y editar (si el producto viene de la BD y tiene id)
   const renderCard = (item, i) => (
     <div key={i} className="food-card-wrapper">
+      {/* Al hacer click en la tarjeta se abre el modal del producto */}
       <div onClick={() => setSelectedItem(item)}>
         <FoodCard item={item} />
       </div>
+
+      {/* Botón de favorito (corazón) */}
       <button className={`fav-btn ${isFav(item.nombre)?"active":""}`}
         onClick={e => { e.stopPropagation(); toggleFav(item); }}>
         {isFav(item.nombre) ? "❤️" : "🤍"}
       </button>
+
+      {/* Botón "+" para abrir el modal y agregar al carrito */}
       <button className="add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>+</button>
+
+      {/* Botón de edición — solo visible si el producto tiene `id`
+          (es decir, viene de la base de datos, no de los datos estáticos) */}
       {item.id && (
         <button onClick={e => { e.stopPropagation(); setEditProducto({ ...item, imagen: Object.entries(imagenes).find(([,v]) => v === item.img)?.[0] || "" }); setEditModal(true); }}
           style={{ position:"absolute", top:"8px", right:"8px", background:"rgba(0,0,0,0.6)", border:"none", color:"#fff", borderRadius:"50%", width:"28px", height:"28px", cursor:"pointer", fontSize:"13px", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -640,21 +820,35 @@ const Menu = () => {
     </div>
   );
 
+
+  // ── getBarItems: obtener productos de una subcategoría del bar
+  // El Bar puede estar organizado de dos formas en dataFinal:
+  //   1. Como objeto con claves por subcategoría (datos estáticos)
+  //   2. Como array plano con campo `subcategoria` (datos de la BD)
+  // Esta función maneja ambos casos.
   const getBarItems = (cat, sub) => {
     const catData = dataFinal[cat];
     if (!catData) return [];
     if (Array.isArray(catData)) {
+      // Datos de la BD: filtramos por el campo subcategoria
       return catData.filter(p =>
         p.subcategoria?.toLowerCase().trim() === sub.toLowerCase().trim()
       );
     }
+    // Datos estáticos: accedemos directamente por la clave
     return catData[sub] || [];
   };
 
+
+  // ── RENDER ────────────────────────────────────────────────
   return (
     <div className="menu-container">
 
-      {/* MODAL AGREGAR PRODUCTO */}
+      {/* ══════════════════════════════════════════════════════
+          MODAL: Agregar nuevo producto (visible solo para admin)
+          Formulario completo con nombre, descripción, precio,
+          categoría, imagen y adiciones personalizadas.
+      ══════════════════════════════════════════════════════ */}
       {addModal && (
         <div className="product-modal-overlay" onClick={() => setAddModal(false)}>
           <div className="product-modal" onClick={e => e.stopPropagation()} style={{ maxHeight: "90vh", overflowY: "auto" }}>
@@ -663,6 +857,7 @@ const Menu = () => {
             <div className="product-modal-body" style={{ paddingTop: "20px" }}>
               <h2 className="product-modal-title" style={{ marginBottom: "20px" }}>➕ Nuevo producto</h2>
 
+              {/* Campo: Nombre del producto */}
               <div className="modal-section">
                 <p className="modal-section-title">Nombre</p>
                 <input className="queja-mesa-input" placeholder="Ej: Arroz con pollo"
@@ -670,6 +865,7 @@ const Menu = () => {
                   onChange={e => setNuevoProducto(p => ({ ...p, nombre: e.target.value }))} />
               </div>
 
+              {/* Campo: Descripción */}
               <div className="modal-section">
                 <p className="modal-section-title">Descripción</p>
                 <textarea className="queja-input" style={{ minHeight: "70px" }} placeholder="Descripción del plato..."
@@ -677,6 +873,7 @@ const Menu = () => {
                   onChange={e => setNuevoProducto(p => ({ ...p, descripcion: e.target.value }))} />
               </div>
 
+              {/* Campo: Precio en COP */}
               <div className="modal-section">
                 <p className="modal-section-title">Precio (COP)</p>
                 <input className="queja-mesa-input" type="number" placeholder="Ej: 25000"
@@ -684,6 +881,9 @@ const Menu = () => {
                   onChange={e => setNuevoProducto(p => ({ ...p, precio: e.target.value }))} />
               </div>
 
+              {/* Campo: Selector de categoría
+                  Si la BD respondió, muestra las categorías reales.
+                  Si no, muestra opciones hardcodeadas como respaldo. */}
               <div className="modal-section">
                 <p className="modal-section-title">Categoría</p>
                 <select className="queja-mesa-input"
@@ -701,6 +901,7 @@ const Menu = () => {
                         </option>
                       ))
                     : (
+                      // Opciones de respaldo hardcodeadas si la BD no responde
                       <>
                         <option value="1" style={{ color: "#000" }}>🍽️ Platos fuertes</option>
                         <option value="2" style={{ color: "#000" }}>🥗 Entradas</option>
@@ -715,6 +916,7 @@ const Menu = () => {
                     )
                   }
                 </select>
+                {/* Si se seleccionó "Bar", aparece un segundo selector para la subcategoría */}
                 {nuevoProducto._catNombre === "Bar" && (
                   <select className="queja-mesa-input" style={{ cursor: "pointer", marginTop: "8px" }}
                     value={nuevoProducto.subcategoria || ""}
@@ -725,6 +927,9 @@ const Menu = () => {
                 )}
               </div>
 
+              {/* Campo: Selector de imagen
+                  Muestra un dropdown con todas las claves del objeto imagenes
+                  y una vista previa de la imagen seleccionada */}
               <div className="modal-section">
                 <p className="modal-section-title">Imagen</p>
                 <select className="queja-mesa-input"
@@ -736,6 +941,7 @@ const Menu = () => {
                     <option key={k} value={k} style={{ color: "#000" }}>{k}</option>
                   ))}
                 </select>
+                {/* Vista previa de la imagen elegida */}
                 {nuevoProducto.imagen && imagenes[nuevoProducto.imagen] && (
                   <img
                     src={imagenes[nuevoProducto.imagen]}
@@ -745,8 +951,12 @@ const Menu = () => {
                 )}
               </div>
 
+              {/* Campo: Adiciones personalizadas
+                  Lista de adiciones ya agregadas + formulario para agregar nuevas.
+                  Cada adición tiene nombre y precio. */}
               <div className="modal-section">
                 <p className="modal-section-title">Adiciones</p>
+                {/* Renderiza las adiciones ya agregadas con botón para eliminar */}
                 {nuevoProducto.adiciones.map((ad, i) => (
                   <div key={i} style={{ display: "flex", gap: "8px", marginBottom: "8px", alignItems: "center" }}>
                     <span style={{ flex: 1, color: "rgba(255,255,255,0.7)", fontSize: "13px" }}>
@@ -758,6 +968,7 @@ const Menu = () => {
                     </button>
                   </div>
                 ))}
+                {/* Formulario inline para agregar una nueva adición */}
                 <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
                   <input className="queja-mesa-input" placeholder="Nombre adición"
                     value={nuevaAdicion.nombre}
@@ -777,10 +988,12 @@ const Menu = () => {
                 </div>
               </div>
 
+              {/* Mensaje de confirmación cuando el producto se guardó exitosamente */}
               {guardadoOk && (
                 <div className="queja-success">✅ ¡Producto guardado correctamente!</div>
               )}
 
+              {/* Botón principal de guardado — deshabilitado si faltan campos obligatorios */}
               <button className="modal-add-btn"
                 onClick={handleGuardarProducto}
                 disabled={guardando || !nuevoProducto.nombre || !nuevoProducto.precio || !nuevoProducto.categoria_id}>
@@ -791,7 +1004,11 @@ const Menu = () => {
         </div>
       )}
 
-      {/* MODAL EDITAR PRODUCTO */}
+      {/* ══════════════════════════════════════════════════════
+          MODAL: Editar producto existente (visible solo para admin)
+          Permite modificar nombre, descripción, precio e imagen.
+          Solo aparece en productos que vienen de la BD (tienen `id`).
+      ══════════════════════════════════════════════════════ */}
       {editModal && editProducto && (
         <div className="product-modal-overlay" onClick={() => setEditModal(false)}>
           <div className="product-modal" onClick={e => e.stopPropagation()} style={{ maxHeight: "90vh", overflowY: "auto" }}>
@@ -834,6 +1051,7 @@ const Menu = () => {
                 )}
               </div>
 
+              {/* Mensaje de éxito al actualizar */}
               {editOk && <div className="queja-success">✅ ¡Producto actualizado!</div>}
 
               <button className="modal-add-btn" onClick={handleEditarProducto}
@@ -845,18 +1063,25 @@ const Menu = () => {
         </div>
       )}
 
+      {/* Modal del producto seleccionado para ver detalles y agregar al carrito */}
       {selectedItem && (
         <ProductModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={addToCart} />
       )}
 
-      {/* SIDEBAR */}
+      {/* ══════════════════════════════════════════════════════
+          SIDEBAR: Menú lateral de navegación
+          Se abre con el botón ☰ del header.
+          Permite navegar entre categorías y cerrar sesión.
+      ══════════════════════════════════════════════════════ */}
       <div className={`sidebar ${menuOpen?"open":""}`}>
         <div className="sidebar-top">
           <span className="sidebar-title">MesaSmart</span>
           <button className="sidebar-close-btn" onClick={() => setMenuOpen(false)}>✕</button>
         </div>
         <nav className="sidebar-nav">
+          {/* Botón Inicio */}
           <p onClick={() => { setMenuOpen(false); setCategoria(null); setSubCategoria(null); navigate("/menu"); }}>🏠&nbsp; Inicio</p>
+          {/* Generamos un link por cada categoría del menú */}
           {Object.keys(dataFinal).map(cat => (
             <p key={cat} onClick={() => { setMenuOpen(false); setCategoria(cat); setSubCategoria(null); setActiveTab("menu"); }}>
               {catIconos[cat]||"🍴"}&nbsp; {cat}
@@ -866,15 +1091,22 @@ const Menu = () => {
           <p className="sidebar-logout" onClick={() => { setMenuOpen(false); navigate("/"); }}>🚪&nbsp; Cerrar sesión</p>
         </nav>
       </div>
+      {/* Overlay oscuro detrás del sidebar — al hacer click cierra el sidebar */}
       {menuOpen && <div className="overlay-bg" onClick={() => setMenuOpen(false)}/>}
 
-      {/* CARRITO */}
+      {/* ══════════════════════════════════════════════════════
+          PANEL DEL CARRITO: Se desliza desde la derecha
+          Muestra los productos en el carrito, el campo de mesa,
+          el total y el botón para confirmar el pedido.
+      ══════════════════════════════════════════════════════ */}
       {cartOpen && <div className="overlay-bg" onClick={() => setCartOpen(false)}/>}
       <div className={`cart-panel ${cartOpen?"open":""}`}>
         <div className="cart-panel-header">
           <h2>Tu pedido 🛒</h2>
           <button className="sidebar-close-btn" onClick={() => setCartOpen(false)}>✕</button>
         </div>
+
+        {/* Si el pedido fue enviado, mostramos pantalla de éxito */}
         {pagado ? (
           <div className="cart-paid">
             <div className="cart-paid-icon">✅</div>
@@ -882,9 +1114,11 @@ const Menu = () => {
             <p>Dirígete a caja a pagar 🎉</p>
           </div>
         ) : cart.length===0 ? (
+          // Si el carrito está vacío
           <p className="cart-empty">Aún no has agregado nada 🍽️</p>
         ) : (
           <>
+            {/* Campo para ingresar el número de mesa (obligatorio para pagar) */}
             <div style={{ padding: "14px 22px 0" }}>
               <input
                 type="text"
@@ -905,11 +1139,13 @@ const Menu = () => {
               />
             </div>
 
+            {/* Lista de productos en el carrito con controles +/- */}
             <ul className="cart-list">
               {cart.map((c,i) => (
                 <li key={i} className="cart-item">
                   <div className="cart-item-info">
                     <span className="cart-item-name">{c.nombre}</span>
+                    {/* Muestra las opciones seleccionadas (término, acompañamiento, adiciones) */}
                     {(c.termino||c.opcion||c.adiciones?.length>0) && (
                       <span className="cart-item-meta">
                         {[c.termino,c.opcion,...(c.adiciones||[])].filter(Boolean).join(" · ")}
@@ -925,16 +1161,24 @@ const Menu = () => {
                 </li>
               ))}
             </ul>
+
+            {/* Total del carrito */}
             <div className="cart-total">
               <span>Total</span>
               <span className="cart-total-price">{fmtCOP(totalPrecio)}</span>
             </div>
+
+            {/* Botón para confirmar el pedido */}
             <button className="cart-pay-btn" onClick={handlePagar}>Pagar {fmtCOP(totalPrecio)}</button>
           </>
         )}
       </div>
 
-      {/* HEADER */}
+      {/* ══════════════════════════════════════════════════════
+          HEADER: Barra superior fija
+          Contiene el botón de menú lateral, el nombre del app
+          y el botón del carrito con el contador de items.
+      ══════════════════════════════════════════════════════ */}
       <div className="top-bar">
         <span className="menu-icon" onClick={() => setMenuOpen(true)}>☰</span>
         <h1>Mesa<span>Smart</span></h1>
@@ -943,7 +1187,11 @@ const Menu = () => {
         </button>
       </div>
 
-      {/* BUSCADOR */}
+      {/* ══════════════════════════════════════════════════════
+          BUSCADOR: Input para filtrar productos por nombre
+          Cuando hay texto, oculta el menú normal y muestra
+          solo los resultados que coincidan.
+      ══════════════════════════════════════════════════════ */}
       <div className="search-row">
         <div className="search-box">
           <span className="search-icon">🔍</span>
@@ -951,7 +1199,11 @@ const Menu = () => {
         </div>
       </div>
 
-      {/* BÚSQUEDA */}
+      {/* ══════════════════════════════════════════════════════
+          RESULTADOS DE BÚSQUEDA
+          Solo se muestra cuando hay texto en el buscador.
+          Reemplaza visualmente al menú normal.
+      ══════════════════════════════════════════════════════ */}
       {searchText.trim() && (
         <>
           <p className="section-title">🔍 Resultados</p>
@@ -964,14 +1216,21 @@ const Menu = () => {
         </>
       )}
 
-      {/* TAB HOME */}
+      {/* ══════════════════════════════════════════════════════
+          TAB HOME: Pantalla de inicio
+          Muestra las categorías, los productos recomendados
+          y los favoritos del usuario (si tiene alguno).
+      ══════════════════════════════════════════════════════ */}
       {activeTab==="home" && !searchText.trim() && (
         <>
           <div className="section-header">
             <h2>Categorías</h2>
+            {/* Botón "+" para abrir el modal de agregar producto (admin) */}
             <button onClick={() => setAddModal(true)} style={{ background: "#ff8c32", border: "none", color: "#fff", borderRadius: "50%", width: "32px", height: "32px", fontSize: "20px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "8px" }}>+</button>
             <span className="show-all" onClick={() => setActiveTab("menu")}>Ver todo ›</span>
           </div>
+
+          {/* Grid de categorías — al hacer click navega a esa categoría en el tab Menú */}
           <div className="categories">
             {Object.keys(dataFinal).map(cat => (
               <div key={cat} className={`category-card ${categoria===cat?"active":""}`}
@@ -981,8 +1240,12 @@ const Menu = () => {
               </div>
             ))}
           </div>
+
+          {/* Sección de productos recomendados (los 3 destacados hardcodeados) */}
           <p className="section-title">⭐ Recomendados</p>
           <div className="cards">{destacados.map((item,i) => renderCard(item,i))}</div>
+
+          {/* Sección de favoritos — solo aparece si el usuario tiene al menos uno */}
           {favs.length>0 && (
             <>
               <p className="section-title">❤️ Tus favoritos</p>
@@ -992,7 +1255,12 @@ const Menu = () => {
         </>
       )}
 
-      {/* TAB MENÚ */}
+      {/* ══════════════════════════════════════════════════════
+          TAB MENÚ: Exploración del menú completo
+          Muestra el selector de categorías, y si se selecciona
+          Bar, muestra también el selector de subcategorías.
+          Si no se selecciona ninguna categoría, muestra todo.
+      ══════════════════════════════════════════════════════ */}
       {activeTab==="menu" && !searchText.trim() && (
         <>
           <div className="section-header">
@@ -1000,6 +1268,8 @@ const Menu = () => {
             <button onClick={() => setAddModal(true)} style={{ background: "#ff8c32", border: "none", color: "#fff", borderRadius: "50%", width: "32px", height: "32px", fontSize: "20px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "8px" }}>+</button>
             <span className="show-all" onClick={() => { setCategoria(null); setSubCategoria(null); }}>Ver todo ›</span>
           </div>
+
+          {/* Selector de categoría principal */}
           <div className="categories">
             {Object.keys(dataFinal).map(cat => (
               <div key={cat} className={`category-card ${categoria===cat?"active":""}`}
@@ -1010,6 +1280,7 @@ const Menu = () => {
             ))}
           </div>
 
+          {/* Selector de subcategoría — solo aparece cuando la categoría activa es Bar o Bebidas */}
           {BAR_CATS.includes(categoria) && (
             <div className="categories">
               {BAR_SUBS.map(sub => (
@@ -1022,12 +1293,14 @@ const Menu = () => {
             </div>
           )}
 
+          {/* Indicación de que debe seleccionar subcategoría (solo para el Bar) */}
           {BAR_CATS.includes(categoria) && !subCategoria && (
             <p style={{color:"rgba(255,255,255,0.35)", padding:"8px 24px 20px", fontSize:"14px"}}>
               Selecciona una subcategoría 👆
             </p>
           )}
 
+          {/* Productos de categoría normal (no Bar) */}
           {categoria && !BAR_CATS.includes(categoria) && (
             <>
               <p className="section-title">{catIconos[categoria]} {categoria}</p>
@@ -1035,6 +1308,7 @@ const Menu = () => {
             </>
           )}
 
+          {/* Productos del Bar filtrados por subcategoría */}
           {BAR_CATS.includes(categoria) && subCategoria && (
             <>
               <p className="section-title">{BAR_ICONS[subCategoria]} {subCategoria}</p>
@@ -1049,6 +1323,7 @@ const Menu = () => {
             </>
           )}
 
+          {/* Si no hay categoría seleccionada, mostramos TODAS (excepto Bar) */}
           {!categoria && Object.keys(dataFinal).filter(k => !BAR_CATS.includes(k)).map(cat => (
             <div key={cat}>
               <p className="section-title">{catIconos[cat]||"🍴"} {cat}</p>
@@ -1058,7 +1333,11 @@ const Menu = () => {
         </>
       )}
 
-      {/* TAB FAVORITOS */}
+      {/* ══════════════════════════════════════════════════════
+          TAB FAVORITOS
+          Muestra los productos que el usuario marcó con ❤️.
+          Si no tiene favoritos, muestra un mensaje de ayuda.
+      ══════════════════════════════════════════════════════ */}
       {activeTab==="favs" && (
         <div className="favs-container">
           <p className="section-title">❤️ Mis favoritos</p>
@@ -1069,7 +1348,12 @@ const Menu = () => {
         </div>
       )}
 
-      {/* TAB AVISOS */}
+      {/* ══════════════════════════════════════════════════════
+          TAB AVISOS: Formulario de quejas y sugerencias
+          El cliente puede escribir un mensaje que llega
+          directamente al administrador del restaurante.
+          El número de mesa es opcional aquí.
+      ══════════════════════════════════════════════════════ */}
       {activeTab==="notif" && (
         <div className="avisos-container">
           <p className="section-title">🔔 Avisos y sugerencias</p>
@@ -1083,11 +1367,18 @@ const Menu = () => {
             <button className="queja-send-btn" onClick={handleEnviarQueja} disabled={quejaLoading||!quejaMsg.trim()}>
               {quejaLoading ? "Enviando..." : "📨 Enviar mensaje"}
             </button>
+            {/* Confirmación de envío exitoso */}
             {quejaSent && <div className="queja-success">✅ ¡Mensaje enviado! Gracias por tu retroalimentación.</div>}
           </div>
         </div>
       )}
 
+      {/* ══════════════════════════════════════════════════════
+          BARRA DE NAVEGACIÓN INFERIOR (Bottom Nav)
+          4 tabs: Inicio, Menú, Favoritos, Avisos.
+          El tab activo se resalta con color naranja.
+          El tab de favoritos muestra un contador si hay favoritos.
+      ══════════════════════════════════════════════════════ */}
       <nav className="bottom-nav">
         <button className={`nav-btn ${activeTab==="home"?"active":""}`}
           onClick={() => { setActiveTab("home"); setCategoria(null); setSubCategoria(null); setSearchText(""); }}>
@@ -1099,6 +1390,7 @@ const Menu = () => {
         </button>
         <button className={`nav-btn ${activeTab==="favs"?"active":""}`} onClick={() => setActiveTab("favs")}>
           <span className="nav-icon">❤️</span><span>Favoritos</span>
+          {/* Contador de favoritos */}
           {favs.length>0 && <span style={{background:"#dc2050",color:"#fff",borderRadius:"50%",fontSize:"9px",fontWeight:"800",padding:"1px 5px"}}>{favs.length}</span>}
         </button>
         <button className={`nav-btn ${activeTab==="notif"?"active":""}`} onClick={() => setActiveTab("notif")}>
