@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 
+// ── Rutas del admin ───────────────────────────────────────────────
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/admin/userRoutes");
 const mesaRoutes = require("./routes/admin/mesaRoutes");
@@ -18,6 +19,7 @@ const quejaRoutes = require("./routes/quejaRoutes");
 
 const app = express();
 
+// ── CORS ──────────────────────────────────────────────────────────
 app.use(cors({
   origin: process.env.CORS_ORIGIN || "http://localhost:5173",
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -27,6 +29,7 @@ app.use(cors({
 
 app.use(express.json());
 
+// ── Rutas ─────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/usuarios", userRoutes);
 app.use("/api/mesas", mesaRoutes);
@@ -42,6 +45,7 @@ app.use("/api/bar", barRoutes);
 app.use("/api/menu", productosRoutes);
 app.use("/api/quejas", quejaRoutes);
 
+// ── Health check ──────────────────────────────────────────────────
 app.get("/api/ping", (_req, res) => {
   res.json({ ok: true, msg: "MesaSmart API activa" });
 });

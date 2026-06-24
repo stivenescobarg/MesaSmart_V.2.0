@@ -1,0 +1,160 @@
+/* ============================================================
+   bartender.cards.css — OrderCard, ItemRow, filtros, toolbar
+   ============================================================ */
+
+/* ── FILTERS ─────────────────────────────────────────────── */
+.bd-filters {
+  display: flex; gap: 6px;
+  padding: 14px 20px 10px;
+  flex-wrap: wrap;
+}
+.bd-filter-btn {
+  padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1px solid var(--bd-bdr); color: var(--bd-muted);
+  background: transparent; transition: all .18s; white-space: nowrap;
+  font-family: 'Syne', sans-serif;
+}
+.bd-filter-btn:hover  { border-color: var(--bd-bdr-r); color: var(--bd-text); }
+.bd-filter-btn.active { background: var(--bd-red); border-color: var(--bd-red); color: #fff; }
+
+/* ── TOOLBAR ─────────────────────────────────────────────── */
+.bd-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
+}
+.bd-section-title {
+  font-size: 13px; font-weight: 700; color: var(--bd-text);
+  display: flex; align-items: center; gap: 8px; letter-spacing: .3px;
+}
+.bd-pulse {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--bd-red2); animation: bd-pulse 1.5s infinite; flex-shrink: 0;
+}
+.bd-toolbar-actions { display: flex; gap: 7px; }
+
+/* ── SMALL BUTTONS ───────────────────────────────────────── */
+.bd-small-btn {
+  padding: 5px 13px; border-radius: 8px; border: 1px solid var(--bd-bdr);
+  background: transparent; color: var(--bd-muted); cursor: pointer;
+  font-size: 12px; font-weight: 600; font-family: 'Syne', sans-serif;
+  transition: all .18s; white-space: nowrap;
+}
+.bd-small-btn:hover       { border-color: var(--bd-bdr-r); color: var(--bd-red2); }
+.bd-small-btn-red         { border-color: rgba(230,51,41,.28); color: var(--bd-red); }
+.bd-small-btn-red:hover   { background: rgba(230,51,41,.07); border-color: var(--bd-red); }
+
+/* ── ORDER GRID ──────────────────────────────────────────── */
+.bd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+/* ── ORDER CARD ──────────────────────────────────────────── */
+.bd-card {
+  background: var(--bd-card2); border: 1px solid var(--bd-bdr-r);
+  border-radius: 14px; overflow: hidden;
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+  display: flex; flex-direction: column;
+}
+.bd-card:hover  { transform: translateY(-2px); box-shadow: 0 6px 24px var(--bd-glow); }
+.bd-card.pinned { border-color: rgba(232,160,32,.45); box-shadow: 0 2px 16px rgba(232,160,32,.15); }
+.bd-card.paused { opacity: .55; border-color: var(--bd-bdr); }
+.bd-card.urgent { animation: bd-urgpulse 2s infinite; }
+
+@keyframes bd-urgpulse {
+  0%,100% { box-shadow: 0 0 6px var(--bd-glow); }
+  50%     { box-shadow: 0 0 24px var(--bd-glow); border-color: var(--bd-red2); }
+}
+
+/* Card top */
+.bd-card-top {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--bd-bdr);
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.bd-mesa-lbl { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--bd-muted); font-weight: 600; }
+.bd-mesa-num { font-size: 26px; font-weight: 800; color: var(--bd-gold); line-height: 1.05; font-family: 'IBM Plex Mono', monospace; }
+.bd-card-pills { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+
+/* Pills de estado */
+.bd-pill        { font-size: 10px; padding: 2px 9px; border-radius: 20px; font-weight: 700; white-space: nowrap; letter-spacing: .2px; }
+.bd-pill-new    { background: rgba(230,51,41,.14);  color: #f87171; border: 1px solid rgba(230,51,41,.28); }
+.bd-pill-prep   { background: rgba(245,158,11,.14); color: #fbbf24; border: 1px solid rgba(245,158,11,.28); }
+.bd-pill-paused { background: rgba(150,150,160,.14);color: #9ca3af; border: 1px solid rgba(150,150,160,.2); }
+.bd-pill-done   { background: rgba(34,197,94,.14);  color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
+.bd-pill-pin    { background: rgba(232,160,32,.14); color: var(--bd-gold); border: 1px solid rgba(232,160,32,.28); }
+
+/* Card body */
+.bd-card-body  { padding: 11px 14px; flex: 1; }
+.bd-drink-name { font-size: 14px; font-weight: 700; color: var(--bd-text); margin-bottom: 2px; }
+.bd-drink-sub  { font-size: 11px; color: var(--bd-muted); margin-bottom: 9px; }
+.bd-drink-sub b{ color: var(--bd-red2); font-family: 'IBM Plex Mono', monospace; }
+
+/* ── ITEM ROW ────────────────────────────────────────────── */
+.bd-items-list { display: flex; flex-direction: column; gap: 5px; }
+.bd-item {
+  background: rgba(255,255,255,.025); border: 1px solid var(--bd-bdr);
+  border-radius: 8px; padding: 7px 10px; cursor: pointer;
+  transition: background .18s, border-color .18s;
+}
+.theme-light .bd-item { background: rgba(0,0,0,.025); }
+.bd-item:hover        { background: rgba(230,51,41,.05); border-color: var(--bd-bdr-r); }
+.bd-item-row   { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.bd-item-name  { font-size: 12px; color: var(--bd-text); font-weight: 600; }
+.bd-item-right { display: flex; align-items: center; gap: 6px; }
+.bd-item-qty {
+  font-size: 10px; background: var(--bd-red); color: #fff;
+  width: 19px; height: 19px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-family: 'IBM Plex Mono', monospace;
+}
+.bd-item-arrow      { font-size: 9px; color: var(--bd-muted); transition: transform .18s; }
+.bd-item-arrow.open { transform: rotate(90deg); }
+.bd-item-sub {
+  margin-top: 6px; padding-top: 6px;
+  border-top: 1px solid var(--bd-bdr);
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+
+/* Tags */
+.bd-tag      { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+.bd-tag-note { background: rgba(232,160,32,.1);   color: var(--bd-gold);  border: 1px solid rgba(232,160,32,.2); }
+.bd-tag-mod  { background: rgba(230,51,41,.08);   color: #f87171;         border: 1px solid rgba(230,51,41,.18); }
+.bd-tag-type { background: rgba(255,255,255,.05); color: var(--bd-muted); border: 1px solid var(--bd-bdr); }
+.theme-light .bd-tag-type { background: rgba(0,0,0,.04); }
+
+/* Card footer */
+.bd-card-foot {
+  padding: 9px 14px; border-top: 1px solid var(--bd-bdr);
+  display: flex; align-items: center; justify-content: space-between; gap: 5px; flex-wrap: wrap;
+}
+.bd-timer { font-size: 11px; color: var(--bd-muted); display: flex; align-items: center; gap: 4px; font-family: 'IBM Plex Mono', monospace; }
+.bd-tdot  { width: 6px; height: 6px; border-radius: 50%; background: var(--bd-amber); flex-shrink: 0; }
+.bd-timer.urgent .bd-tdot { background: var(--bd-red2); animation: bd-pulse 1s infinite; }
+.bd-timer.urgent           { color: var(--bd-red2); }
+
+/* Card buttons */
+.bd-card-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.bd-fb {
+  font-size: 10px; padding: 4px 9px; border-radius: 7px;
+  border: 1px solid; cursor: pointer; background: transparent;
+  transition: all .18s; white-space: nowrap; font-weight: 700;
+  font-family: 'Syne', sans-serif;
+}
+.bd-fb-done:hover  { background: rgba(34,197,94,.12); }
+.bd-fb-done        { border-color: rgba(34,197,94,.3);  color: var(--bd-green); }
+.bd-fb-pause       { border-color: var(--bd-bdr);       color: var(--bd-muted); }
+.bd-fb-pause:hover { background: rgba(150,150,150,.08); }
+.bd-fb-pin         { border-color: rgba(232,160,32,.3); color: var(--bd-gold); }
+.bd-fb-pin:hover   { background: rgba(232,160,32,.1); }
+.bd-fb-prep        { border-color: rgba(245,158,11,.35);color: var(--bd-amber); }
+.bd-fb-prep:hover  { background: rgba(245,158,11,.1); }
+
+/* ── EMPTY STATE ─────────────────────────────────────────── */
+.bd-empty {
+  text-align: center; color: var(--bd-muted); padding: 48px 20px;
+  font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.bd-empty-icon { font-size: 32px; opacity: .4; }

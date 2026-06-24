@@ -1,0 +1,277 @@
+/* =============================================
+   SesionesTab.css  —  MesaSmart Bar Dashboard
+   ============================================= */
+
+/* ── Página contenedor ── */
+.bd-sesiones-page {
+  padding: 24px 28px;
+  min-height: 100%;
+  background: transparent;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Header superior ── */
+.bd-sesiones-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bd-inv-title-page {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #f0f0f0;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.bd-sesiones-total {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a0a0b0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ── Lista de sesiones ── */
+.bd-sesiones-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Card de sesión ── */
+.bd-sesion-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.bd-sesion-card:hover {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(255, 255, 255, 0.13);
+}
+
+.bd-sesion-card.expanded {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.04);
+}
+
+/* ── Cabecera clickeable ── */
+.bd-sesion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  cursor: pointer;
+  gap: 16px;
+  user-select: none;
+}
+
+/* ── Info izquierda: fecha + bartender + hora ── */
+.bd-sesion-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.bd-sesion-fecha {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e2e2e8;
+  white-space: nowrap;
+}
+
+.bd-sesion-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.bd-sesion-bartender {
+  font-size: 0.8rem;
+  color: #9090a8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bd-sesion-hora {
+  font-size: 0.8rem;
+  color: #9090a8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Stats derechos: bebidas + órdenes ── */
+.bd-sesion-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.bd-sesion-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 16px;
+  min-width: 68px;
+  gap: 2px;
+  transition: background 0.15s ease;
+}
+
+.bd-sesion-card:hover .bd-sesion-stat {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bd-sesion-card.expanded .bd-sesion-stat {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.bd-sesion-stat-val {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f0f0f8;
+  line-height: 1;
+}
+
+.bd-sesion-card.expanded .bd-sesion-stat-val {
+  color: #ff6b6b;
+}
+
+.bd-sesion-stat-lbl {
+  font-size: 0.68rem;
+  color: #707088;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* ── Flecha toggle ── */
+.bd-sesion-arrow {
+  font-size: 0.65rem;
+  color: #606078;
+  transition: transform 0.25s ease, color 0.2s ease;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.bd-sesion-arrow.open {
+  transform: rotate(180deg);
+  color: #ff6b6b;
+}
+
+/* ── Cuerpo expandible ── */
+.bd-sesion-body {
+  padding: 0 20px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  animation: sesion-expand 0.22s ease;
+}
+
+@keyframes sesion-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bd-sesion-detalle-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #a0a0b8;
+  margin: 16px 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Filas de bebidas ── */
+.bd-sesion-bebidas {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.bd-sesion-bebida-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bd-sesion-bebida-nombre {
+  font-size: 0.83rem;
+  color: #c8c8d8;
+  width: 100px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bd-sesion-bebida-bar-wrap {
+  flex: 1;
+}
+
+.bd-sesion-bebida-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bd-sesion-bebida-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444, #f97316);
+  border-radius: 4px;
+  animation: bar-grow 0.45s ease forwards;
+  transform-origin: left;
+}
+
+@keyframes bar-grow {
+  from {
+    width: 0% !important;
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.bd-sesion-bebida-cant {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ff7a6b;
+  width: 26px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Estados vacío / cargando ── */
+.bd-hist-empty,
+.bd-empty {
+  text-align: center;
+  color: #606075;
+  font-size: 0.9rem;
+  padding: 48px 0;
+  letter-spacing: 0.02em;
+}

@@ -1,0 +1,35 @@
+/* ============================================================
+   bartender.utils.css — Animaciones y responsive
+   ============================================================ */
+
+/* ── ANIMATIONS ──────────────────────────────────────────── */
+@keyframes bd-pulse   { 0%,100%{opacity:1;transform:scale(1)}   50%{opacity:.3;transform:scale(1.5)} }
+@keyframes bd-slidein { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
+@keyframes bd-slideup { from{opacity:0;transform:translateY(16px)}  to{opacity:1;transform:translateY(0)} }
+@keyframes bd-fadein  { from{opacity:0} to{opacity:1} }
+
+/* ── RESPONSIVE 768px ────────────────────────────────────── */
+@media (max-width: 768px) {
+  .bdh-top   { padding: 8px 12px; gap: 8px; }
+  .bdh-stats { gap: 4px; }
+  .bdh-stat  { padding: 4px 8px; min-width: 46px; }
+  .bdh-stat-val { font-size: 15px; }
+  .bd-tabs   { padding: 0 8px; }
+  .bd-tab    { padding: 9px 13px; font-size: 12px; }
+  .bd-page, .bd-inv-page, .bd-hist-page { padding: 12px 12px 80px; }
+  .bd-grid   { grid-template-columns: 1fr; padding: 0 12px 12px; }
+  .bd-filters { padding: 10px 12px 8px; }
+  .bd-toolbar { padding: 0 12px; }
+  .bd-inv-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .bd-form-row { grid-template-columns: 1fr; }
+  .bd-inv-bar-section { display: none; }
+}
+
+/* ── RESPONSIVE 480px ────────────────────────────────────── */
+@media (max-width: 480px) {
+  .bdh-brand-name { font-size: 13px; }
+  .bdh-live       { display: none; }
+  .bd-inv-grid    { grid-template-columns: 1fr 1fr; }
+  .bd-modal       { padding: 16px; }
+  .bd-tab         { padding: 8px 10px; }
+}

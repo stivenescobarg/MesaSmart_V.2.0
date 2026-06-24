@@ -1,0 +1,40 @@
+/* ============================================================
+   bartender.historial.css — Tab historial
+   ============================================================ */
+
+.bd-hist-page { padding: 18px 20px 80px; }
+
+.bd-hist-page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px; flex-wrap: wrap; gap: 10px;
+}
+.bd-hist-page-title { font-size: 20px; font-weight: 800; color: var(--bd-text); }
+
+/* ── META STRIP ──────────────────────────────────────────── */
+.bd-hist-meta-strip {
+  display: flex; align-items: center;
+  margin-bottom: 18px; padding: 12px 16px;
+  background: var(--bd-card); border: 1px solid var(--bd-bdr); border-radius: 10px;
+  flex-wrap: wrap; gap: 12px;
+}
+.bd-hist-meta-item  { display: flex; flex-direction: column; gap: 2px; }
+.bd-hist-meta-label { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--bd-muted); font-weight: 700; }
+.bd-hist-meta-val   { font-size: 18px; font-weight: 800; color: var(--bd-text); font-family: 'IBM Plex Mono', monospace; }
+.bd-hist-meta-val.red   { color: var(--bd-red2); }
+.bd-hist-meta-val.gold  { color: var(--bd-gold); }
+.bd-hist-meta-val.green { color: var(--bd-green); }
+
+/* ── LIST ────────────────────────────────────────────────── */
+.bd-hist-list { display: flex; flex-direction: column; gap: 6px; }
+.bd-hist-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 11px 16px; border-radius: 10px;
+  background: var(--bd-card); border: 1px solid var(--bd-bdr);
+  flex-wrap: wrap; gap: 8px; transition: border-color .18s;
+}
+.bd-hist-row:hover { border-color: var(--bd-bdr-r); }
+.bd-hist-name   { font-size: 13px; font-weight: 700; color: var(--bd-text); }
+.bd-hist-sub    { font-size: 11px; color: var(--bd-muted); margin-top: 2px; }
+.bd-hist-right  { text-align: right; }
+.bd-hist-drinks { font-size: 14px; font-weight: 800; color: var(--bd-red2); font-family: 'IBM Plex Mono', monospace; }
+.bd-hist-dur    { font-size: 10px; color: var(--bd-muted); margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }

@@ -1,0 +1,203 @@
+/* ============================================================
+   bartender.inventario.css — Tab inventario, grid de cards
+   ============================================================ */
+
+.bd-inv-page { padding: 18px 20px 80px; }
+
+/* ── PAGE HEADER ─────────────────────────────────────────── */
+.bd-inv-page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+}
+.bd-inv-page-title {
+  font-size: 20px; font-weight: 800; color: var(--bd-text);
+  display: flex; align-items: center; gap: 10px;
+}
+.bd-inv-page-actions { display: flex; align-items: center; gap: 8px; }
+
+/* ── SEARCH ──────────────────────────────────────────────── */
+.bd-inv-search {
+  background: var(--bd-card); border: 1px solid var(--bd-bdr);
+  border-radius: 9px; padding: 7px 13px;
+  color: var(--bd-text); font-size: 13px; font-family: 'Syne', sans-serif;
+  outline: none; transition: border-color .18s; min-width: 220px;
+}
+.bd-inv-search::placeholder { color: var(--bd-muted); }
+.bd-inv-search:focus        { border-color: var(--bd-red); }
+
+/* ── ADD BUTTON ──────────────────────────────────────────── */
+.bd-inv-add-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bd-red); color: #fff;
+  border: none; border-radius: 9px; padding: 8px 16px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  font-family: 'Syne', sans-serif; transition: background .18s;
+  box-shadow: 0 2px 12px var(--bd-glow);
+}
+.bd-inv-add-btn:hover { background: var(--bd-red2); }
+
+/* ── LOCK BADGES ─────────────────────────────────────────── */
+.bd-lock-on {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;
+  background: rgba(34,197,94,.1); color: var(--bd-green);
+  border: 1px solid rgba(34,197,94,.25); font-family: 'IBM Plex Mono', monospace;
+}
+.bd-lock-off {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;
+  background: rgba(255,255,255,.04); color: var(--bd-muted);
+  border: 1px solid var(--bd-bdr);
+}
+.theme-light .bd-lock-off { background: rgba(0,0,0,.04); }
+
+/* ── ALERT BANNER ────────────────────────────────────────── */
+.bd-inv-alert-banner {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(230,51,41,.08); border: 1px solid rgba(230,51,41,.22);
+  border-radius: 9px; padding: 10px 16px; margin-bottom: 18px;
+  font-size: 12px; color: var(--bd-red2); font-weight: 700;
+}
+
+/* ── SECTION LABEL ───────────────────────────────────────── */
+.bd-inv-section-label {
+  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--bd-muted); font-weight: 700; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.bd-inv-section-label::after { content: ''; flex: 1; height: 1px; background: var(--bd-bdr); }
+
+/* ── CARD GRID ───────────────────────────────────────────── */
+.bd-inv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+/* ── PRODUCT CARD ────────────────────────────────────────── */
+.bd-inv-card {
+  background: var(--bd-card); border: 1px solid var(--bd-bdr);
+  border-radius: 14px; overflow: hidden;
+  transition: border-color .2s, box-shadow .2s, transform .2s;
+  display: flex; flex-direction: column;
+}
+.bd-inv-card:hover {
+  border-color: var(--bd-bdr-r);
+  box-shadow: 0 4px 20px var(--bd-glow-soft);
+  transform: translateY(-1px);
+}
+.bd-inv-card.card-alert       { border-color: rgba(230,51,41,.3); }
+.bd-inv-card.card-alert:hover { border-color: var(--bd-red); }
+
+.bd-inv-card-top {
+  padding: 14px 14px 10px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.bd-inv-card-info    { flex: 1; min-width: 0; }
+.bd-inv-card-name {
+  font-size: 14px; font-weight: 700; color: var(--bd-text);
+  margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bd-inv-card-provider { font-size: 11px; color: var(--bd-muted); }
+
+/* Status badges */
+.bd-inv-status-ok {
+  font-size: 10px; padding: 3px 9px; border-radius: 20px; font-weight: 700;
+  background: rgba(34,197,94,.12); color: var(--bd-green);
+  border: 1px solid rgba(34,197,94,.25); white-space: nowrap; flex-shrink: 0;
+}
+.bd-inv-status-low {
+  font-size: 10px; padding: 3px 9px; border-radius: 20px; font-weight: 700;
+  background: rgba(230,51,41,.12); color: var(--bd-red2);
+  border: 1px solid rgba(230,51,41,.25); white-space: nowrap; flex-shrink: 0;
+}
+
+/* Stock bar */
+.bd-inv-bar-section { padding: 0 14px 10px; }
+.bd-inv-bar {
+  height: 4px; background: rgba(255,255,255,.08);
+  border-radius: 2px; overflow: hidden;
+}
+.theme-light .bd-inv-bar      { background: rgba(0,0,0,.08); }
+.bd-inv-bar-fill {
+  height: 100%; border-radius: 2px;
+  background: var(--bd-green);
+  transition: width .4s ease;
+}
+.bd-inv-bar-fill.low { background: var(--bd-red2); }
+
+/* Stock values */
+.bd-inv-vals {
+  padding: 8px 14px 12px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+}
+.bd-inv-val-label {
+  font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--bd-muted); font-weight: 700; margin-bottom: 2px;
+}
+.bd-inv-val-num {
+  font-size: 20px; font-weight: 800; color: var(--bd-text);
+  font-family: 'IBM Plex Mono', monospace; line-height: 1;
+}
+.bd-inv-val-num.ok  { color: var(--bd-green); }
+.bd-inv-val-num.low { color: var(--bd-red2); }
+.bd-inv-val-unit    { font-size: 11px; color: var(--bd-muted); font-weight: 500; margin-top: 1px; }
+
+/* Card actions */
+.bd-inv-card-foot {
+  padding: 10px 12px; border-top: 1px solid var(--bd-bdr);
+  display: flex; gap: 6px; align-items: center;
+}
+.bd-inv-btn-ingreso {
+  flex: 1; padding: 6px 0; border-radius: 7px;
+  background: transparent; border: 1px solid var(--bd-bdr);
+  color: var(--bd-text2); font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: all .18s; font-family: 'Syne', sans-serif;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.bd-inv-btn-ingreso:hover { border-color: rgba(34,197,94,.4); color: var(--bd-green); background: rgba(34,197,94,.06); }
+
+.bd-inv-btn-ajustar {
+  flex: 1; padding: 6px 0; border-radius: 7px;
+  background: transparent; border: 1px solid var(--bd-bdr);
+  color: var(--bd-text2); font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: all .18s; font-family: 'Syne', sans-serif;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.bd-inv-btn-ajustar:hover { border-color: rgba(245,158,11,.4); color: var(--bd-amber); background: rgba(245,158,11,.06); }
+
+.bd-inv-btn-del {
+  width: 30px; height: 30px; border-radius: 7px;
+  background: transparent; border: 1px solid var(--bd-bdr);
+  color: var(--bd-muted); font-size: 13px;
+  cursor: pointer; transition: all .18s;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.bd-inv-btn-del:hover { border-color: rgba(230,51,41,.4); color: var(--bd-red2); background: rgba(230,51,41,.06); }
+
+/* ── FORM NUEVO PRODUCTO ─────────────────────────────────── */
+.bd-inv-form-card {
+  background: var(--bd-card); border: 1px solid var(--bd-bdr-r);
+  border-radius: 14px; padding: 18px; margin-bottom: 12px;
+  animation: bd-fadein .2s ease;
+}
+.bd-inv-form-title { font-size: 13px; font-weight: 700; color: var(--bd-text); margin-bottom: 14px; }
+.bd-form-row       { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 9px; }
+.bd-form-btns      { display: flex; justify-content: flex-end; gap: 7px; margin-top: 4px; }
+
+/* ── LOCKED MESSAGE ──────────────────────────────────────── */
+.bd-inv-locked-msg {
+  text-align: center; padding: 24px; color: var(--bd-muted);
+  font-size: 13px; background: var(--bd-card);
+  border-radius: 12px; border: 1px dashed var(--bd-bdr); margin-top: 16px;
+}
+
+/* Inline edit */
+.bd-inp-sm {
+  flex: 1; background: var(--bd-bg); border: 1px solid var(--bd-bdr);
+  border-radius: 7px; padding: 5px 9px; color: var(--bd-text);
+  font-size: 12px; font-family: 'IBM Plex Mono', monospace;
+  outline: none; transition: border-color .18s;
+}
+.bd-inp-sm:focus { border-color: var(--bd-red); }

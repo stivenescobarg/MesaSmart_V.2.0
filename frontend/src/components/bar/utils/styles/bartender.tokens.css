@@ -1,0 +1,71 @@
+/* ============================================================
+   bartender.tokens.css — Variables de tema dark / light
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Syne:wght@400;600;700;800&display=swap');
+
+/* ── TOKENS DARK ─────────────────────────────────────────── */
+.bd-container.theme-dark {
+  --bd-bg:        #080808;
+  --bd-surface:   #0e0e0e;
+  --bd-card:      #131313;
+  --bd-card2:     #170d0d;
+  --bd-card-hover:#1c1010;
+  --bd-text:      #f0eded;
+  --bd-text2:     #a89898;
+  --bd-muted:     #584848;
+  --bd-bdr:       #1f1f1f;
+  --bd-bdr-r:     rgba(230,51,41,0.25);
+  --bd-red:       #e63329;
+  --bd-red2:      #ff4136;
+  --bd-gold:      #e8a020;
+  --bd-green:     #22c55e;
+  --bd-amber:     #f59e0b;
+  --bd-blue:      #60a5fa;
+  --bd-glow:      rgba(230,51,41,0.32);
+  --bd-glow-soft: rgba(230,51,41,0.12);
+  --bd-shadow:    0 4px 24px rgba(0,0,0,0.6);
+  --bd-hover:     rgba(255,255,255,0.03);
+}
+
+/* ── TOKENS LIGHT ────────────────────────────────────────── */
+.bd-container.theme-light {
+  --bd-bg:        #f0ebe9;
+  --bd-surface:   #ffffff;
+  --bd-card:      #ffffff;
+  --bd-card2:     #fff5f4;
+  --bd-card-hover:#fff0ee;
+  --bd-text:      #180808;
+  --bd-text2:     #6a5050;
+  --bd-muted:     #9a8080;
+  --bd-bdr:       #e5d5d5;
+  --bd-bdr-r:     rgba(230,51,41,0.2);
+  --bd-red:       #c0392b;
+  --bd-red2:      #e74c3c;
+  --bd-gold:      #b8860b;
+  --bd-green:     #16a34a;
+  --bd-amber:     #d97706;
+  --bd-blue:      #2563eb;
+  --bd-glow:      rgba(230,51,41,0.12);
+  --bd-glow-soft: rgba(230,51,41,0.06);
+  --bd-shadow:    0 4px 24px rgba(0,0,0,0.1);
+  --bd-hover:     rgba(0,0,0,0.02);
+}
+
+/* ── BASE GLOBAL ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.bd-container {
+  background: var(--bd-bg);
+  color: var(--bd-text);
+  min-height: 100vh;
+  font-family: 'Syne', 'Segoe UI', system-ui, sans-serif;
+  transition: background .25s, color .25s;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 0% 0%, rgba(230,51,41,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 35% at 100% 100%, rgba(230,51,41,0.04) 0%, transparent 55%);
+}
+
+/* ── CONTENT AREA ────────────────────────────────────────── */
+.bd-content { padding: 0; max-width: 100%; }
+.bd-page    { padding: 18px 20px 80px; }

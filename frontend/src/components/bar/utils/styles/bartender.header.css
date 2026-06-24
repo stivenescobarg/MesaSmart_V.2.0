@@ -1,0 +1,135 @@
+/* ============================================================
+   bartender.header.css — Header, tabs nav, notif, stock banner
+   ============================================================ */
+
+/* ── HEADER ROOT ─────────────────────────────────────────── */
+.bdh-root {
+  background: var(--bd-surface);
+  border-bottom: 1px solid var(--bd-bdr);
+  position: sticky; top: 0; z-index: 100;
+  transition: background .25s, border-color .25s;
+  box-shadow: 0 1px 0 var(--bd-bdr);
+}
+
+.bdh-top {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 20px; flex-wrap: wrap;
+}
+
+/* ── BRAND ───────────────────────────────────────────────── */
+.bdh-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.bdh-diamond {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--bd-red), var(--bd-red2));
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: #fff; flex-shrink: 0;
+  box-shadow: 0 2px 8px var(--bd-glow);
+}
+.bdh-brand-name { font-size: 15px; font-weight: 800; color: var(--bd-text); letter-spacing: -.2px; }
+.bdh-brand-sub  { font-size: 10px; color: var(--bd-muted); letter-spacing: .5px; }
+
+/* ── STATS ───────────────────────────────────────────────── */
+.bdh-stats { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; }
+.bdh-stat {
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--bd-card2); border: 1px solid var(--bd-bdr);
+  border-radius: 8px; padding: 5px 12px; min-width: 54px;
+  cursor: pointer; transition: border-color .18s, background .18s;
+}
+.bdh-stat:hover { border-color: var(--bd-bdr-r); background: var(--bd-card-hover); }
+.bdh-stat-val { font-size: 18px; font-weight: 800; line-height: 1.1; font-family: 'IBM Plex Mono', monospace; }
+.bdh-stat-lbl { font-size: 9px; letter-spacing: 1px; color: var(--bd-muted); text-transform: uppercase; font-weight: 600; }
+
+/* ── ACTIONS ─────────────────────────────────────────────── */
+.bdh-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
+.bdh-live {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.22);
+  border-radius: 20px; padding: 3px 10px; font-size: 11px; color: #22c55e;
+  font-weight: 600; letter-spacing: .3px;
+}
+.bdh-live-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
+  animation: bd-pulse 1.5s infinite;
+}
+.bdh-icon-btn {
+  background: var(--bd-card); border: 1px solid var(--bd-bdr); border-radius: 8px;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--bd-text2); font-size: 16px; transition: all .18s;
+}
+.bdh-icon-btn:hover { border-color: var(--bd-red); color: var(--bd-red2); }
+
+.bdh-cierre-btn {
+  background: rgba(239,68,68,0.1) !important;
+  border: 1px solid rgba(239,68,68,0.28) !important;
+  color: #ff6b6b !important;
+  padding: 0 12px !important;
+  width: auto !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: .03em;
+  border-radius: 8px !important;
+  height: 32px;
+}
+.bdh-cierre-btn:hover {
+  background: rgba(239,68,68,0.2) !important;
+  border-color: rgba(239,68,68,0.5) !important;
+}
+
+/* ── TABS NAV ────────────────────────────────────────────── */
+.bd-tabs {
+  display: flex; gap: 2px;
+  padding: 0 16px;
+  border-top: 1px solid var(--bd-bdr);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.bd-tabs::-webkit-scrollbar { display: none; }
+
+.bd-tab {
+  position: relative;
+  padding: 10px 18px;
+  background: none; border: none;
+  color: var(--bd-muted);
+  font-size: 13px; font-weight: 600;
+  font-family: 'Syne', sans-serif;
+  cursor: pointer; white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color .18s, border-color .18s, background .18s;
+  display: flex; align-items: center; gap: 7px;
+  margin-bottom: -1px;
+}
+.bd-tab:hover  { color: var(--bd-text); background: var(--bd-hover); }
+.bd-tab.active { color: var(--bd-red2); border-bottom-color: var(--bd-red2); }
+
+.bd-tab-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px; background: var(--bd-red);
+  color: #fff; font-size: 10px; font-weight: 700;
+}
+
+/* ── NOTIFICATION ────────────────────────────────────────── */
+.bd-notif {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--bd-surface); border-left: 3px solid var(--bd-red);
+  border-top: 1px solid var(--bd-bdr-r); border-right: 1px solid var(--bd-bdr-r);
+  border-bottom: 1px solid var(--bd-bdr-r); border-radius: 0 10px 10px 0;
+  padding: 9px 14px; margin-bottom: 14px; font-size: 13px; font-weight: 600;
+  color: var(--bd-red2); animation: bd-slidein .3s ease;
+}
+.bd-notif-icon { font-size: 15px; }
+
+/* ── STOCK BANNER ────────────────────────────────────────── */
+.bd-stock-banner {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(230,51,41,.08); border: 1px solid rgba(230,51,41,.22);
+  border-radius: 9px; padding: 9px 14px; margin-bottom: 14px;
+  font-size: 12px; color: var(--bd-red2); font-weight: 600;
+  cursor: pointer; transition: background .18s;
+}
+.bd-stock-banner:hover    { background: rgba(230,51,41,.13); }
+.bd-stock-banner-txt      { flex: 1; }
+.bd-stock-banner-arrow    { font-size: 11px; opacity: .6; }
