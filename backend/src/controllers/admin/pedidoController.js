@@ -1,4 +1,4 @@
-// backend/src/controllers/admin/pedidoController.js
+﻿// backend/src/controllers/admin/pedidoController.js
 const Pedido       = require("../../models/Pedido");
 const { Caja }     = require("../../models/Caja");
 const { pool: db } = require("../../config/db");
@@ -22,7 +22,7 @@ exports.getByMesa = async (req, res) => {
   catch { res.status(500).json({ msg: "Error al obtener pedido." }); }
 };
 
-// PATCH /api/pedidos/items/:item_id  — modificar cantidad
+// PATCH /api/pedidos/items/:item_id  â€” modificar cantidad
 exports.updateItem = async (req, res) => {
   try {
     await Pedido.updateItem(req.params.item_id, req.body.cantidad);
@@ -33,7 +33,7 @@ exports.updateItem = async (req, res) => {
   }
 };
 
-// DELETE /api/pedidos/items/:item_id — eliminar item (requiere PIN en el front)
+// DELETE /api/pedidos/items/:item_id â€” eliminar item (requiere PIN en el front)
 exports.deleteItem = async (req, res) => {
   const conn = await db.getConnection();
   try {
@@ -59,7 +59,7 @@ exports.deleteItem = async (req, res) => {
       [totRow.total, item.pedido_id]
     );
 
-    // Si el pedido quedó sin items, cerrarlo y liberar mesa
+    // Si el pedido quedÃ³ sin items, cerrarlo y liberar mesa
     const [[countRow]] = await conn.query(
       "SELECT COUNT(*) AS cnt FROM detalle_pedido WHERE pedido_id = ?",
       [item.pedido_id]
@@ -91,7 +91,7 @@ exports.deleteItem = async (req, res) => {
   }
 };
 
-// PATCH /api/pedidos/items/mover — mover items a otra mesa
+// PATCH /api/pedidos/items/mover â€” mover items a otra mesa
 exports.moverItems = async (req, res) => {
   const conn = await db.getConnection();
   try {
@@ -172,7 +172,7 @@ exports.moverItems = async (req, res) => {
       );
       await conn.execute("UPDATE pedidos SET total = ? WHERE id = ?", [tot.total, pedId]);
 
-      // Si el pedido origen quedó sin items, cancelarlo y liberar mesa
+      // Si el pedido origen quedÃ³ sin items, cancelarlo y liberar mesa
       const [[cnt]] = await conn.query(
         "SELECT COUNT(*) AS c FROM detalle_pedido WHERE pedido_id = ?",
         [pedId]
@@ -203,25 +203,33 @@ exports.moverItems = async (req, res) => {
   }
 };
 
-exports.getPedidos = async (req, res) => {
+exports.getPedidos = async (_req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT p.id, p.mesa_id, e.clave AS estado, p.created_at,
-        m.numero AS mesa_numero,
+      SELECT
+        p.id,
+        p.mesa_id,
+        p.estado,
+        p.total,
+        p.observacion,
+        p.creado_en,
+        m.nombre AS mesa_nombre,
         JSON_ARRAYAGG(JSON_OBJECT(
-          'id', i.id, 'nombre', i.nombre,
-          'cantidad', i.cantidad, 'nota', i.nota,
-          'categoria', c.clave
+          'id', dp.id,
+          'nombre', dp.nombre,
+          'cantidad', dp.cantidad,
+          'precio', dp.precio,
+          'categoria', dp.categoria,
+          'observacion', dp.observacion
         )) AS items
-      FROM cocina_pedidos p
-      JOIN cocina_mesas   m ON m.id = p.mesa_id
-      JOIN cocina_estados e ON e.id = p.estado_id
-      JOIN cocina_pedido_items i ON i.pedido_id = p.id
-      JOIN cocina_categorias   c ON c.id = i.categoria_id
-      WHERE e.clave != 'entregado'
+      FROM pedidos p
+      LEFT JOIN mesas m ON m.id = p.mesa_id
+      LEFT JOIN detalle_pedido dp ON dp.pedido_id = p.id
+      WHERE p.estado NOT IN ('pagado', 'cancelado')
       GROUP BY p.id
-      ORDER BY p.created_at ASC
+      ORDER BY p.creado_en ASC
     `);
+
     res.json({ pedidos: rows });
   } catch (err) {
     console.error('[getPedidos]', err);
@@ -233,17 +241,23 @@ exports.createPedido = exports.crear;
 
 exports.updateEstadoPedido = async (req, res) => {
   try {
-    const { id }     = req.params;
+    const { id } = req.params;
     const { estado } = req.body;
-    if (!estado) return res.status(400).json({ error: 'El campo "estado" es requerido' });
-    const [[estadoRow]] = await db.query(
-      'SELECT id, clave, label FROM cocina_estados WHERE clave = ? AND activo = TRUE', [estado]
-    );
-    if (!estadoRow) return res.status(400).json({ error: `Estado "${estado}" no válido` });
-    const [[pedido]] = await db.query('SELECT id FROM cocina_pedidos WHERE id = ?', [id]);
+
+    if (!estado) {
+      return res.status(400).json({ error: 'El campo "estado" es requerido' });
+    }
+
+    const estadosValidos = ['pendiente', 'en_preparacion', 'listo', 'pagado', 'cancelado'];
+    if (!estadosValidos.includes(estado)) {
+      return res.status(400).json({ error: `Estado "${estado}" no valido` });
+    }
+
+    const [[pedido]] = await db.query('SELECT id FROM pedidos WHERE id = ?', [id]);
     if (!pedido) return res.status(404).json({ error: 'Pedido no encontrado' });
-    await db.query('UPDATE cocina_pedidos SET estado_id = ? WHERE id = ?', [estadoRow.id, id]);
-    res.json({ id: parseInt(id), estado: estadoRow.clave });
+
+    await db.query('UPDATE pedidos SET estado = ? WHERE id = ?', [estado, id]);
+    res.json({ id: parseInt(id, 10), estado });
   } catch (err) {
     console.error('[updateEstadoPedido]', err);
     res.status(500).json({ error: 'Error al actualizar el estado' });
@@ -253,25 +267,30 @@ exports.updateEstadoPedido = async (req, res) => {
 exports.updateEstado = exports.updateEstadoPedido;
 
 exports.getEstados = async (_req, res) => {
-  try {
-    const [rows] = await db.query(
-      'SELECT id, clave, label, orden FROM cocina_estados WHERE activo = TRUE ORDER BY orden'
-    );
-    res.json(rows);
-  } catch (err) { res.status(500).json({ error: 'Error al obtener estados' }); }
+  res.json([
+    { clave: 'pendiente', label: 'Pendiente', orden: 1 },
+    { clave: 'en_preparacion', label: 'En preparacion', orden: 2 },
+    { clave: 'listo', label: 'Listo', orden: 3 },
+    { clave: 'pagado', label: 'Pagado', orden: 4 },
+    { clave: 'cancelado', label: 'Cancelado', orden: 5 },
+  ]);
 };
 
 exports.getCategorias = async (_req, res) => {
   try {
-    const [rows] = await db.query('SELECT id, clave, label, icono FROM cocina_categorias');
+    const [rows] = await db.query(
+      'SELECT DISTINCT categoria AS clave, categoria AS label FROM detalle_pedido WHERE categoria IS NOT NULL ORDER BY categoria'
+    );
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: 'Error al obtener categorías' }); }
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener categorias' });
+  }
 };
 
 exports.getCocineroTurno = async (_req, res) => {
   res.json({
-    id:     process.env.COCINERO_TURNO_ID     || 1,
+    id: process.env.COCINERO_TURNO_ID || 1,
     nombre: process.env.COCINERO_TURNO_NOMBRE || 'Sin asignar',
-    turno:  'mock',
+    turno: 'mock',
   });
 };
