@@ -49,22 +49,29 @@ const Pedido = {
     await pool.execute("UPDATE pedidos SET estado=? WHERE id=?", [estado, id]);
   },
 
+  // ✅ FIX: eliminado RETURNING (sintaxis PostgreSQL, no existe en MySQL)
+  // El flujo ahora es: obtener pedido_id primero → actualizar → recalcular
   updateItem: async (item_id, cantidad) => {
+    // 1. Obtener pedido_id antes de cualquier modificación
+    const [rows] = await pool.execute(
+      "SELECT pedido_id FROM detalle_pedido WHERE id=?", [item_id]
+    );
+    if (!rows[0]) return; // item no existe, nada que hacer
+
+    const pedido_id = rows[0].pedido_id;
+
     if (cantidad <= 0) {
-      const [r] = await pool.execute(
-        "SELECT pedido_id FROM detalle_pedido WHERE id=?", [item_id]);
+      // Eliminar el item si cantidad llega a 0 (caso de seguridad backend)
       await pool.execute("DELETE FROM detalle_pedido WHERE id=?", [item_id]);
-      if (r[0]) await recalcularTotal(r[0].pedido_id);
     } else {
-      const [r] = await pool.execute(
-        "UPDATE detalle_pedido SET cantidad=? WHERE id=? RETURNING pedido_id",
-        [cantidad, item_id]);
+      // Actualizar cantidad normalmente
       await pool.execute(
-        "UPDATE detalle_pedido SET cantidad=? WHERE id=?", [cantidad, item_id]);
-      const [rows] = await pool.execute(
-        "SELECT pedido_id FROM detalle_pedido WHERE id=?", [item_id]);
-      if (rows[0]) await recalcularTotal(rows[0].pedido_id);
+        "UPDATE detalle_pedido SET cantidad=? WHERE id=?", [cantidad, item_id]
+      );
     }
+
+    // 2. Recalcular total del pedido
+    await recalcularTotal(pedido_id);
   },
 };
 
@@ -72,7 +79,9 @@ const recalcularTotal = async (pedido_id) => {
   await pool.execute(
     `UPDATE pedidos SET total=
      (SELECT COALESCE(SUM(cantidad*precio),0) FROM detalle_pedido WHERE pedido_id=?)
-     WHERE id=?`, [pedido_id, pedido_id]);
+     WHERE id=?`,
+    [pedido_id, pedido_id]
+  );
 };
 
 module.exports = Pedido;

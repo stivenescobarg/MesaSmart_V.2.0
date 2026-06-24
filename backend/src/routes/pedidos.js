@@ -1,9 +1,9 @@
 // backend/src/routes/pedidos.js
-const express = require("express");
-const router  = express.Router();
+const express  = require("express");
+const router   = express.Router();
 const { pool } = require("../config/db");
 
-// GET /api/pedidos — pedidos de COCINA (solo comida, no pagados ni cancelados)
+// GET /api/pedidos-cocina — pedidos con ítems de comida
 router.get("/", async (req, res) => {
   try {
     const [pedidos] = await pool.query(`
@@ -23,6 +23,8 @@ router.get("/", async (req, res) => {
 
     const ids = pedidos.map(p => p.id);
 
+    // ── imagen removida: la columna no existe en detalle_pedido ──
+    // Si la agregas con ALTER TABLE, puedes volver a incluirla aquí
     const [items] = await pool.query(`
       SELECT
         pedido_id,
@@ -30,20 +32,18 @@ router.get("/", async (req, res) => {
         cantidad,
         precio,
         categoria,
-        observacion,
-        imagen
+        observacion
       FROM detalle_pedido
       WHERE pedido_id IN (?) AND categoria = 'comida'
     `, [ids]);
 
-    // Agrupar items por pedido
     const itemsMap = {};
     items.forEach(item => {
       if (!itemsMap[item.pedido_id]) itemsMap[item.pedido_id] = [];
-      itemsMap[item.pedido_id].push(item);
+      // imagen null por defecto hasta que se agregue la columna a la BD
+      itemsMap[item.pedido_id].push({ ...item, imagen: null });
     });
 
-    // Solo devolver pedidos que tengan al menos un item de comida
     const resultado = pedidos
       .map(p => ({
         ...p,
@@ -55,12 +55,12 @@ router.get("/", async (req, res) => {
 
     res.json(resultado);
   } catch (err) {
-    console.error("❌ Error GET /api/pedidos:", err);
+    console.error("❌ Error GET /api/pedidos-cocina:", err);
     res.status(500).json({ error: "Error al obtener pedidos" });
   }
 });
 
-// POST /api/pedidos — crear pedido desde el menú
+// POST /api/pedidos-cocina — crear pedido desde el menú
 router.post("/", async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -71,19 +71,16 @@ router.post("/", async (req, res) => {
     if (!items || items.length === 0)
       return res.status(400).json({ error: "El pedido no tiene items" });
 
-    // Buscar o crear mesa por nombre si no viene mesa_id
     let mesaId = mesa_id;
     if (!mesaId && mesa_nombre) {
       const [mesas] = await conn.query(
-        "SELECT id FROM mesas WHERE nombre = ? LIMIT 1",
-        [mesa_nombre]
+        "SELECT id FROM mesas WHERE nombre = ? LIMIT 1", [mesa_nombre]
       );
       if (mesas.length > 0) {
         mesaId = mesas[0].id;
       } else {
         const [nueva] = await conn.execute(
-          "INSERT INTO mesas (nombre, estado) VALUES (?, 'ocupada')",
-          [mesa_nombre]
+          "INSERT INTO mesas (nombre, estado) VALUES (?, 'ocupada')", [mesa_nombre]
         );
         mesaId = nueva.insertId;
       }
@@ -91,10 +88,10 @@ router.post("/", async (req, res) => {
 
     if (!mesaId) return res.status(400).json({ error: "Mesa requerida" });
 
-    // Calcular total
-    const total = items.reduce((acc, i) => acc + (Number(i.precio) * Number(i.cantidad)), 0);
+    const total = items.reduce(
+      (acc, i) => acc + (Number(i.precio) * Number(i.cantidad)), 0
+    );
 
-    // Insertar pedido
     const [pedidoResult] = await conn.execute(
       `INSERT INTO pedidos (mesa_id, estado, total, observacion)
        VALUES (?, 'pendiente', ?, ?)`,
@@ -102,12 +99,11 @@ router.post("/", async (req, res) => {
     );
     const pedidoId = pedidoResult.insertId;
 
-    // Insertar detalle
     for (const item of items) {
       await conn.execute(
         `INSERT INTO detalle_pedido
-          (pedido_id, nombre, cantidad, precio, categoria, observacion, imagen)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          (pedido_id, nombre, cantidad, precio, categoria, observacion)
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [
           pedidoId,
           item.nombre,
@@ -115,43 +111,39 @@ router.post("/", async (req, res) => {
           item.precio   || 0,
           item.categoria || "comida",
           item.observacion || item.notas || null,
-          item.imgKey    || item.imagen  || null,
         ]
       );
     }
 
-    // Actualizar estado de la mesa a ocupada
     await conn.execute(
-      "UPDATE mesas SET estado = 'ocupada' WHERE id = ?",
-      [mesaId]
+      "UPDATE mesas SET estado = 'ocupada' WHERE id = ?", [mesaId]
     );
 
     await conn.commit();
     res.json({ ok: true, pedido_id: pedidoId });
   } catch (err) {
     await conn.rollback();
-    console.error("❌ Error POST /api/pedidos:", err);
+    console.error("❌ Error POST /api/pedidos-cocina:", err);
     res.status(500).json({ error: "Error al crear pedido" });
   } finally {
     conn.release();
   }
 });
 
-// PATCH /api/pedidos/:id/estado — cocina actualiza estado
+// PATCH /api/pedidos-cocina/:id/estado
 router.patch("/:id/estado", async (req, res) => {
   try {
     const { estado } = req.body;
-    const estados = ["pendiente", "en_preparacion", "listo", "pagado", "cancelado"];
-    if (!estados.includes(estado))
+    const validos = ["pendiente", "en_preparacion", "listo", "pagado", "cancelado"];
+    if (!validos.includes(estado))
       return res.status(400).json({ error: "Estado inválido" });
 
     await pool.execute(
-      "UPDATE pedidos SET estado = ? WHERE id = ?",
-      [estado, req.params.id]
+      "UPDATE pedidos SET estado = ? WHERE id = ?", [estado, req.params.id]
     );
     res.json({ ok: true });
   } catch (err) {
-    console.error("❌ Error PATCH /api/pedidos/:id/estado:", err);
+    console.error("❌ Error PATCH /api/pedidos-cocina/:id/estado:", err);
     res.status(500).json({ error: "Error al actualizar estado" });
   }
 });

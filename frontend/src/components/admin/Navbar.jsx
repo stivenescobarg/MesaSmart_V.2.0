@@ -7,6 +7,7 @@ const SECCIONES = [
   { key: "inicio",    label: "Caja",      icono: "⬡" },
   { key: "mesas",     label: "Mesas",     icono: "⊞" },
   { key: "egresos",   label: "Egresos",   icono: "📤" },
+  { key: "stock",     label: "Stock",     icono: "📦" }, 
   { key: "historial", label: "Historial", icono: "≡" },
   { key: "quejas",    label: "Quejas",    icono: "💬" },
   { key: "usuarios",  label: "Usuarios",  icono: "◉" },

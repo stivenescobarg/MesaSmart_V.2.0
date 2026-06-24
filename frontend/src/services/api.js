@@ -3,13 +3,12 @@
 // Si el backend responde 401 → limpia el token y redirige al login.
 
 import { authService } from "./authService";
-
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+import { API_URL } from "./config";
 
 const request = async (endpoint, options = {}) => {
   const token = authService.getToken();
 
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  const res = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
