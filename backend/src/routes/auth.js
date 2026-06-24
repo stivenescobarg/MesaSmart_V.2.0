@@ -1,4 +1,4 @@
-// backend/src/routes/auth.js
+/* // backend/src/routes/auth.js
 const express = require('express');
 const router  = express.Router();
 const ctrl    = require('../controllers/authController');   // ← sin ../src/
@@ -8,4 +8,4 @@ router.post('/login',  ctrl.login);
 router.post('/logout', auth, ctrl.logout);
 router.get('/me',      auth, ctrl.me);
 
-module.exports = router;
+module.exports = router; */
