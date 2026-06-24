@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import "./Menu.css";
 import FoodCard from "../components/FoodCard";
 import { imagenes } from "../data/imagenes";
+import { API_URL } from "../services/config";
 
 // ── Íconos por categoría ─────────────────────────────────────
 // Objeto que mapea cada nombre de categoría con su emoji

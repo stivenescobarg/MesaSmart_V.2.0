@@ -1,11 +1,12 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import { API_URL } from "./config";
+
 const POLL_INTERVAL = 8000;
 
 const getToken = () => localStorage.getItem("ms_token");
 
 const http = {
   get: async (path) => {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await fetch(`${API_URL}${path}`, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${getToken()}`,
@@ -15,7 +16,7 @@ const http = {
     return res.json();
   },
   post: async (path, body) => {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await fetch(`${API_URL}${path}`, {
       method: 'POST',
       headers: {
         "Content-Type": "application/json",
@@ -27,7 +28,7 @@ const http = {
     return res.json();
   },
   patch: async (path, body) => {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await fetch(`${API_URL}${path}`, {
       method: 'PATCH',
       headers: {
         "Content-Type": "application/json",

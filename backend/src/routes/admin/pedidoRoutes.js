@@ -6,10 +6,11 @@ const ctrl = require("../../controllers/admin/pedidoController");
 // ── Rutas generales ──────────────────────────────────────────────
 r.get("/",             auth, ctrl.getPedidos);
 r.post("/",            auth, ctrl.createPedido);
-r.patch("/:id/estado", auth, ctrl.updateEstadoPedido);
 r.get("/estados",      auth, ctrl.getEstados);
 r.get("/categorias",   auth, ctrl.getCategorias);
 r.get("/cocinero",     auth, ctrl.getCocineroTurno);
+r.get("/mesa/:mesa_id", auth, ctrl.getByMesa);
+r.patch("/:id/estado", auth, ctrl.updateEstadoPedido);
 
 // ── Rutas de items ───────────────────────────────────────────────
 // ⚠️ IMPORTANTE: /items/mover debe ir ANTES de /items/:item_id

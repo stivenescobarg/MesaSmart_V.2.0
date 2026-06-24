@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { imagenes } from "../data/imagenes";
+import { API_URL } from "../services/config";
 import "./Bartender.css";
 
 const OrdenModal = ({ orden, onClose, onListo }) => {
@@ -71,7 +72,7 @@ const BartenderDashboard = () => {
 
   const cargarOrdenes = async () => {
     try {
-      const res  = await fetch("http://localhost:3001/api/bar/ordenes");
+      const res  = await fetch(`${API_URL}/bar/ordenes`);
       const data = await res.json();
       if (data.ok) {
         setOrdenes(data.ordenes.map(o => ({
@@ -92,7 +93,7 @@ const BartenderDashboard = () => {
 
   const marcarListo = async (orden) => {
     try {
-      await fetch(`http://localhost:3001/api/bar/orden/${orden.id}`, { method: "PATCH" });
+      await fetch(`${API_URL}/bar/orden/${orden.id}`, { method: "PATCH" });
       setCompletadas(c => c + 1);
       cargarOrdenes();
     } catch (err) {

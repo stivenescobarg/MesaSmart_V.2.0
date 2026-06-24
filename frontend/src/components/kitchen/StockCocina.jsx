@@ -2,8 +2,9 @@
 // Solo productos de COCINA. PIN requerido para modificar.
 
 import { useState, useEffect, useCallback } from "react";
+import { API_URL } from "../../services/config";
 
-const API = "http://localhost:3001/api/stock";
+const API = `${API_URL}/stock`;
 
 const COLOR_NIVEL = (p) => {
   const pct = p.cantidad_actual / Math.max(p.cantidad_minima, 1);

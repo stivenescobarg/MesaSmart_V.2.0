@@ -1,16 +1,16 @@
 // frontend/src/pages/KitchenDashboard.jsx
-// Rediseño visual v2 — Azul cobalto #3250e6
-// Lógica original intacta · Mejoras visuales: imágenes grandes,
-// descripción de producto, jerarquía mejorada, tipografía Syne + IBM Plex
+// Tema claro · Azul cobalto #3250e6
+// Lógica original intacta
 
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate }                       from "react-router-dom";
 import { useAuth }                           from "../context/AuthContext";
 import { imagenes }                          from "../data/imagenes";
+import { API_URL }                            from "../services/config";
 import StockCocina                           from "../components/kitchen/StockCocina";
 import "./KitchenDashboard.css";
 
-// ── Constantes de estado ─────────────────────────────────────────
+// ── Constantes ────────────────────────────────────────────────────
 const ESTADO_LABEL = {
   pendiente:      "Pendiente",
   en_preparacion: "En prep.",
@@ -29,7 +29,7 @@ const ESTADO_BTN = {
 
 // ── Helpers ───────────────────────────────────────────────────────
 const fmtHora = iso => new Date(iso).toLocaleTimeString("es-CO", {
-  hour: "2-digit", minute: "2-digit"
+  hour: "2-digit", minute: "2-digit",
 });
 
 const tiempoTranscurrido = hora => {
@@ -39,12 +39,10 @@ const tiempoTranscurrido = hora => {
   return `${Math.floor(min / 60)}h ${min % 60}m`;
 };
 
-const esUrgente = hora => {
-  const min = Math.floor((Date.now() - new Date(hora)) / 60000);
-  return min >= 15;
-};
+const esUrgente = hora =>
+  Math.floor((Date.now() - new Date(hora)) / 60000) >= 15;
 
-// ── Modal detalle de pedido ───────────────────────────────────────
+// ── Modal detalle ─────────────────────────────────────────────────
 const PedidoModal = ({ pedido, onClose, onAvanzar }) => {
   if (!pedido) return null;
   const urgente = esUrgente(pedido.hora);
@@ -54,11 +52,11 @@ const PedidoModal = ({ pedido, onClose, onAvanzar }) => {
       <div
         className={`kd-modal ${urgente ? "kd-modal-urgente" : ""}`}
         onClick={e => e.stopPropagation()}
-      >
-        <div className="kd-modal-handle" />
+
+>
         <button className="kd-modal-close" onClick={onClose} aria-label="Cerrar">✕</button>
 
-        {/* Header */}
+
         <div className="kd-modal-header">
           <div>
             <h2 className="kd-modal-title">{pedido.mesa}</h2>
@@ -74,7 +72,7 @@ const PedidoModal = ({ pedido, onClose, onAvanzar }) => {
           </span>
         </div>
 
-        {/* Nota del pedido */}
+
         {pedido.notas && (
           <div className="kd-modal-nota">
             <span>📋</span>
@@ -82,13 +80,13 @@ const PedidoModal = ({ pedido, onClose, onAvanzar }) => {
           </div>
         )}
 
-        {/* Items */}
+
         <div className="kd-modal-items">
           {pedido.items?.map((item, i) => {
             const img = imagenes[item.imagen] || imagenes[item.imgKey] || null;
             return (
-              <div key={i} className="kd-modal-item">
-                {/* Imagen grande del producto */}
+   
+   <div key={i} className="kd-modal-item">
                 <div className="kd-modal-item-img">
                   {img
                     ? <img src={img} alt={item.nombre} />
@@ -98,12 +96,11 @@ const PedidoModal = ({ pedido, onClose, onAvanzar }) => {
 
                 <div className="kd-modal-item-info">
                   <p className="kd-modal-item-name">{item.nombre}</p>
-
-                  {/* Descripción del producto */}
+  
                   {item.descripcion && (
                     <p className="kd-modal-item-desc">{item.descripcion}</p>
                   )}
-
+                  
                   <div className="kd-modal-item-meta">
                     <span className="kd-qty-badge">×{item.cantidad}</span>
                     {item.observacion && (
@@ -116,7 +113,7 @@ const PedidoModal = ({ pedido, onClose, onAvanzar }) => {
           })}
         </div>
 
-        {/* Botón de acción */}
+
         {ESTADO_BTN[pedido.estado] && (
           <button
             className={`kd-modal-btn-avanzar estado-${pedido.estado}`}
@@ -139,14 +136,14 @@ const PedidoCard = ({ pedido, onClick, onAvanzar }) => {
       className={`kd-card estado-${pedido.estado} ${urgente ? "kd-card-urgente" : ""}`}
       onClick={() => onClick(pedido)}
     >
-      {/* Banner urgente */}
+ 
       {urgente && (
         <div className="kd-urgente-banner">
           ⚡ Urgente — {tiempoTranscurrido(pedido.hora)}
         </div>
       )}
 
-      {/* Header: mesa, tiempo y badge */}
+ 
       <div className="kd-card-header">
         <div className="kd-card-mesa">
           <span className={`kd-num estado-${pedido.estado}`}>
@@ -164,29 +161,27 @@ const PedidoCard = ({ pedido, onClick, onAvanzar }) => {
         </span>
       </div>
 
-      {/* Nota del pedido */}
+   
       {pedido.notas && (
         <div className="kd-card-nota">📋 {pedido.notas}</div>
       )}
 
-      {/* Items con imagen, nombre, descripción, cantidad y observaciones */}
+
       <div className="kd-items">
         {pedido.items?.slice(0, 4).map((item, i) => {
           const img = imagenes[item.imagen] || imagenes[item.imgKey] || null;
           return (
             <div key={i} className="kd-item">
-              {/* Imagen del producto */}
+ 
               <div className="kd-item-img">
                 {img
                   ? <img src={img} alt={item.nombre} />
                   : <span className="kd-item-placeholder">🍽️</span>
                 }
               </div>
-
-              {/* Cantidad */}
+              
               <span className="kd-item-qty">×{item.cantidad}</span>
-
-              {/* Info: nombre + descripción + observación */}
+              
               <div className="kd-item-info">
                 <p className="kd-item-nombre">{item.nombre}</p>
                 {item.descripcion && (
@@ -207,7 +202,7 @@ const PedidoCard = ({ pedido, onClick, onAvanzar }) => {
         )}
       </div>
 
-      {/* Botón avanzar estado */}
+    
       {ESTADO_BTN[pedido.estado] && (
         <button
           className={`kd-btn-avanzar estado-${pedido.estado}`}
@@ -232,16 +227,13 @@ const KitchenDashboard = () => {
   const [vistaStock, setVistaStock] = useState(false);
   const [error,      setError]      = useState(false);
 
-  // ── Cargar pedidos ───────────────────────────────────────────
+
   const cargar = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/pedidos-cocina");
+      const res = await fetch(`${API_URL}/pedidos-cocina`);
       if (!res.ok) throw new Error();
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setPedidos(data);
-        setError(false);
-      }
+      if (Array.isArray(data)) { setPedidos(data); setError(false); }
     } catch {
       setError(true);
     } finally {
@@ -255,24 +247,24 @@ const KitchenDashboard = () => {
     return () => clearInterval(id);
   }, [cargar]);
 
-  // ── Avanzar estado ───────────────────────────────────────────
+
   const avanzarEstado = async (pedido) => {
     const nuevoEstado = ESTADO_NEXT[pedido.estado];
     if (!nuevoEstado) return;
 
-    // Optimistic update
+
     setPedidos(prev =>
       prev.map(p => p.id === pedido.id ? { ...p, estado: nuevoEstado } : p)
     );
 
     try {
-      await fetch(`http://localhost:3001/api/pedidos-cocina/${pedido.id}/estado`, {
-        method:  "PATCH",
+      await fetch(`${API_URL}/pedidos-cocina/${pedido.id}/estado`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ estado: nuevoEstado }),
+        body: JSON.stringify({ estado: nuevoEstado }),
       });
     } catch {
-      // Revertir si falla
+
       setPedidos(prev =>
         prev.map(p => p.id === pedido.id ? { ...p, estado: pedido.estado } : p)
       );
@@ -285,7 +277,7 @@ const KitchenDashboard = () => {
     navigate("/login", { replace: true });
   };
 
-  // ── Métricas ─────────────────────────────────────────────────
+
   const pendientes    = pedidos.filter(p => p.estado === "pendiente");
   const enPreparacion = pedidos.filter(p => p.estado === "en_preparacion");
   const listos        = pedidos.filter(p => p.estado === "listo");
@@ -300,18 +292,16 @@ const KitchenDashboard = () => {
   const handleMetrica = tipo => setFiltro(prev => prev === tipo ? "todos" : tipo);
 
   return (
-    <div className="kd-root" data-kitchen-theme="dark">
-
-      {/* ── Modal de detalle ── */}
+    <div className="kd-root">
       {pedidoSel && (
-        <PedidoModal
+<PedidoModal
           pedido={pedidoSel}
           onClose={() => setPedidoSel(null)}
           onAvanzar={avanzarEstado}
         />
       )}
 
-      {/* ══ HEADER ══ */}
+      {/* ── HEADER ── */}
       <header className="kd-header">
         <div className="kd-header-marca">
           <div className="kd-header-icono">🍳</div>
@@ -320,9 +310,7 @@ const KitchenDashboard = () => {
             <p className="kd-subtitle">Panel en tiempo real</p>
           </div>
         </div>
-
-        {/* Tabs de vista */}
-        <div className="kd-view-tabs">
+       <div className="kd-view-tabs">
           <button
             className={`kd-view-tab ${!vistaStock ? "activo" : ""}`}
             onClick={() => setVistaStock(false)}
@@ -340,7 +328,7 @@ const KitchenDashboard = () => {
         <button className="kd-salir" onClick={handleSalir}>Salir →</button>
       </header>
 
-      {/* ── Banner de error ── */}
+
       {error && (
         <div className="kd-error-banner">
           ⚠️ Sin conexión al servidor — mostrando últimos datos
@@ -348,19 +336,18 @@ const KitchenDashboard = () => {
         </div>
       )}
 
-      {/* ── Banner urgentes ── */}
+
       {!vistaStock && urgentes.length > 0 && (
         <div className="kd-urgentes-banner">
-          ⚡ {urgentes.length} pedido{urgentes.length > 1 ? "s" : ""}{" "}
-          lleva{urgentes.length === 1 ? "" : "n"} más de 15 min esperando
+          ⚡ {urgentes.length} pedido{urgentes.length > 1 ? "s" : ""}
+          {" "}lleva{urgentes.length === 1 ? "" : "n"} más de 15 min esperando
         </div>
       )}
 
-      {/* ══ VISTA PEDIDOS ══ */}
+      {/* ── PEDIDOS ── */}
       {!vistaStock && (
         <main className="kd-main">
-
-          {/* Métricas */}
+  
           <div className="kd-metrics">
             <div
               className={`kd-metric ${filtro === "pendiente" ? "metric-active" : ""}`}
@@ -388,17 +375,18 @@ const KitchenDashboard = () => {
               onClick={() => handleMetrica("todos")}
             >
               <p className="kd-metric-label">Activos</p>
-              <p className="kd-metric-value">{pedidos.filter(p => p.estado !== "listo").length}</p>
+              <p className="kd-metric-value">
+                {pedidos.filter(p => p.estado !== "listo").length}
+              </p>
             </div>
           </div>
 
-          {/* Filtros */}
           <div className="kd-filtros">
             {[
-              { key: "todos",          label: "Todos activos"  },
-              { key: "pendiente",      label: "⏳ Pendiente"   },
-              { key: "en_preparacion", label: "🔥 Preparando"  },
-              { key: "listo",          label: "✅ Listo"       },
+              { key: "todos",          label: "Todos activos" },
+              { key: "pendiente",      label: "⏳ Pendiente"  },
+              { key: "en_preparacion", label: "🔥 Preparando" },
+              { key: "listo",          label: "✅ Listo"      },
             ].map(f => (
               <button
                 key={f.key}
@@ -410,7 +398,7 @@ const KitchenDashboard = () => {
             ))}
           </div>
 
-          {/* Grid de pedidos */}
+
           {cargando ? (
             <div className="kd-empty">
               <div className="kd-spinner" />
@@ -436,7 +424,7 @@ const KitchenDashboard = () => {
         </main>
       )}
 
-      {/* ══ VISTA STOCK ══ */}
+      {/* ── STOCK ── */}
       {vistaStock && (
         <main className="kd-main">
           <StockCocina />
