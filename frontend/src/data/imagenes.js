@@ -1,9 +1,10 @@
+// frontend/src/data/imagenes.js
 import hamburguesa  from "../assets/images/Hamburguesa.jpg";
 import alitas       from "../assets/images/alitasbbq.jpg";
 import bandeja      from "../assets/images/BandejaPaisa.jpg";
 import patacon      from "../assets/images/Patacon.jpg";
-import lasana       from "../assets/images/LasañaDecarne.jpg";      // ← renombrado
-import carbonara    from "../assets/images/CarbonaraC.jpg";  // ← ahora único
+import lasana       from "../assets/images/LasañaDecarne.jpg";
+import carbonara    from "../assets/images/CarbonaraC.jpg";
 import pesto        from "../assets/images/PastaPesto.jpg";
 import ribeye       from "../assets/images/Ribeye.jpg";
 import strip        from "../assets/images/Solomito.jpg";
@@ -29,26 +30,26 @@ import carpaccio    from "../assets/images/Carpaccio.jpg";
 import puntaDeAnca  from "../assets/images/PuntaDeanca.jpg";
 import solomito     from "../assets/images/Solomito.jpg";
 import aguardiente  from "../assets/images/Aguardiente.jpg";
-import smirnoff  from "../assets/images/Smirnoff.jpg";
-import aguila  from "../assets/images/Aguila.jpg";
-import corona  from "../assets/images/Corona.jpg";
+import smirnoff     from "../assets/images/Smirnoff.jpg";
+import aguila       from "../assets/images/Aguila.jpg";
+import corona       from "../assets/images/Corona.jpg";
 import aguilaLight  from "../assets/images/AguilaLight.jpg";
-import cuates  from "../assets/images/Cuates.jpg";
-import jugos  from "../assets/images/Jugos.jpg";
-import michelada  from "../assets/images/Michelada.jpg";
-import micheladaSaborizada  from "../assets/images/MicheladaSaborizada.jpg";
-import gaseosas  from "../assets/images/Gaseosas.jpg";
+import cuates       from "../assets/images/Cuates.jpg";
+import jugos        from "../assets/images/Jugos.jpg";
+import michelada    from "../assets/images/Michelada.jpg";
+import micheladaSaborizada from "../assets/images/MicheladaSaborizada.jpg";
+import gaseosas     from "../assets/images/Gaseosas.jpg";
 import malteadachp  from "../assets/images/MalteadaChp.jpg";
 import perroCaliente from "../assets/images/PerroCaliente.jpg";
-import polloAsado from "../assets/images/PolloAsado.jpg";
+import polloAsado   from "../assets/images/PolloAsado.jpg";
 
 export const imagenes = {
   hamburguesa,
   alitas,
   bandeja,
   patacon,
-  lasana,       // ← para Lasaña de Carne
-  carbonara,    // ← para Carbonara Clásica
+  lasana,
+  carbonara,
   pesto,
   ribeye,
   strip,
