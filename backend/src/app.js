@@ -15,6 +15,8 @@ const barRoutes = require("./routes/admin/barRoutes");
 const productosRoutes = require("./routes/productos");
 const pedidosCocinaRoutes = require("./routes/pedidos");
 const quejaRoutes = require("./routes/quejaRoutes");
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger');
 
 const app = express();
 
@@ -26,6 +28,10 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+
+// ─── Swagger UI ────────────────────────────────────────────────
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/usuarios", userRoutes);

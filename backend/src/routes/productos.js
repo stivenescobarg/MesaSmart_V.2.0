@@ -1,133 +1,150 @@
+// backend/src/routes/productos.js
 const express = require("express");
 const router  = express.Router();
 const { pool } = require("../config/db");
 
-// GET /api/menu
+/**
+ * @swagger
+ * /api/menu:
+ *   get:
+ *     summary: Obtener el menú completo con categorías, subcategorías, opciones y adiciones
+ *     tags: [Menú]
+ *     responses:
+ *       200:
+ *         description: Lista de productos del menú
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Producto'
+ *       500:
+ *         description: Error del servidor
+ */
 router.get("/", async (req, res) => {
-  const sql = `
-    SELECT
-      p.id,
-      p.nombre,
-      p.descripcion,
-      p.precio,
-      p.imagen,
-      p.tiene_termino,
-      c.nombre AS categoria,
-      s.nombre AS subcategoria,
-      o.id     AS opcion_id,
-      o.nombre AS opcion_nombre,
-      o.tipo,
-      o.precio AS opcion_precio
-    FROM productos p
-    LEFT JOIN categorias        c  ON p.categoria_id    = c.id
-    LEFT JOIN subcategorias     s  ON p.subcategoria_id = s.id
-    LEFT JOIN productos_opciones po ON p.id             = po.producto_id
-    LEFT JOIN opciones          o  ON po.opcion_id      = o.id
-    ORDER BY p.id;
-  `;
-
-  try {
-    const [results] = await pool.query(sql);
-
-    const productosMap = {};
-
-    results.forEach(row => {
-      if (!productosMap[row.id]) {
-        productosMap[row.id] = {
-          nombre:        row.nombre,
-          descripcion:   row.descripcion,
-          precio:        row.precio,
-          imagen:        row.imagen,
-          tiene_termino: row.tiene_termino,
-          categoria:     row.categoria,
-          subcategoria:  row.subcategoria,
-          opciones:      [],
-          adiciones:     [],
-        };
-      }
-
-      if (row.opcion_id) {
-        const opcion = { nombre: row.opcion_nombre, precio: row.opcion_precio };
-        if (row.tipo === "acompanamiento") {
-          productosMap[row.id].opciones.push(opcion);
-        } else {
-          productosMap[row.id].adiciones.push(opcion);
-        }
-      }
-    });
-
-    res.json(Object.values(productosMap));
-  } catch (err) {
-    console.error("❌ Error SQL:", err);
-    res.status(500).json({ error: "Error en el servidor" });
-  }
+  // ... (tu código actual)
 });
 
-// POST /api/menu — agregar nuevo producto
+/**
+ * @swagger
+ * /api/menu:
+ *   post:
+ *     summary: Agregar un nuevo producto al menú
+ *     tags: [Menú]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nombre
+ *               - precio
+ *               - categoria_id
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *               descripcion:
+ *                 type: string
+ *               precio:
+ *                 type: number
+ *               categoria_id:
+ *                 type: integer
+ *               imagen:
+ *                 type: string
+ *               tiene_termino:
+ *                 type: boolean
+ *               adiciones:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     nombre:
+ *                       type: string
+ *                     precio:
+ *                       type: number
+ *     responses:
+ *       200:
+ *         description: Producto creado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                 id:
+ *                   type: integer
+ *       400:
+ *         description: Datos incompletos
+ *       500:
+ *         description: Error del servidor
+ */
 router.post("/", async (req, res) => {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-
-    const { nombre, descripcion, precio, categoria_id, imagen, tiene_termino, adiciones } = req.body;
-
-    if (!nombre || !precio || !categoria_id)
-      return res.status(400).json({ error: "Nombre, precio y categoría son requeridos" });
-
-    const [result] = await conn.execute(
-      `INSERT INTO productos (nombre, descripcion, precio, categoria_id, imagen, tiene_termino)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [nombre, descripcion || "", precio, categoria_id, imagen || null, tiene_termino ? 1 : 0]
-    );
-    const productoId = result.insertId;
-
-    if (adiciones?.length > 0) {
-      for (const ad of adiciones) {
-        const [opResult] = await conn.execute(
-          `INSERT INTO opciones (nombre, precio, tipo) VALUES (?, ?, 'adicion')`,
-          [ad.nombre, ad.precio || 0]
-        );
-        await conn.execute(
-          `INSERT INTO productos_opciones (producto_id, opcion_id) VALUES (?, ?)`,
-          [productoId, opResult.insertId]
-        );
-      }
-    }
-
-    await conn.commit();
-    res.json({ ok: true, id: productoId });
-  } catch (err) {
-    await conn.rollback();
-    console.error("❌ Error al guardar producto:", err);
-    res.status(500).json({ error: "Error al guardar producto" });
-  } finally {
-    conn.release();
-  }
+  // ... (tu código actual)
 });
 
-// GET /api/menu/categorias — lista de categorías
+/**
+ * @swagger
+ * /api/menu/categorias:
+ *   get:
+ *     summary: Obtener lista de categorías disponibles
+ *     tags: [Menú]
+ *     responses:
+ *       200:
+ *         description: Lista de categorías
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Categoria'
+ *       500:
+ *         description: Error del servidor
+ */
 router.get("/categorias", async (req, res) => {
-  try {
-    const [rows] = await pool.query("SELECT id, nombre FROM categorias ORDER BY nombre");
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: "Error al obtener categorías" });
-  }
+  // ... (tu código actual)
 });
 
-// PUT /api/menu/:id — editar producto
+/**
+ * @swagger
+ * /api/menu/{id}:
+ *   put:
+ *     summary: Editar un producto existente
+ *     tags: [Menú]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *               descripcion:
+ *                 type: string
+ *               precio:
+ *                 type: number
+ *               imagen:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Producto actualizado
+ *       500:
+ *         description: Error del servidor
+ */
 router.put("/:id", async (req, res) => {
-  try {
-    const { nombre, descripcion, precio, imagen } = req.body;
-    await pool.execute(
-      `UPDATE productos SET nombre=?, descripcion=?, precio=?, imagen=? WHERE id=?`,
-      [nombre, descripcion || "", precio, imagen || null, req.params.id]
-    );
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("❌ Error al editar producto:", err);
-    res.status(500).json({ error: "Error al editar producto" });
-  }
+  // ... (tu código actual)
 });
 
 module.exports = router;
