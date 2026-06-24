@@ -1,11 +1,11 @@
 // frontend/src/pages/KitchenDashboard.jsx
 // Tema claro · Azul cobalto #3250e6
-// Lógica original intacta
+// Lógica original intacta, pero con imágenes usando getImage
 
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate }                       from "react-router-dom";
 import { useAuth }                           from "../context/AuthContext";
-import { imagenes }                          from "../data/imagenes";
+import { getImage }                          from "../utils/getImage"; // ← helper unificado
 import { API_URL }                            from "../services/config";
 import StockCocina                           from "../components/kitchen/StockCocina";
 import "./KitchenDashboard.css";
@@ -52,10 +52,8 @@ const PedidoModal = ({ pedido, onClose, onAvanzar }) => {
       <div
         className={`kd-modal ${urgente ? "kd-modal-urgente" : ""}`}
         onClick={e => e.stopPropagation()}
-
->
+      >
         <button className="kd-modal-close" onClick={onClose} aria-label="Cerrar">✕</button>
-
 
         <div className="kd-modal-header">
           <div>
@@ -72,7 +70,6 @@ const PedidoModal = ({ pedido, onClose, onAvanzar }) => {
           </span>
         </div>
 
-
         {pedido.notas && (
           <div className="kd-modal-nota">
             <span>📋</span>
@@ -80,27 +77,23 @@ const PedidoModal = ({ pedido, onClose, onAvanzar }) => {
           </div>
         )}
 
-
         <div className="kd-modal-items">
           {pedido.items?.map((item, i) => {
-            const img = imagenes[item.imagen] || imagenes[item.imgKey] || null;
+            // Usamos getImage con el nombre y la clave (si existe)
+            const img = getImage(item.nombre, item.imagen || item.imgKey);
             return (
-   
-   <div key={i} className="kd-modal-item">
+              <div key={i} className="kd-modal-item">
                 <div className="kd-modal-item-img">
                   {img
                     ? <img src={img} alt={item.nombre} />
                     : <span className="kd-modal-item-placeholder">🍽️</span>
                   }
                 </div>
-
                 <div className="kd-modal-item-info">
                   <p className="kd-modal-item-name">{item.nombre}</p>
-  
                   {item.descripcion && (
                     <p className="kd-modal-item-desc">{item.descripcion}</p>
                   )}
-                  
                   <div className="kd-modal-item-meta">
                     <span className="kd-qty-badge">×{item.cantidad}</span>
                     {item.observacion && (
@@ -112,7 +105,6 @@ const PedidoModal = ({ pedido, onClose, onAvanzar }) => {
             );
           })}
         </div>
-
 
         {ESTADO_BTN[pedido.estado] && (
           <button
@@ -136,14 +128,12 @@ const PedidoCard = ({ pedido, onClick, onAvanzar }) => {
       className={`kd-card estado-${pedido.estado} ${urgente ? "kd-card-urgente" : ""}`}
       onClick={() => onClick(pedido)}
     >
- 
       {urgente && (
         <div className="kd-urgente-banner">
           ⚡ Urgente — {tiempoTranscurrido(pedido.hora)}
         </div>
       )}
 
- 
       <div className="kd-card-header">
         <div className="kd-card-mesa">
           <span className={`kd-num estado-${pedido.estado}`}>
@@ -161,27 +151,22 @@ const PedidoCard = ({ pedido, onClick, onAvanzar }) => {
         </span>
       </div>
 
-   
       {pedido.notas && (
         <div className="kd-card-nota">📋 {pedido.notas}</div>
       )}
 
-
       <div className="kd-items">
         {pedido.items?.slice(0, 4).map((item, i) => {
-          const img = imagenes[item.imagen] || imagenes[item.imgKey] || null;
+          const img = getImage(item.nombre, item.imagen || item.imgKey);
           return (
             <div key={i} className="kd-item">
- 
               <div className="kd-item-img">
                 {img
                   ? <img src={img} alt={item.nombre} />
                   : <span className="kd-item-placeholder">🍽️</span>
                 }
               </div>
-              
               <span className="kd-item-qty">×{item.cantidad}</span>
-              
               <div className="kd-item-info">
                 <p className="kd-item-nombre">{item.nombre}</p>
                 {item.descripcion && (
@@ -194,7 +179,6 @@ const PedidoCard = ({ pedido, onClick, onAvanzar }) => {
             </div>
           );
         })}
-
         {(pedido.items?.length || 0) > 4 && (
           <p className="kd-items-mas">
             +{pedido.items.length - 4} más — toca para ver todo
@@ -202,7 +186,6 @@ const PedidoCard = ({ pedido, onClick, onAvanzar }) => {
         )}
       </div>
 
-    
       {ESTADO_BTN[pedido.estado] && (
         <button
           className={`kd-btn-avanzar estado-${pedido.estado}`}
@@ -227,7 +210,6 @@ const KitchenDashboard = () => {
   const [vistaStock, setVistaStock] = useState(false);
   const [error,      setError]      = useState(false);
 
-
   const cargar = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/pedidos-cocina`);
@@ -247,11 +229,9 @@ const KitchenDashboard = () => {
     return () => clearInterval(id);
   }, [cargar]);
 
-
   const avanzarEstado = async (pedido) => {
     const nuevoEstado = ESTADO_NEXT[pedido.estado];
     if (!nuevoEstado) return;
-
 
     setPedidos(prev =>
       prev.map(p => p.id === pedido.id ? { ...p, estado: nuevoEstado } : p)
@@ -264,7 +244,6 @@ const KitchenDashboard = () => {
         body: JSON.stringify({ estado: nuevoEstado }),
       });
     } catch {
-
       setPedidos(prev =>
         prev.map(p => p.id === pedido.id ? { ...p, estado: pedido.estado } : p)
       );
@@ -276,7 +255,6 @@ const KitchenDashboard = () => {
     await logout();
     navigate("/login", { replace: true });
   };
-
 
   const pendientes    = pedidos.filter(p => p.estado === "pendiente");
   const enPreparacion = pedidos.filter(p => p.estado === "en_preparacion");
@@ -294,7 +272,7 @@ const KitchenDashboard = () => {
   return (
     <div className="kd-root">
       {pedidoSel && (
-<PedidoModal
+        <PedidoModal
           pedido={pedidoSel}
           onClose={() => setPedidoSel(null)}
           onAvanzar={avanzarEstado}
@@ -310,7 +288,7 @@ const KitchenDashboard = () => {
             <p className="kd-subtitle">Panel en tiempo real</p>
           </div>
         </div>
-       <div className="kd-view-tabs">
+        <div className="kd-view-tabs">
           <button
             className={`kd-view-tab ${!vistaStock ? "activo" : ""}`}
             onClick={() => setVistaStock(false)}
@@ -324,10 +302,8 @@ const KitchenDashboard = () => {
             📦 Stock
           </button>
         </div>
-
         <button className="kd-salir" onClick={handleSalir}>Salir →</button>
       </header>
-
 
       {error && (
         <div className="kd-error-banner">
@@ -335,7 +311,6 @@ const KitchenDashboard = () => {
           <button onClick={cargar}>Reintentar</button>
         </div>
       )}
-
 
       {!vistaStock && urgentes.length > 0 && (
         <div className="kd-urgentes-banner">
@@ -347,7 +322,6 @@ const KitchenDashboard = () => {
       {/* ── PEDIDOS ── */}
       {!vistaStock && (
         <main className="kd-main">
-  
           <div className="kd-metrics">
             <div
               className={`kd-metric ${filtro === "pendiente" ? "metric-active" : ""}`}
@@ -397,7 +371,6 @@ const KitchenDashboard = () => {
               </button>
             ))}
           </div>
-
 
           {cargando ? (
             <div className="kd-empty">

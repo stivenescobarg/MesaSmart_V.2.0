@@ -1,8 +1,4 @@
-/* ══════════════════════════════════════════════════════════════
-   index.css — Reset global neutro
-   NO poner colores de marca aquí — cada módulo maneja los suyos
-══════════════════════════════════════════════════════════════ */
-
+/* frontend/src/index.css */
 *,
 *::before,
 *::after {
@@ -13,23 +9,16 @@ html, body {
   margin: 0;
   padding: 0;
   width: 100%;
+  min-height: 100vh;
+  background: #f4f6fb; /* Color base claro */
+  font-family: 'Plus Jakarta Sans', sans-serif;
   overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  /* Sin fondo aquí — cada página define el suyo */
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
 }
 
 #root {
   width: 100%;
-  max-width: 100%;
-  margin: 0;
-  min-height: 100svh;
+  min-height: 100vh;
+  background: #f4f6fb;
   display: flex;
   flex-direction: column;
-  border: none;
 }
