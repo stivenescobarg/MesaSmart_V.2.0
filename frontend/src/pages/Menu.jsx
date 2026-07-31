@@ -71,11 +71,11 @@ const fmtCOP    = n => `$${Number(n).toLocaleString("es-CO")}`;
 // ============================================================
 const ProductModal = ({ item, onClose, onAddToCart }) => {
   // Estado local del modal: término de cocción seleccionado
-  const [termino,   setTermino]   = useState(null);
-  // Opción de acompañamiento seleccionada (radio button)
-  const [opcionSel, setOpcionSel] = useState(null);
+  const [termino,     setTermino]     = useState(null);
+  // Acompañamientos seleccionados (ahora es un arreglo, elección libre igual que adiciones)
+  const [opcionesSel, setOpcionesSel] = useState([]);
   // Lista de adiciones seleccionadas (checkboxes)
-  const [adiciones, setAdiciones] = useState([]);
+  const [adiciones,   setAdiciones]   = useState([]);
 
   // Si no hay item seleccionado, no renderizamos nada
   if (!item) return null;
@@ -85,19 +85,28 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
 
   // toggleAdicion: agrega o quita una adición de la lista
   // Si ya estaba seleccionada la quita, si no estaba la agrega
-  const toggleAdicion = nombre =>
+    const toggleAdicion = nombre =>
     setAdiciones(prev => prev.includes(nombre) ? prev.filter(a=>a!==nombre) : [...prev,nombre]);
 
-  // Calculamos el precio extra sumando el precio de cada adición
-  // que el usuario haya seleccionado
-  const precioAdiciones = adicionesDisp
+   // toggleOpcion: agrega o quita un acompañamiento — elección libre, igual que adiciones
+    const toggleOpcion = nombre =>
+    setOpcionesSel(prev => prev.includes(nombre) ? prev.filter(o=>o!==nombre) : [...prev,nombre]);
+
+    // Calculamos el precio extra sumando el precio de cada adición
+    // que el usuario haya seleccionado
+    const precioAdiciones = adicionesDisp
     .filter(a => adiciones.includes(a.nombre))
     .reduce((s,a) => s + Number(a.precio), 0);
 
-  // El precio total es el precio base del producto + adiciones
-  const precioTotal = Number(item.precio || 0) + precioAdiciones;
+   // Precio extra de los acompañamientos seleccionados (algunos, como "Verde"/"Amarillo", cobran extra)
+   const precioOpciones = opciones
+    .filter(o => opcionesSel.includes(o.nombre))
+    .reduce((s,o) => s + Number(o.precio), 0);
 
-  return (
+    // El precio total es el precio base del producto + acompañamientos + adiciones
+    const precioTotal = Number(item.precio || 0) + precioOpciones + precioAdiciones;
+
+    return (
     <div className="product-modal-overlay" onClick={onClose}>
       {/* Detenemos la propagación del click para que el modal
           no se cierre al hacer click dentro de él */}
@@ -145,7 +154,7 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
             <div className="modal-section">
               <p className="modal-section-title">🍟 ¿Con qué lo acompañas?</p>
               {opciones.map((op,i) => (
-                <div key={i} className={`opcion-row ${opcionSel===op.nombre?"selected":""}`} onClick={()=>setOpcionSel(op.nombre)}>
+                <div key={i} className={`opcion-row ${opcionesSel.includes(op.nombre)?"selected":""}`} onClick={()=>toggleOpcion(op.nombre)}>
                   <span className="opcion-label">
                     <span className="opcion-radio"><span className="opcion-radio-dot"/></span>
                     {op.nombre}
@@ -175,7 +184,7 @@ const ProductModal = ({ item, onClose, onAddToCart }) => {
 
           {/* Botón principal: agrega el producto al carrito con todas
               las opciones seleccionadas y cierra el modal */}
-          <button className="modal-add-btn" onClick={() => { onAddToCart({ ...item, termino, opcion: opcionSel, adiciones }); onClose(); }}>
+          <button className="modal-add-btn" onClick={() => { onAddToCart({ ...item, precio: precioTotal, termino, opcion: opcionesSel, adiciones }); onClose(); }}>
             Agregar al pedido — {fmtCOP(precioTotal)}
           </button>
         </div>
@@ -211,6 +220,7 @@ const Menu = () => {
   const [cartOpen, setCartOpen] = useState(false);   // Panel del carrito abierto/cerrado
   const [cart,     setCart]     = useState([]);       // Array de productos en el carrito
   const [pagado,   setPagado]   = useState(false);    // true cuando el pedido fue enviado
+  const [enviandoPedido, setEnviandoPedido] = useState(false); // true mientras se envía a cocina/bar (evita doble clic)
 
   // ── Estado del modal de producto ──────────────────────────
   const [selectedItem, setSelectedItem] = useState(null);  // Producto seleccionado para el modal
@@ -550,7 +560,8 @@ const Menu = () => {
     // Buscamos la clave del nombre de imagen para guardarla en el pedido
     const imgKey = Object.entries(imagenes).find(([k,v]) => v === item.img)?.[0] || null;
     setCart(prev => {
-      const key = `${item.nombre}|${item.termino||""}|${item.opcion||""}|${(item.adiciones||[]).join(",")}`;
+      const opcionKey = Array.isArray(item.opcion) ? item.opcion.join(",") : (item.opcion || "");
+      const key = `${item.nombre}|${item.termino||""}|${opcionKey}|${(item.adiciones||[]).join(",")}`;
       const existe = prev.find(c => c._key === key);
       if (existe) return prev.map(c => c._key===key ? {...c,qty:c.qty+1} : c);
       return [...prev, {...item, _key:key, qty:1, imgKey}];
@@ -577,12 +588,17 @@ const Menu = () => {
   //   - comidas → se envían a la API de cocina
   //   - bebidas → se envían a la API del bar
   // Luego muestra la pantalla de confirmación y limpia el carrito.
-  const handlePagar = async () => {
+    const handlePagar = async () => {
+    // Si ya se está enviando un pedido, ignoramos clics adicionales
+    if (enviandoPedido) return;
+
     // Validación: el número de mesa es obligatorio
     if (!quejaMesa.trim()) {
       alert("Por favor ingresa el número de tu mesa antes de confirmar el pedido.");
       return;
     }
+
+    setEnviandoPedido(true);
 
     // Separamos comidas (van a cocina) y bebidas (van al bar)
     const comidas = cart.filter(c => !BAR_CATS.includes(c.categoria));
@@ -604,8 +620,8 @@ const Menu = () => {
               categoria:   "comida",
               imgKey:      c.imgKey || null,
               imagen:      c.imgKey || null,
-              // La observación combina: término de cocción + opción + adiciones
-              observacion: [c.termino, c.opcion, ...(c.adiciones || [])]
+           // La observación combina: término de cocción + acompañamientos + adiciones
+              observacion: [c.termino, ...(c.opcion || []), ...(c.adiciones || [])]
                 .filter(Boolean).join(", ") || null,
             })),
           }),
@@ -628,7 +644,7 @@ const Menu = () => {
               cantidad:  b.qty,
               imgKey:    b.imgKey || null,
               adiciones: b.adiciones || [],
-              opcion:    b.opcion || null,
+              opcion:    b.opcion || [],
             })),
           }),
         });
@@ -637,8 +653,9 @@ const Menu = () => {
       }
     }
 
-    // Mostramos la pantalla de éxito por 4 segundos y luego limpiamos todo
+  // Mostramos la pantalla de éxito por 4 segundos y luego limpiamos todo
     setPagado(true);
+    setEnviandoPedido(false);
     setTimeout(() => {
       setPagado(false);
       setCart([]);
@@ -646,7 +663,6 @@ const Menu = () => {
       setQuejaMesa("");
     }, 4000);
   };
-
 
   // ── useEffect: cargar categorías para el modal de admin ───
   // Solo se cargan cuando el modal de "agregar producto" se abre
@@ -1147,9 +1163,9 @@ const Menu = () => {
                   <div className="cart-item-info">
                     <span className="cart-item-name">{c.nombre}</span>
                     {/* Muestra las opciones seleccionadas (término, acompañamiento, adiciones) */}
-                    {(c.termino||c.opcion||c.adiciones?.length>0) && (
+                  {(c.termino || c.opcion?.length>0 || c.adiciones?.length>0) && (
                       <span className="cart-item-meta">
-                        {[c.termino,c.opcion,...(c.adiciones||[])].filter(Boolean).join(" · ")}
+                        {[c.termino, ...(c.opcion||[]), ...(c.adiciones||[])].filter(Boolean).join(" · ")}
                       </span>
                     )}
                     <span className="cart-item-price">{fmtCOP(c.precio)}</span>
@@ -1169,8 +1185,10 @@ const Menu = () => {
               <span className="cart-total-price">{fmtCOP(totalPrecio)}</span>
             </div>
 
-            {/* Botón para confirmar el pedido */}
-            <button className="cart-pay-btn" onClick={handlePagar}>Pagar {fmtCOP(totalPrecio)}</button>
+      {/* Botón para confirmar el pedido — se deshabilita mientras se envía para evitar pedidos duplicados */}
+            <button className="cart-pay-btn" onClick={handlePagar} disabled={enviandoPedido}>
+              {enviandoPedido ? "Enviando..." : `Pagar ${fmtCOP(totalPrecio)}`}
+            </button>
           </>
         )}
       </div>
