@@ -1,3 +1,4 @@
+//backend/tests/menu.test.js
 const request = require('supertest');
 const app = require('../src/app');
 const { pool } = require('../src/config/db');
