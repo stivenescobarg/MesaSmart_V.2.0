@@ -618,7 +618,7 @@ const Menu = () => {
     // 2. Enviar bebidas al bar
     if (bebidas.length > 0) {
       try {
-        await fetch("http://localhost:3001/api/bar/orden", {
+        await fetch(`${API_URL}/bar/ordenes`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -23,25 +23,26 @@ router.get("/", async (req, res) => {
 
     const ids = pedidos.map(p => p.id);
 
-    // ── imagen removida: la columna no existe en detalle_pedido ──
-    // Si la agregas con ALTER TABLE, puedes volver a incluirla aquí
+    // detalle_pedido no tiene producto_id, así que la imagen se recupera
+    // uniendo por nombre contra la tabla productos
     const [items] = await pool.query(`
       SELECT
-        pedido_id,
-        nombre,
-        cantidad,
-        precio,
-        categoria,
-        observacion
-      FROM detalle_pedido
-      WHERE pedido_id IN (?) AND categoria = 'comida'
+        dp.pedido_id,
+        dp.nombre,
+        dp.cantidad,
+        dp.precio,
+        dp.categoria,
+        dp.observacion,
+        p.imagen
+      FROM detalle_pedido dp
+      LEFT JOIN productos p ON p.nombre COLLATE utf8mb4_unicode_ci = dp.nombre COLLATE utf8mb4_unicode_ci
+      WHERE dp.pedido_id IN (?) AND dp.categoria = 'comida'
     `, [ids]);
 
     const itemsMap = {};
     items.forEach(item => {
       if (!itemsMap[item.pedido_id]) itemsMap[item.pedido_id] = [];
-      // imagen null por defecto hasta que se agregue la columna a la BD
-      itemsMap[item.pedido_id].push({ ...item, imagen: null });
+      itemsMap[item.pedido_id].push(item);
     });
 
     const resultado = pedidos
@@ -132,20 +133,22 @@ router.post("/", async (req, res) => {
 
 // PATCH /api/pedidos-cocina/:id/estado
 router.patch("/:id/estado", async (req, res) => {
+  const conn = await pool.getConnection();
   try {
     const { estado } = req.body;
     const validos = ["pendiente", "en_preparacion", "listo", "pagado", "cancelado"];
     if (!validos.includes(estado))
       return res.status(400).json({ error: "Estado inválido" });
 
-    await pool.execute(
-      "UPDATE pedidos SET estado = ? WHERE id = ?", [estado, req.params.id]
-    );
+    await conn.beginTransaction();
+    await conn.execute("UPDATE pedidos SET estado = ? WHERE id = ?", [estado, req.params.id]);
+    await conn.commit();
     res.json({ ok: true });
   } catch (err) {
+    await conn.rollback();
     console.error("❌ Error PATCH /api/pedidos-cocina/:id/estado:", err);
     res.status(500).json({ error: "Error al actualizar estado" });
-  }
+  } finally { conn.release(); }
 });
 
 module.exports = router;

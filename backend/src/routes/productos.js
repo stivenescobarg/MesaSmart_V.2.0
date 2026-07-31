@@ -1,150 +1,37 @@
 // backend/src/routes/productos.js
-const express = require("express");
-const router  = express.Router();
+const router = require("express").Router();
 const { pool } = require("../config/db");
-
-/**
- * @swagger
- * /api/menu:
- *   get:
- *     summary: Obtener el menú completo con categorías, subcategorías, opciones y adiciones
- *     tags: [Menú]
- *     responses:
- *       200:
- *         description: Lista de productos del menú
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Producto'
- *       500:
- *         description: Error del servidor
- */
-router.get("/", async (req, res) => {
-  // ... (tu código actual)
+ 
+router.get("/", async (_req, res) => {
+  try {
+    const [productos] = await pool.query(`SELECT p.*, c.nombre categoria, s.nombre subcategoria FROM productos p LEFT JOIN categorias c ON c.id=p.categoria_id LEFT JOIN subcategorias s ON s.id=p.subcategoria_id ORDER BY c.id,s.id,p.nombre`);
+    res.json(productos.map(producto => ({ ...producto, disponible: true, opciones: [], adiciones: [] })));
+  } catch (error) { console.error("[menu/listar]", error); res.status(500).json({ msg: "No fue posible cargar el menú." }); }
 });
-
-/**
- * @swagger
- * /api/menu:
- *   post:
- *     summary: Agregar un nuevo producto al menú
- *     tags: [Menú]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - nombre
- *               - precio
- *               - categoria_id
- *             properties:
- *               nombre:
- *                 type: string
- *               descripcion:
- *                 type: string
- *               precio:
- *                 type: number
- *               categoria_id:
- *                 type: integer
- *               imagen:
- *                 type: string
- *               tiene_termino:
- *                 type: boolean
- *               adiciones:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     nombre:
- *                       type: string
- *                     precio:
- *                       type: number
- *     responses:
- *       200:
- *         description: Producto creado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 ok:
- *                   type: boolean
- *                 id:
- *                   type: integer
- *       400:
- *         description: Datos incompletos
- *       500:
- *         description: Error del servidor
- */
+router.get("/categorias", async (_req,res) => { const [rows] = await pool.query("SELECT * FROM categorias ORDER BY nombre"); res.json(rows); });
 router.post("/", async (req, res) => {
-  // ... (tu código actual)
+  const { nombre, precio, categoria_id, subcategoria_id } = req.body;
+ 
+  if (!nombre || precio == null || !categoria_id) {
+    return res.status(400).json({ msg: "nombre, precio y categoria_id son requeridos." });
+  }
+ 
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [result] = await conn.execute(
+      "INSERT INTO productos (nombre, precio, categoria_id, subcategoria_id) VALUES (?, ?, ?, ?)",
+      [nombre, precio, categoria_id, subcategoria_id || null]
+    );
+    await conn.commit();
+    res.status(201).json({ ok: true, id: result.insertId });
+  } catch (error) {
+    await conn.rollback();
+    console.error("[menu/crear]", error);
+    res.status(500).json({ msg: "No fue posible crear el producto." });
+  } finally {
+    conn.release();
+  }
 });
-
-/**
- * @swagger
- * /api/menu/categorias:
- *   get:
- *     summary: Obtener lista de categorías disponibles
- *     tags: [Menú]
- *     responses:
- *       200:
- *         description: Lista de categorías
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Categoria'
- *       500:
- *         description: Error del servidor
- */
-router.get("/categorias", async (req, res) => {
-  // ... (tu código actual)
-});
-
-/**
- * @swagger
- * /api/menu/{id}:
- *   put:
- *     summary: Editar un producto existente
- *     tags: [Menú]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               nombre:
- *                 type: string
- *               descripcion:
- *                 type: string
- *               precio:
- *                 type: number
- *               imagen:
- *                 type: string
- *     responses:
- *       200:
- *         description: Producto actualizado
- *       500:
- *         description: Error del servidor
- */
-router.put("/:id", async (req, res) => {
-  // ... (tu código actual)
-});
-
 module.exports = router;
+ 

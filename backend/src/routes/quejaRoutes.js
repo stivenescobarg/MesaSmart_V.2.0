@@ -1,4 +1,4 @@
-// backend/src/routes/quejaRoutes.js (o donde la tengas)
+// backend/src/routes/quejaRoutes.js 
 const router = require("express").Router();
 const auth = require("../middlewares/authMiddleware");
 const role = require("../middlewares/roleMiddleware");
