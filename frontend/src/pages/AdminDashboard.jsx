@@ -102,6 +102,10 @@ import Stock from "../components/admin/Stock";
 import "./Admin.css";
 // Estilos específicos del panel de administración
 
+import Proveedores     from "../components/admin/Proveedores";
+import CuentasPorPagar from "../components/admin/CuentasPorPagar";
+import DashboardFinanciero from "../components/admin/DashboardFinanciero";
+
 // ============================================================================
 // COMPONENTE PRINCIPAL
 // ============================================================================
@@ -612,6 +616,15 @@ const AdminDashboard = () => {
 
         {/* SECCIÓN: QUEJAS - Gestión de reclamos de clientes */}
         {seccion === "quejas" && <Quejas toast={toast} />}
+
+           {/* SECCIÓN: PROVEEDORES */}
+        {seccion === "proveedores" && <Proveedores toast={toast} />}
+ 
+        {/* SECCIÓN: CUENTAS POR PAGAR */}
+        {seccion === "cuentas-pagar" && <CuentasPorPagar toast={toast} />}
+
+        {/* SECCIÓN: DASHBOARD FINANCIERO */}
+        {seccion === "dashboard-financiero" && <DashboardFinanciero />}
 
         {/* SECCIÓN: USUARIOS - CRUD de usuarios del sistema */}
         {seccion === "usuarios" && (

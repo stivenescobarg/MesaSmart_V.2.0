@@ -7,45 +7,10 @@ const ctrl = require("../../controllers/admin/egresoController");
  * @swagger
  * /api/egresos:
  *   post:
- *     summary: Registrar un nuevo egreso (gasto)
+ *     summary: Registrar un nuevo egreso (gasto), requiere caja abierta
  *     tags: [Egresos]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - descripcion
- *               - monto
- *               - categoria
- *             properties:
- *               descripcion:
- *                 type: string
- *                 example: Compra de verduras
- *               monto:
- *                 type: number
- *                 example: 15000
- *               categoria:
- *                 type: string
- *                 example: Insumos
- *     responses:
- *       201:
- *         description: Egreso creado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Egreso'
- *       400:
- *         description: Datos inválidos
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       401:
- *         description: No autorizado
  */
 r.post("/",   auth, ctrl.crear);
 
@@ -53,22 +18,44 @@ r.post("/",   auth, ctrl.crear);
  * @swagger
  * /api/egresos:
  *   get:
- *     summary: Obtener todos los egresos de la caja actual
+ *     summary: Obtener los egresos de la caja actualmente abierta
  *     tags: [Egresos]
  *     security:
  *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Lista de egresos
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Egreso'
- *       401:
- *         description: No autorizado
  */
 r.get("/",    auth, ctrl.getByCajaActual);
+
+/**
+ * @swagger
+ * /api/egresos/categorias:
+ *   get:
+ *     summary: Lista de categorías válidas para egresos
+ *     tags: [Egresos]
+ *     security:
+ *       - bearerAuth: []
+ */
+r.get("/categorias", auth, ctrl.getCategorias);
+
+/**
+ * @swagger
+ * /api/egresos/historial:
+ *   get:
+ *     summary: Historial de egresos con filtros (periodo=hoy|semana|mes|anio|personalizado, fecha_desde, fecha_hasta, categoria)
+ *     tags: [Egresos]
+ *     security:
+ *       - bearerAuth: []
+ */
+r.get("/historial", auth, ctrl.getHistorial);
+
+/**
+ * @swagger
+ * /api/egresos/graficos:
+ *   get:
+ *     summary: Datos agregados (por categoría y por día) para gráficos del módulo de Control de Gastos
+ *     tags: [Egresos]
+ *     security:
+ *       - bearerAuth: []
+ */
+r.get("/graficos", auth, ctrl.getGraficos);
 
 module.exports = r;

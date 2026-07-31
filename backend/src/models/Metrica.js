@@ -83,6 +83,52 @@ const Metrica = {
     return rows.map(r => ({ ...r, total: parseFloat(r.total) || 0 }));
   },
 
+  //ventas totales en un rango de fechas (para comparativas)
+  getVentasPeriodo: async ({ fecha_desde, fecha_hasta }) => {
+    const [rows] = await pool.execute(
+      `SELECT
+         COALESCE(SUM(total), 0) as total,
+         COUNT(*) as cantidad
+       FROM ventas
+       WHERE fecha >= ? AND fecha <= ?`,
+      [fecha_desde, fecha_hasta]
+    );
+    return {
+      total:    parseFloat(rows[0].total) || 0,
+      cantidad: parseInt(rows[0].cantidad) || 0,
+    };
+  },
+
+   // métodos de pago en un rango de fechas (para el Dashboard Financiero,
+  //    a diferencia de getMetodosPago que solo mira la caja actual) ──
+  getMetodosPagoPeriodo: async ({ fecha_desde, fecha_hasta }) => {
+    const [rows] = await pool.execute(
+      `SELECT metodo_pago as metodo,
+              COALESCE(SUM(total), 0) as total,
+              COUNT(*) as cantidad
+       FROM ventas
+       WHERE fecha >= ? AND fecha <= ?
+       GROUP BY metodo_pago`,
+      [fecha_desde, fecha_hasta]
+    );
+    return rows.map(r => ({ ...r, total: parseFloat(r.total) || 0 }));
+  },
+
+    // producto más vendido en un rango de fechas ──
+  getProductoEstrellaPeriodo: async ({ fecha_desde, fecha_hasta }) => {
+    const [rows] = await pool.execute(
+      `SELECT dv.nombre, SUM(dv.cantidad) as total_vendido
+       FROM detalle_venta dv
+       JOIN ventas v ON v.id = dv.venta_id
+       WHERE v.fecha >= ? AND v.fecha <= ?
+       GROUP BY dv.nombre
+       ORDER BY total_vendido DESC
+       LIMIT 1`,
+      [fecha_desde, fecha_hasta]
+    );
+    return rows[0] ? { nombre: rows[0].nombre, cantidad: parseInt(rows[0].total_vendido) } : null;
+  },
+
   // ── VENTAS POR MÉTODO (caja actual) ──────────────────────────
   getMetodosPago: async (caja_id) => {
     const [rows] = await pool.execute(

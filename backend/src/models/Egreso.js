@@ -2,19 +2,19 @@
 const { pool } = require("../config/db");
 
 const Egreso = {
-  // Registrar un egreso
-  crear: async ({ caja_id, usuario_id, descripcion, monto }) => {
+  // Registrar un egreso — ahora incluye categoria
+  crear: async ({ caja_id, usuario_id, descripcion, categoria, monto }) => {
     const fecha = new Date().toISOString().split("T")[0];
     const hora  = new Date().toTimeString().slice(0, 8);
     const [r] = await pool.execute(
-      `INSERT INTO egresos (caja_id, usuario_id, descripcion, monto, fecha, hora)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [caja_id, usuario_id, descripcion, monto, fecha, hora]
+      `INSERT INTO egresos (caja_id, usuario_id, descripcion, categoria, monto, fecha, hora)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [caja_id, usuario_id, descripcion, categoria || "Otros", monto, fecha, hora]
     );
     return r.insertId;
   },
 
-  // Egresos de una caja
+  // Egresos de una caja específica (uso existente: pantalla de Caja abierta)
   getByCaja: async (caja_id) => {
     const [rows] = await pool.execute(
       `SELECT e.*, u.nombre as usuario_nombre
@@ -35,6 +35,74 @@ const Egreso = {
     );
     return parseFloat(r[0].total) || 0;
   },
+
+  // ── NUEVO: historial por rango de fechas, independiente de la caja actual ──
+  // Para el módulo de "Control de Gastos" que necesita ver gastos históricos,
+  // no solo los de la caja abierta hoy.
+  getByRangoFecha: async ({ fecha_desde, fecha_hasta, categoria } = {}) => {
+    let sql = `
+      SELECT e.*, u.nombre as usuario_nombre
+      FROM egresos e
+      JOIN usuarios u ON u.id = e.usuario_id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (fecha_desde) { sql += " AND e.fecha >= ?"; params.push(fecha_desde); }
+    if (fecha_hasta) { sql += " AND e.fecha <= ?"; params.push(fecha_hasta); }
+    if (categoria)   { sql += " AND e.categoria = ?"; params.push(categoria); }
+
+    sql += " ORDER BY e.fecha DESC, e.hora DESC";
+    const [rows] = await pool.execute(sql, params);
+    return rows.map(r => ({ ...r, monto: parseFloat(r.monto) }));
+  },
+
+  // ── NUEVO: total agrupado por categoría, para el gráfico de pastel ──
+  getTotalPorCategoria: async ({ fecha_desde, fecha_hasta } = {}) => {
+    let sql = `
+      SELECT categoria, COALESCE(SUM(monto), 0) as total, COUNT(*) as cantidad
+      FROM egresos
+      WHERE 1=1
+    `;
+    const params = [];
+    if (fecha_desde) { sql += " AND fecha >= ?"; params.push(fecha_desde); }
+    if (fecha_hasta) { sql += " AND fecha <= ?"; params.push(fecha_hasta); }
+    sql += " GROUP BY categoria ORDER BY total DESC";
+
+    const [rows] = await pool.execute(sql, params);
+    return rows.map(r => ({ categoria: r.categoria, total: parseFloat(r.total), cantidad: r.cantidad }));
+  },
+
+  // ── NUEVO: total agrupado por día, para el gráfico de tendencia ──
+  getTotalPorDia: async ({ fecha_desde, fecha_hasta } = {}) => {
+    let sql = `
+      SELECT fecha, COALESCE(SUM(monto), 0) as total
+      FROM egresos
+      WHERE 1=1
+    `;
+    const params = [];
+    if (fecha_desde) { sql += " AND fecha >= ?"; params.push(fecha_desde); }
+    if (fecha_hasta) { sql += " AND fecha <= ?"; params.push(fecha_hasta); }
+    sql += " GROUP BY fecha ORDER BY fecha ASC";
+
+    const [rows] = await pool.execute(sql, params);
+    return rows.map(r => ({ fecha: r.fecha, total: parseFloat(r.total) }));
+  },
+
+  // ── NUEVO: total de egresos en un rango de fechas, sin agrupar ──
+  getTotalPeriodo: async ({ fecha_desde, fecha_hasta }) => {
+    const [rows] = await pool.execute(
+      `SELECT COALESCE(SUM(monto), 0) as total, COUNT(*) as cantidad
+       FROM egresos
+       WHERE fecha >= ? AND fecha <= ?`,
+      [fecha_desde, fecha_hasta]
+    );
+    return {
+      total:    parseFloat(rows[0].total) || 0,
+      cantidad: parseInt(rows[0].cantidad) || 0,
+    };
+  },
+  
 };
 
 module.exports = Egreso;

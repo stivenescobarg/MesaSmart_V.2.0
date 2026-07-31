@@ -33,6 +33,7 @@ const request = async (endpoint, options = {}) => {
 export const api = {
   get:    (endpoint)       => request(endpoint, { method: "GET" }),
   post:   (endpoint, body) => request(endpoint, { method: "POST",   body: JSON.stringify(body) }),
+  put: (endpoint, body) => request(endpoint, { method: "PUT", body: JSON.stringify(body) }),
   patch:  (endpoint, body) => request(endpoint, { method: "PATCH",  body: JSON.stringify(body) }),
   delete: (endpoint)       => request(endpoint, { method: "DELETE" }),
 };
