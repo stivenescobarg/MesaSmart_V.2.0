@@ -389,4 +389,24 @@ r.post("/cocina/movimiento", ctrl.registrarMovCocina);
  */
 r.post("/cocina/validar-pin", ctrl.validarPin);
 
+/**
+ * @swagger
+ * /api/stock/cocina/catalogo:
+ *   get:
+ *     summary: Productos que aún no están categorizados como "cocina"
+ *     tags: [Stock]
+ */
+r.get("/cocina/catalogo", ctrl.getCatalogoCocina);
+
+/**
+ * @swagger
+ * /api/stock/cocina/activar:
+ *   post:
+ *     summary: Cambia un producto existente a categoría "cocina" (con PIN)
+ *     tags: [Stock]
+ */
+r.post("/cocina/activar", ctrl.activarProductoCocina);
+
+r.post("/cocina/desactivar", ctrl.desactivarProductoCocina);
+
 module.exports = r;

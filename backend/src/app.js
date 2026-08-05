@@ -21,6 +21,7 @@ const proveedorRoutes        = require("./routes/admin/proveedorRoutes");
 const facturaProveedorRoutes = require("./routes/admin/facturaProveedorRoutes");
 const dashboardFinancieroRoutes = require("./routes/admin/dashboardFinancieroRoutes");
 
+const ingredienteRoutes = require("./routes/ingredienteRoutes");
 
 const app = express();
 
@@ -51,9 +52,13 @@ app.use("/api/stock", stockRoutes);
 app.use("/api/bar", barRoutes);
 app.use("/api/menu", productosRoutes);
 app.use("/api/quejas", quejaRoutes);
+<<<<<<< HEAD
 app.use("/api/proveedores", proveedorRoutes);
 app.use("/api/facturas-proveedor", facturaProveedorRoutes);
 app.use("/api/dashboard-financiero", dashboardFinancieroRoutes);
+=======
+app.use("/api/ingredientes", ingredienteRoutes);
+>>>>>>> origin/main
 
 app.get("/api/ping", (_req, res) => {
   res.json({ ok: true, msg: "MesaSmart API activa" });

@@ -2,13 +2,30 @@
 // Tema claro · Azul cobalto #3250e6
 // Lógica original intacta, pero con imágenes usando getImage
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate }                       from "react-router-dom";
 import { useAuth }                           from "../context/AuthContext";
 import { getImage }                          from "../utils/getImage"; // ← helper unificado
 import { API_URL }                            from "../services/config";
 import StockCocina                           from "../components/kitchen/StockCocina";
+import KitchenSidebar                        from "../components/kitchen/KitchenSidebar";
+import PedidosActivityPanel                  from "../components/kitchen/PedidosActivityPanel";
 import "./KitchenDashboard.css";
+
+// Ítems del sidebar según la vista activa (Fase 1: solo Pedidos/Preparación/Listo
+// filtran lo que ya funciona; Historial y Alertas son placeholders — Fase 2)
+const SIDEBAR_PEDIDOS = [
+  { key: "todos",          label: "Pedidos",      icon: "📋" },
+  { key: "en_preparacion", label: "Preparación",  icon: "🔥" },
+  { key: "listo",          label: "Listo",        icon: "✅" },
+  { key: "historial",      label: "Historial",    icon: "🗂️" },
+];
+
+const SIDEBAR_STOCK = [
+  { key: "stock",     label: "Stock",     icon: "📦" },
+  { key: "historial", label: "Historial", icon: "🗂️" },
+  { key: "alertas",   label: "Alertas",   icon: "⚠️" },
+];
 
 // ── Constantes ────────────────────────────────────────────────────
 const ESTADO_LABEL = {
@@ -207,15 +224,44 @@ const KitchenDashboard = () => {
   const [filtro,     setFiltro]     = useState("todos");
   const [cargando,   setCargando]   = useState(true);
   const [pedidoSel,  setPedidoSel]  = useState(null);
-  const [vistaStock, setVistaStock] = useState(false);
+ const [vistaStock, setVistaStock] = useState(false);
+
+ const [visiblePedidos, setVisiblePedidos] = useState(12);
+const PEDIDOS_POR_PAGINA = 12;
+
+  const [seccionPedidos, setSeccionPedidos] = useState("todos");   // sidebar de Pedidos
+  const [seccionStock,   setSeccionStock]   = useState("stock");   // sidebar de Stock
   const [error,      setError]      = useState(false);
+  const [actividad,  setActividad]  = useState([]);
+  const prevPedidosRef = useRef([]);
 
   const cargar = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/pedidos-cocina`);
       if (!res.ok) throw new Error();
       const data = await res.json();
-      if (Array.isArray(data)) { setPedidos(data); setError(false); }
+      if (Array.isArray(data)) {
+        // Comparamos con la carga anterior para armar el feed de actividad
+        const anteriores = prevPedidosRef.current;
+        const eventos = [];
+        data.forEach(p => {
+          const previo = anteriores.find(a => a.id === p.id);
+          if (!previo) {
+            eventos.push({ id: `${p.id}-nuevo-${Date.now()}`, texto: `Pedido ${p.mesa} asignado a cocina`, hora: new Date() });
+          } else if (previo.estado !== p.estado) {
+            const texto = p.estado === "en_preparacion" ? `Pedido ${p.mesa} en preparación`
+              : p.estado === "listo" ? `Pedido ${p.mesa} marcado como listo`
+              : `Pedido ${p.mesa} actualizado`;
+            eventos.push({ id: `${p.id}-${p.estado}-${Date.now()}`, texto, hora: new Date() });
+          }
+        });
+        if (eventos.length > 0) {
+          setActividad(prev => [...eventos, ...prev].slice(0, 8));
+        }
+        prevPedidosRef.current = data;
+        setPedidos(data);
+        setError(false);
+      }
     } catch {
       setError(true);
     } finally {
@@ -228,6 +274,10 @@ const KitchenDashboard = () => {
     const id = setInterval(cargar, 8000);
     return () => clearInterval(id);
   }, [cargar]);
+
+  useEffect(() => {
+  setVisiblePedidos(PEDIDOS_POR_PAGINA);
+}, [filtro]);
 
   const avanzarEstado = async (pedido) => {
     const nuevoEstado = ESTADO_NEXT[pedido.estado];
@@ -267,10 +317,68 @@ const KitchenDashboard = () => {
     filtro === "listo"          ? listos        :
     pedidos.filter(p => p.estado !== "listo");
 
+   const filtradosVisibles = filtrados.slice(0, visiblePedidos); 
+
   const handleMetrica = tipo => setFiltro(prev => prev === tipo ? "todos" : tipo);
 
-  return (
-    <div className="kd-root">
+  // ── Métricas de rendimiento (sobre pedidos de hoy) ──
+  const hoy = new Date().toDateString();
+  const pedidosHoy      = pedidos.filter(p => new Date(p.hora).toDateString() === hoy);
+  const listosHoy       = pedidosHoy.filter(p => p.estado === "listo");
+  const minutosListos   = listosHoy.map(p => Math.floor((Date.now() - new Date(p.hora)) / 60000));
+  const tiempoPromedio  = minutosListos.length
+    ? `${Math.round(minutosListos.reduce((a, b) => a + b, 0) / minutosListos.length)} min`
+    : "—";
+  const eficiencia = pedidosHoy.length
+    ? Math.round((pedidosHoy.filter(p => !esUrgente(p.hora) || p.estado === "listo").length / pedidosHoy.length) * 100)
+    : 100;
+
+return (
+    <div className="kc-app">
+
+      {/* ── TOPBAR ── */}
+      <header className="kc-topbar">
+        <div className="kc-topbar-marca">
+          <div className="kc-topbar-icono">🍳</div>
+          <div>
+            <p className="kc-topbar-title">MesaSmart · Cocina</p>
+            <p className="kc-topbar-subtitle">Panel en tiempo real</p>
+          </div>
+        </div>
+
+        <div className="kc-topbar-tabs">
+          <button
+            className={`kc-topbar-tab ${!vistaStock ? "activo" : ""}`}
+            onClick={() => setVistaStock(false)}
+          >
+            📋 Pedidos
+          </button>
+          <button
+            className={`kc-topbar-tab ${vistaStock ? "activo" : ""}`}
+            onClick={() => setVistaStock(true)}
+          >
+            📦 Stock
+          </button>
+        </div>
+
+<div className="kc-topbar-user">
+          <div className="kc-topbar-usuario">
+            <div className="kc-topbar-usuario-avatar">CO</div>
+            <p className="kc-topbar-usuario-nombre">Cocinero</p>
+          </div>
+          <button className="kd-salir" onClick={handleSalir}>Salir →</button>
+        </div>
+      </header>
+
+      <div className="kc-body">
+        <KitchenSidebar
+          items={vistaStock ? SIDEBAR_STOCK : SIDEBAR_PEDIDOS}
+          activo={vistaStock ? seccionStock : seccionPedidos}
+          onSelect={vistaStock ? setSeccionStock : (key) => { setSeccionPedidos(key); setFiltro(key === "historial" ? "todos" : key); }}
+        />
+
+        <div className="kc-content" style={{ display: "flex", gap: "1.5rem", alignItems: "flex-start" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
       {pedidoSel && (
         <PedidoModal
           pedido={pedidoSel}
@@ -279,31 +387,6 @@ const KitchenDashboard = () => {
         />
       )}
 
-      {/* ── HEADER ── */}
-      <header className="kd-header">
-        <div className="kd-header-marca">
-          <div className="kd-header-icono">🍳</div>
-          <div>
-            <h1 className="kd-title">MesaSmart · Cocina</h1>
-            <p className="kd-subtitle">Panel en tiempo real</p>
-          </div>
-        </div>
-        <div className="kd-view-tabs">
-          <button
-            className={`kd-view-tab ${!vistaStock ? "activo" : ""}`}
-            onClick={() => setVistaStock(false)}
-          >
-            📋 Pedidos
-          </button>
-          <button
-            className={`kd-view-tab ${vistaStock ? "activo" : ""}`}
-            onClick={() => setVistaStock(true)}
-          >
-            📦 Stock
-          </button>
-        </div>
-        <button className="kd-salir" onClick={handleSalir}>Salir →</button>
-      </header>
 
       {error && (
         <div className="kd-error-banner">
@@ -319,8 +402,8 @@ const KitchenDashboard = () => {
         </div>
       )}
 
-      {/* ── PEDIDOS ── */}
-      {!vistaStock && (
+{/* ── PEDIDOS ── */}
+      {!vistaStock && seccionPedidos !== "historial" && (
         <main className="kd-main">
           <div className="kd-metrics">
             <div
@@ -372,39 +455,103 @@ const KitchenDashboard = () => {
             ))}
           </div>
 
-          {cargando ? (
-            <div className="kd-empty">
-              <div className="kd-spinner" />
-              <p>Cargando pedidos...</p>
-            </div>
-          ) : filtrados.length === 0 ? (
-            <div className="kd-empty">
-              <span>👨‍🍳</span>
-              <p>Sin pedidos en este estado</p>
-            </div>
-          ) : (
-            <div className="kd-grid">
-              {filtrados.map(pedido => (
-                <PedidoCard
-                  key={pedido.id}
-                  pedido={pedido}
-                  onClick={setPedidoSel}
-                  onAvanzar={avanzarEstado}
-                />
-              ))}
-            </div>
-          )}
+{cargando ? (
+  <div className="kd-empty">
+    <div className="kd-spinner" />
+    <p>Cargando pedidos...</p>
+  </div>
+) : filtrados.length === 0 ? (
+  <div className="kd-empty">
+    <span>👨‍🍳</span>
+    <p>Sin pedidos en este estado</p>
+  </div>
+) : (
+  <>
+    <div className="kd-grid">
+      {filtradosVisibles.map((pedido) => (
+        <PedidoCard
+          key={pedido.id}
+          pedido={pedido}
+          onClick={setPedidoSel}
+          onAvanzar={avanzarEstado}
+        />
+      ))}
+    </div>
+
+    {visiblePedidos < filtrados.length && (
+      <div
+        className="kc-cargar-mas-wrap"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          marginTop: "1rem",
+        }}
+      >
+        <button
+          className="kc-cargar-mas-btn"
+          onClick={() =>
+            setVisiblePedidos((v) => v + PEDIDOS_POR_PAGINA)
+          }
+        >
+          Cargar más pedidos
+        </button>
+
+        <p className="kc-cargar-mas-info">
+          Mostrando {filtradosVisibles.length} de {filtrados.length}
+        </p>
+      </div>
+    )}
+  </>
+)}
         </main>
       )}
 
-      {/* ── STOCK ── */}
-      {vistaStock && (
+{/* ── STOCK ── */}
+      {vistaStock && seccionStock === "stock" && (
         <main className="kd-main">
           <StockCocina />
         </main>
       )}
+
+      {vistaStock && seccionStock === "historial" && (
+        <div className="kc-proximamente">
+          <span>🗂️</span>
+          <h3>Historial de stock</h3>
+          <p>Aquí verás todos los movimientos de inventario (ingresos y ajustes) con fecha y responsable. Lo construimos en la siguiente fase.</p>
+        </div>
+      )}
+
+      {vistaStock && seccionStock === "alertas" && (
+        <div className="kc-proximamente">
+          <span>⚠️</span>
+          <h3>Alertas críticas</h3>
+          <p>Aquí verás todos los productos con stock bajo o agotado en un solo lugar. Lo construimos en la siguiente fase.</p>
+        </div>
+      )}
+
+      {!vistaStock && seccionPedidos === "historial" && (
+        <div className="kc-proximamente">
+          <span>🗂️</span>
+          <h3>Historial de pedidos</h3>
+          <p>Aquí verás los pedidos ya entregados/pagados. Lo construimos en la siguiente fase.</p>
+        </div>
+      )}
+
+          </div>
+
+          {!vistaStock && seccionPedidos !== "historial" && (
+            <PedidosActivityPanel
+              actividad={actividad}
+              tiempoPromedio={tiempoPromedio}
+              completados={listosHoy.length}
+              eficiencia={eficiencia}
+            />
+          )}
+
+        </div>
+      </div>
     </div>
   );
 };
-
 export default KitchenDashboard;

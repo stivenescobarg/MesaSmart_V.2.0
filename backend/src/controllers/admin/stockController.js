@@ -146,3 +146,90 @@ exports.registrarMovCocina = async (req, res) => {
     res.status(500).json({ msg: "Error al registrar movimiento." });
   }
 };
+
+// GET /api/stock/cocina/catalogo
+// Productos que existen en la BD pero aún NO están categorizados como "cocina"
+exports.getCatalogoCocina = async (req, res) => {
+
+  try {
+
+    const ingredientes = await Stock.getIngredientes();
+
+    res.json({
+      ok: true,
+      productos: ingredientes
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      ok: false,
+      msg: "Error al obtener ingredientes."
+    });
+
+  }
+
+};
+
+// POST /api/stock/cocina/activar
+// Cambia la categoría de un producto existente a "cocina" (con PIN)
+exports.activarProductoCocina = async (req, res) => {
+  try {
+    const { pin, producto_id, cantidad_minima } = req.body;
+
+    if (String(pin) !== String(STOCK_PIN))
+      return res.status(401).json({ ok: false, msg: "PIN incorrecto." });
+
+    if (!producto_id)
+      return res.status(400).json({ ok: false, msg: "producto_id requerido." });
+
+await Stock.activarCocina(
+  producto_id,
+  cantidad_minima ? parseFloat(cantidad_minima) : null
+);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[stock/cocina/activar]", err);
+    res.status(500).json({ ok: false, msg: "Error al activar ingrediente." });
+  }
+};
+
+exports.desactivarProductoCocina = async (req, res) => {
+  try {
+
+    const { pin, producto_id } = req.body;
+
+    if (String(pin) !== String(STOCK_PIN))
+      return res.status(401).json({
+        ok:false,
+        msg:"PIN incorrecto."
+      });
+
+    if (!producto_id)
+      return res.status(400).json({
+        ok:false,
+        msg:"producto_id requerido."
+      });
+
+
+    await Stock.desactivarCocina(producto_id);
+
+    res.json({
+      ok:true
+    });
+
+
+  } catch(err){
+
+    console.error("[stock/cocina/desactivar]", err);
+
+    res.status(500).json({
+      ok:false,
+      msg:"Error al quitar ingrediente de cocina."
+    });
+
+  }
+};
