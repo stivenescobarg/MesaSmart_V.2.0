@@ -17,6 +17,7 @@ const pedidosCocinaRoutes = require("./routes/pedidos");
 const quejaRoutes = require("./routes/quejaRoutes");
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
+const ingredienteRoutes = require("./routes/ingredienteRoutes");
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use("/api/stock", stockRoutes);
 app.use("/api/bar", barRoutes);
 app.use("/api/menu", productosRoutes);
 app.use("/api/quejas", quejaRoutes);
+app.use("/api/ingredientes", ingredienteRoutes);
 
 app.get("/api/ping", (_req, res) => {
   res.json({ ok: true, msg: "MesaSmart API activa" });
