@@ -1,9 +1,7 @@
 // frontend/src/utils/getImage.js
 import { imagenes } from "../data/imagenes";
 
-// Mapeo manual para nombres que no coinciden exactamente
 const MAPEO = {
-  // Platos
   hamburguesa: "hamburguesa",
   "hamburguesa clasica": "hamburguesa",
   "alitas bbq": "alitas",
@@ -51,7 +49,6 @@ const MAPEO = {
   carpaccio: "carpaccio",
   "punta de anca": "puntaDeAnca",
   "punta deanca": "puntaDeAnca",
-  // Bebidas
   aguardiente: "aguardiente",
   smirnoff: "smirnoff",
   aguila: "aguila",
@@ -71,34 +68,48 @@ const MAPEO = {
   pollo: "polloAsado",
 };
 
-export const getImage = (nombre, imgKey) => {
-  // Si hay imgKey y existe en imagenes, lo usamos
-  if (imgKey && imagenes[imgKey]) {
-    return imagenes[imgKey];
-  }
-
-  if (!nombre) return null;
-
-  // Normalizar: minúsculas, sin tildes, espacios simples
-  let normalized = nombre
+const normalizar = (str) =>
+  str
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .replace(/\s+/g, " ");
 
-  // Buscar en mapeo
-  if (MAPEO[normalized]) {
-    const key = MAPEO[normalized];
-    if (imagenes[key]) return imagenes[key];
+export const getImage = (nombre, imgKey) => {
+  // 1. Si viene imgKey explícito y existe, se usa directo
+  if (imgKey && imagenes[imgKey]) {
+    return imagenes[imgKey];
   }
 
-  // Quitar espacios y buscar
+  if (!nombre) return null;
+
+  const normalized = normalizar(nombre);
+
+  // 2. Coincidencia exacta en el mapeo
+  if (MAPEO[normalized] && imagenes[MAPEO[normalized]]) {
+    return imagenes[MAPEO[normalized]];
+  }
+
+  // 3. Sin espacios, coincidencia exacta en imagenes
   const sinEspacios = normalized.replace(/\s/g, "");
   if (imagenes[sinEspacios]) return imagenes[sinEspacios];
+
+  // 4. NUEVO: coincidencia "contiene" — soluciona nombres como
+  //    "Ribeye 300g", "Hamburguesa Especial", "Alitas BBQ x10", etc.
+  //    Se queda con la clave más larga que aparezca dentro del nombre,
+  //    para evitar falsos positivos con claves cortas.
+  let mejorMatch = null;
+  let mejorLargo = 0;
+  for (const [clave, valor] of Object.entries(MAPEO)) {
+    if (normalized.includes(clave) && clave.length > mejorLargo) {
+      mejorMatch = valor;
+      mejorLargo = clave.length;
+    }
+  }
+  if (mejorMatch && imagenes[mejorMatch]) return imagenes[mejorMatch];
 
   return null;
 };
 
-// Exportar también imagenes por si acaso
 export { imagenes };
