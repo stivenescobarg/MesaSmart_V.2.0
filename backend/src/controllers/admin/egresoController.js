@@ -8,7 +8,6 @@ const CATEGORIAS_VALIDAS = [
   "Transporte", "Publicidad", "Domicilios", "Otros",
 ];
 
-// Traduce filtros de tiempo predefinidos (hoy, semana, mes, año) a fechas concretas
 const resolverRangoFecha = ({ periodo, fecha_desde, fecha_hasta }) => {
   if (periodo && periodo !== "personalizado") {
     const hoy = new Date();
@@ -31,15 +30,16 @@ exports.crear = async (req, res) => {
     if (!descripcion || !monto || monto <= 0)
       return res.status(400).json({ msg: "Descripción y monto válido son requeridos." });
 
-    const caja = await Caja.getAbierta();
+    const caja = await Caja.getAbierta(req.restaurante_id);
     if (!caja) return res.status(409).json({ msg: "No hay caja abierta." });
 
     const id = await Egreso.crear({
-      caja_id:    caja.id,
-      usuario_id: req.usuario.id,
+      caja_id:        caja.id,
+      restaurante_id: req.restaurante_id,
+      usuario_id:     req.usuario.id,
       descripcion,
-      categoria:  categoria || "Otros",
-      monto:      parseFloat(monto),
+      categoria: categoria || "Otros",
+      monto:     parseFloat(monto),
     });
     res.status(201).json({ ok: true, id });
   } catch (err) {
@@ -50,7 +50,7 @@ exports.crear = async (req, res) => {
 
 exports.getByCajaActual = async (req, res) => {
   try {
-    const caja = await Caja.getAbierta();
+    const caja = await Caja.getAbierta(req.restaurante_id);
     if (!caja) return res.json({ ok: true, egresos: [] });
     const egresos = await Egreso.getByCaja(caja.id);
     res.json({ ok: true, egresos });
@@ -59,12 +59,11 @@ exports.getByCajaActual = async (req, res) => {
   }
 };
 
-// ── NUEVO: historial completo con filtros de fecha/categoría ──
 exports.getHistorial = async (req, res) => {
   try {
     const { periodo, fecha_desde, fecha_hasta, categoria } = req.query;
     const rango = resolverRangoFecha({ periodo, fecha_desde, fecha_hasta });
-    const egresos = await Egreso.getByRangoFecha({ ...rango, categoria });
+    const egresos = await Egreso.getByRangoFecha({ ...rango, categoria, restaurante_id: req.restaurante_id });
     res.json({ ok: true, egresos, categorias: CATEGORIAS_VALIDAS });
   } catch (err) {
     console.error("[egresos/getHistorial]", err);
@@ -72,15 +71,14 @@ exports.getHistorial = async (req, res) => {
   }
 };
 
-// ── NUEVO: datos agregados para gráficos ──
 exports.getGraficos = async (req, res) => {
   try {
     const { periodo, fecha_desde, fecha_hasta } = req.query;
     const rango = resolverRangoFecha({ periodo, fecha_desde, fecha_hasta });
 
     const [porCategoria, porDia] = await Promise.all([
-      Egreso.getTotalPorCategoria(rango),
-      Egreso.getTotalPorDia(rango),
+      Egreso.getTotalPorCategoria({ ...rango, restaurante_id: req.restaurante_id }),
+      Egreso.getTotalPorDia({ ...rango, restaurante_id: req.restaurante_id }),
     ]);
 
     res.json({ ok: true, porCategoria, porDia });

@@ -1,15 +1,13 @@
-// backend/src/controllers/admin/stockController.js
 const Stock = require("../../models/Stock");
 
-// PIN de stock — en producción usar process.env.STOCK_PIN
 const STOCK_PIN = process.env.STOCK_PIN || "1234";
 
-// ── ADMIN ─────────────────────────────────────────────────────────
+// ── ADMIN (protegidas, usan req.restaurante_id del JWT) ───────────
 
 exports.getAll = async (req, res) => {
   try {
-    const productos = await Stock.findAll();
-    const resumen   = await Stock.getResumen();
+    const productos = await Stock.findAll(req.restaurante_id);
+    const resumen   = await Stock.getResumen(req.restaurante_id);
     res.json({ ok: true, productos, resumen });
   } catch (err) {
     console.error("[stock/getAll]", err);
@@ -19,7 +17,7 @@ exports.getAll = async (req, res) => {
 
 exports.getBajoStock = async (req, res) => {
   try {
-    res.json({ ok: true, productos: await Stock.findBajoStock() });
+    res.json({ ok: true, productos: await Stock.findBajoStock(req.restaurante_id) });
   } catch {
     res.status(500).json({ msg: "Error al obtener alertas de stock." });
   }
@@ -27,7 +25,7 @@ exports.getBajoStock = async (req, res) => {
 
 exports.getResumen = async (req, res) => {
   try {
-    res.json({ ok: true, resumen: await Stock.getResumen() });
+    res.json({ ok: true, resumen: await Stock.getResumen(req.restaurante_id) });
   } catch {
     res.status(500).json({ msg: "Error al obtener resumen." });
   }
@@ -39,6 +37,7 @@ exports.create = async (req, res) => {
     if (!nombre?.trim() || !proveedor?.trim() || !categoria)
       return res.status(400).json({ msg: "Nombre, proveedor y categoría son requeridos." });
     const id = await Stock.create({
+      restaurante_id: req.restaurante_id,
       nombre: nombre.trim(), proveedor: proveedor.trim(),
       categoria, unidad: unidad || "unidad",
       cantidad_actual: parseFloat(cantidad_actual) || 0,
@@ -54,7 +53,8 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { nombre, proveedor, categoria, unidad, cantidad_minima } = req.body;
-    await Stock.update(req.params.id, { nombre, proveedor, categoria, unidad, cantidad_minima });
+    const ok = await Stock.update(req.params.id, req.restaurante_id, { nombre, proveedor, categoria, unidad, cantidad_minima });
+    if (!ok) return res.status(404).json({ msg: "Producto no encontrado." });
     res.json({ ok: true });
   } catch {
     res.status(500).json({ msg: "Error al actualizar producto." });
@@ -63,7 +63,8 @@ exports.update = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
-    await Stock.delete(req.params.id);
+    const ok = await Stock.delete(req.params.id, req.restaurante_id);
+    if (!ok) return res.status(404).json({ msg: "Producto no encontrado." });
     res.json({ ok: true });
   } catch {
     res.status(500).json({ msg: "Error al eliminar producto." });
@@ -78,41 +79,39 @@ exports.registrarMovimiento = async (req, res) => {
     if (!["ingreso", "egreso", "ajuste"].includes(tipo))
       return res.status(400).json({ msg: "Tipo inválido." });
     const id = await Stock.registrarMovimiento({
-      producto_id, usuario_id: req.usuario.id,
+      producto_id, restaurante_id: req.restaurante_id, usuario_id: req.usuario.id,
       tipo, cantidad: parseFloat(cantidad), observacion, fecha,
     });
     res.status(201).json({ ok: true, id });
   } catch (err) {
     console.error("[stock/movimiento]", err);
-    res.status(500).json({ msg: "Error al registrar movimiento." });
+    res.status(err.status || 500).json({ msg: err.status ? err.message : "Error al registrar movimiento." });
   }
 };
 
 exports.getMovimientos = async (req, res) => {
   try {
-    const movs = await Stock.getMovimientos(req.params.id);
+    const movs = await Stock.getMovimientos(req.params.id, req.restaurante_id);
     res.json({ ok: true, movimientos: movs });
   } catch {
     res.status(500).json({ msg: "Error al obtener movimientos." });
   }
 };
 
-// ── COCINA (sin auth de admin, con PIN) ───────────────────────────
+// ── COCINA (sin auth de admin — publicTenant + PIN) ───────────────
+// req.restaurante_id ya viene resuelto por publicTenant (slug o fallback),
+// el PIN es una capa adicional de fricción, no reemplaza el aislamiento.
 
-// Validar PIN
 exports.validarPin = (req, res) => {
   const { pin } = req.body;
   if (!pin) return res.status(400).json({ ok: false, msg: "PIN requerido." });
-  if (String(pin) === String(STOCK_PIN)) {
-    return res.json({ ok: true });
-  }
+  if (String(pin) === String(STOCK_PIN)) return res.json({ ok: true });
   return res.status(401).json({ ok: false, msg: "PIN incorrecto." });
 };
 
-// Solo productos de cocina
 exports.getCocina = async (req, res) => {
   try {
-    const todos = await Stock.findAll();
+    const todos = await Stock.findAll(req.restaurante_id);
     const cocina = todos.filter(p => p.categoria === "cocina");
     res.json({ ok: true, productos: cocina });
   } catch {
@@ -120,12 +119,10 @@ exports.getCocina = async (req, res) => {
   }
 };
 
-// Registrar movimiento desde panel cocina (usa usuario_id fijo = 1 sistema)
 exports.registrarMovCocina = async (req, res) => {
   try {
     const { pin, producto_id, tipo, cantidad, observacion } = req.body;
 
-    // Validar PIN
     if (String(pin) !== String(STOCK_PIN))
       return res.status(401).json({ ok: false, msg: "PIN incorrecto." });
 
@@ -134,7 +131,8 @@ exports.registrarMovCocina = async (req, res) => {
 
     const id = await Stock.registrarMovimiento({
       producto_id,
-      usuario_id: null, // usuario sistema cuando viene de cocina
+      restaurante_id: req.restaurante_id,
+      usuario_id: null,
       tipo,
       cantidad: parseFloat(cantidad),
       observacion: observacion || "Desde panel cocina",
@@ -143,53 +141,31 @@ exports.registrarMovCocina = async (req, res) => {
     res.status(201).json({ ok: true, id });
   } catch (err) {
     console.error("[stock/cocina/movimiento]", err);
-    res.status(500).json({ msg: "Error al registrar movimiento." });
+    res.status(err.status || 500).json({ msg: err.status ? err.message : "Error al registrar movimiento." });
   }
 };
 
-// GET /api/stock/cocina/catalogo
-// Productos que existen en la BD pero aún NO están categorizados como "cocina"
 exports.getCatalogoCocina = async (req, res) => {
-
   try {
-
-    const ingredientes = await Stock.getIngredientes();
-
-    res.json({
-      ok: true,
-      productos: ingredientes
-    });
-
+    const ingredientes = await Stock.getIngredientes(req.restaurante_id);
+    res.json({ ok: true, productos: ingredientes });
   } catch (err) {
-
     console.error(err);
-
-    res.status(500).json({
-      ok: false,
-      msg: "Error al obtener ingredientes."
-    });
-
+    res.status(500).json({ ok: false, msg: "Error al obtener ingredientes." });
   }
-
 };
 
-// POST /api/stock/cocina/activar
-// Cambia la categoría de un producto existente a "cocina" (con PIN)
 exports.activarProductoCocina = async (req, res) => {
   try {
     const { pin, producto_id, cantidad_minima } = req.body;
 
     if (String(pin) !== String(STOCK_PIN))
       return res.status(401).json({ ok: false, msg: "PIN incorrecto." });
-
     if (!producto_id)
       return res.status(400).json({ ok: false, msg: "producto_id requerido." });
 
-await Stock.activarCocina(
-  producto_id,
-  cantidad_minima ? parseFloat(cantidad_minima) : null
-);
-
+    const ok = await Stock.activarCocina(producto_id, req.restaurante_id, cantidad_minima ? parseFloat(cantidad_minima) : null);
+    if (!ok) return res.status(404).json({ ok: false, msg: "Producto no encontrado." });
     res.json({ ok: true });
   } catch (err) {
     console.error("[stock/cocina/activar]", err);
@@ -199,37 +175,18 @@ await Stock.activarCocina(
 
 exports.desactivarProductoCocina = async (req, res) => {
   try {
-
     const { pin, producto_id } = req.body;
 
     if (String(pin) !== String(STOCK_PIN))
-      return res.status(401).json({
-        ok:false,
-        msg:"PIN incorrecto."
-      });
-
+      return res.status(401).json({ ok: false, msg: "PIN incorrecto." });
     if (!producto_id)
-      return res.status(400).json({
-        ok:false,
-        msg:"producto_id requerido."
-      });
+      return res.status(400).json({ ok: false, msg: "producto_id requerido." });
 
-
-    await Stock.desactivarCocina(producto_id);
-
-    res.json({
-      ok:true
-    });
-
-
-  } catch(err){
-
+    const ok = await Stock.desactivarCocina(producto_id, req.restaurante_id);
+    if (!ok) return res.status(404).json({ ok: false, msg: "Producto no encontrado." });
+    res.json({ ok: true });
+  } catch (err) {
     console.error("[stock/cocina/desactivar]", err);
-
-    res.status(500).json({
-      ok:false,
-      msg:"Error al quitar ingrediente de cocina."
-    });
-
+    res.status(500).json({ ok: false, msg: "Error al quitar ingrediente de cocina." });
   }
 };

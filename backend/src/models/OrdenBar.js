@@ -1,4 +1,3 @@
-//backend/src/models/OrdenBar.js
 const { pool } = require("../config/db");
 
 const ESTADOS = ["pendiente", "en_preparacion", "listo", "cancelado"];
@@ -14,8 +13,6 @@ const parseItems = (orden) => ({
   items: typeof orden.items === "string" ? JSON.parse(orden.items) : orden.items,
 });
 
-// detalle de items no guarda producto_id, así que la imagen se recupera
-// uniendo por nombre contra la tabla productos (igual que en cocina)
 const enriquecerImagenes = async (ordenes) => {
   const nombres = [...new Set(
     ordenes.flatMap(orden => orden.items.map(item => item.nombre))
@@ -40,38 +37,41 @@ const enriquecerImagenes = async (ordenes) => {
 const OrdenBar = {
   estados: ESTADOS,
 
-  async crear({ mesa, items, observacion }) {
+  async crear({ restaurante_id, mesa, items, observacion }) {
     const [result] = await pool.execute(
-      `INSERT INTO ordenes_bar (mesa, items, observacion)
-       VALUES (?, ?, ?)`,
-      [mesa.trim(), JSON.stringify(items), observacion || null]
+      `INSERT INTO ordenes_bar (restaurante_id, mesa, items, observacion)
+       VALUES (?, ?, ?, ?)`,
+      [restaurante_id, mesa.trim(), JSON.stringify(items), observacion || null]
     );
     return result.insertId;
   },
 
-  async activas() {
+  async activas(restaurante_id) {
     const [rows] = await pool.query(
       `SELECT id, mesa, items, observacion, estado, creado_en, iniciado_en, listo_en
        FROM ordenes_bar
-       WHERE estado IN ('pendiente', 'en_preparacion')
-       ORDER BY creado_en ASC`
+       WHERE restaurante_id = ? AND estado IN ('pendiente', 'en_preparacion')
+       ORDER BY creado_en ASC`,
+      [restaurante_id]
     );
     return enriquecerImagenes(rows.map(parseItems));
   },
 
-  async historialHoy() {
+  async historialHoy(restaurante_id) {
     const [rows] = await pool.query(
       `SELECT id, mesa, items, observacion, estado, creado_en, iniciado_en, listo_en
        FROM ordenes_bar
-       WHERE DATE(COALESCE(listo_en, creado_en)) = CURDATE()
+       WHERE restaurante_id = ?
+         AND DATE(COALESCE(listo_en, creado_en)) = CURDATE()
          AND estado IN ('listo', 'cancelado')
        ORDER BY COALESCE(listo_en, creado_en) DESC
-       LIMIT 50`
+       LIMIT 50`,
+      [restaurante_id]
     );
     return enriquecerImagenes(rows.map(parseItems));
   },
 
-  async resumenHoy() {
+  async resumenHoy(restaurante_id) {
     const [[resumen]] = await pool.query(
       `SELECT
         SUM(estado IN ('pendiente', 'en_preparacion')) AS activas,
@@ -79,11 +79,13 @@ const OrdenBar = {
         SUM(estado = 'en_preparacion') AS en_preparacion,
         SUM(estado = 'listo' AND DATE(listo_en) = CURDATE()) AS listas_hoy
        FROM ordenes_bar
-       WHERE DATE(creado_en) = CURDATE() OR DATE(listo_en) = CURDATE()`
+       WHERE restaurante_id = ? AND (DATE(creado_en) = CURDATE() OR DATE(listo_en) = CURDATE())`,
+      [restaurante_id]
     );
     const [ordenes] = await pool.query(
       `SELECT items FROM ordenes_bar
-       WHERE DATE(creado_en) = CURDATE() OR DATE(listo_en) = CURDATE()`
+       WHERE restaurante_id = ? AND (DATE(creado_en) = CURDATE() OR DATE(listo_en) = CURDATE())`,
+      [restaurante_id]
     );
     const bebidas_hoy = ordenes.reduce((total, orden) => {
       const items = typeof orden.items === "string" ? JSON.parse(orden.items) : orden.items;
@@ -92,14 +94,15 @@ const OrdenBar = {
     return { ...resumen, bebidas_hoy };
   },
 
-  async actualizarEstado(id, estado, usuarioId = null) {
+  async actualizarEstado(id, restaurante_id, estado, usuarioId = null) {
     if (!ESTADOS.includes(estado)) return { error: "Estado inválido." };
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
       const [[orden]] = await conn.execute(
-  "SELECT id, estado, items FROM ordenes_bar WHERE id = ? FOR UPDATE", [id]
-);
+        "SELECT id, estado, items FROM ordenes_bar WHERE id = ? AND restaurante_id = ? FOR UPDATE",
+        [id, restaurante_id]
+      );
       if (!orden) {
         await conn.rollback();
         return { error: "Orden no encontrada.", status: 404 };

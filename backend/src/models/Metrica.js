@@ -1,13 +1,10 @@
-// backend/src/models/Metrica.js
 const { pool } = require("../config/db");
 
 const Metrica = {
-  // ── MÉTRICAS DEL DÍA ACTUAL ──────────────────────────────────
   getResumenDia: async (caja_id) => {
-    // Ventas del día
     const [ventas] = await pool.execute(
       `SELECT
-         COALESCE(SUM(total), 0)                                              as total_vendido,
+         COALESCE(SUM(total), 0) as total_vendido,
          COALESCE(SUM(CASE WHEN metodo_pago='efectivo'      THEN total ELSE 0 END), 0) as efectivo,
          COALESCE(SUM(CASE WHEN metodo_pago='tarjeta'       THEN total ELSE 0 END), 0) as tarjeta,
          COALESCE(SUM(CASE WHEN metodo_pago='transferencia' THEN total ELSE 0 END), 0) as transferencia,
@@ -17,13 +14,13 @@ const Metrica = {
       [caja_id]
     );
 
-    // Egresos del día
     const [egresos] = await pool.execute(
       "SELECT COALESCE(SUM(monto), 0) as total_egresos FROM egresos WHERE caja_id = ?",
       [caja_id]
     );
 
-    // Mesas ocupadas vs libres
+    // ⚠️ PENDIENTE (próximo módulo recomendado: "mesas"): esta consulta cuenta mesas
+    // de TODOS los restaurantes porque "mesas" todavía no tiene restaurante_id.
     const [mesas] = await pool.execute(
       `SELECT
          SUM(CASE WHEN estado = 'ocupada' THEN 1 ELSE 0 END) as ocupadas,
@@ -32,7 +29,6 @@ const Metrica = {
        FROM mesas WHERE activa = TRUE`
     );
 
-    // Producto más vendido del día
     const [productos] = await pool.execute(
       `SELECT dv.nombre, SUM(dv.cantidad) as total_vendido
        FROM detalle_venta dv
@@ -56,7 +52,7 @@ const Metrica = {
       transferencia:   parseFloat(v.transferencia)  || 0,
       cantidad_ventas: parseInt(v.cantidad_ventas)  || 0,
       total_egresos:   te,
-      efectivo_neto:   ef - te,  // efectivo real en caja
+      efectivo_neto:   ef - te,
       mesas: {
         ocupadas: parseInt(mesas[0].ocupadas) || 0,
         libres:   parseInt(mesas[0].libres)   || 0,
@@ -68,30 +64,26 @@ const Metrica = {
     };
   },
 
-  // ── VENTAS POR DÍA (últimos 7 días) ─────────────────────────
-  getVentasPorDia: async () => {
+  getVentasPorDia: async (restaurante_id) => {
     const [rows] = await pool.execute(
       `SELECT
          DATE_FORMAT(fecha, '%d/%m') as dia,
          fecha,
          COALESCE(SUM(total), 0) as total
        FROM ventas
-       WHERE fecha >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+       WHERE fecha >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND restaurante_id = ?
        GROUP BY fecha
-       ORDER BY fecha ASC`
+       ORDER BY fecha ASC`,
+      [restaurante_id]
     );
     return rows.map(r => ({ ...r, total: parseFloat(r.total) || 0 }));
   },
 
-  //ventas totales en un rango de fechas (para comparativas)
-  getVentasPeriodo: async ({ fecha_desde, fecha_hasta }) => {
+  getVentasPeriodo: async ({ restaurante_id, fecha_desde, fecha_hasta }) => {
     const [rows] = await pool.execute(
-      `SELECT
-         COALESCE(SUM(total), 0) as total,
-         COUNT(*) as cantidad
-       FROM ventas
-       WHERE fecha >= ? AND fecha <= ?`,
-      [fecha_desde, fecha_hasta]
+      `SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as cantidad
+       FROM ventas WHERE restaurante_id = ? AND fecha >= ? AND fecha <= ?`,
+      [restaurante_id, fecha_desde, fecha_hasta]
     );
     return {
       total:    parseFloat(rows[0].total) || 0,
@@ -99,37 +91,33 @@ const Metrica = {
     };
   },
 
-   // métodos de pago en un rango de fechas (para el Dashboard Financiero,
-  //    a diferencia de getMetodosPago que solo mira la caja actual) ──
-  getMetodosPagoPeriodo: async ({ fecha_desde, fecha_hasta }) => {
+  getMetodosPagoPeriodo: async ({ restaurante_id, fecha_desde, fecha_hasta }) => {
     const [rows] = await pool.execute(
       `SELECT metodo_pago as metodo,
               COALESCE(SUM(total), 0) as total,
               COUNT(*) as cantidad
        FROM ventas
-       WHERE fecha >= ? AND fecha <= ?
+       WHERE restaurante_id = ? AND fecha >= ? AND fecha <= ?
        GROUP BY metodo_pago`,
-      [fecha_desde, fecha_hasta]
+      [restaurante_id, fecha_desde, fecha_hasta]
     );
     return rows.map(r => ({ ...r, total: parseFloat(r.total) || 0 }));
   },
 
-    // producto más vendido en un rango de fechas ──
-  getProductoEstrellaPeriodo: async ({ fecha_desde, fecha_hasta }) => {
+  getProductoEstrellaPeriodo: async ({ restaurante_id, fecha_desde, fecha_hasta }) => {
     const [rows] = await pool.execute(
       `SELECT dv.nombre, SUM(dv.cantidad) as total_vendido
        FROM detalle_venta dv
        JOIN ventas v ON v.id = dv.venta_id
-       WHERE v.fecha >= ? AND v.fecha <= ?
+       WHERE v.restaurante_id = ? AND v.fecha >= ? AND v.fecha <= ?
        GROUP BY dv.nombre
        ORDER BY total_vendido DESC
        LIMIT 1`,
-      [fecha_desde, fecha_hasta]
+      [restaurante_id, fecha_desde, fecha_hasta]
     );
     return rows[0] ? { nombre: rows[0].nombre, cantidad: parseInt(rows[0].total_vendido) } : null;
   },
 
-  // ── VENTAS POR MÉTODO (caja actual) ──────────────────────────
   getMetodosPago: async (caja_id) => {
     const [rows] = await pool.execute(
       `SELECT metodo_pago as metodo,

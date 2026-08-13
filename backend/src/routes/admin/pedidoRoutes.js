@@ -1,6 +1,7 @@
 // backend/src/routes/admin/pedidoRoutes.js
 const r    = require("express").Router();
 const auth = require("../../middlewares/authMiddleware");
+const tenant = require("../../middlewares/tenantMiddleware");
 const ctrl = require("../../controllers/admin/pedidoController");
 
 // ── Rutas generales ──────────────────────────────────────────────
@@ -37,7 +38,7 @@ const ctrl = require("../../controllers/admin/pedidoController");
  *       401:
  *         description: No autorizado
  */
-r.get("/",             auth, ctrl.getPedidos);
+r.get("/",             auth, tenant, ctrl.getPedidos);
 
 /**
  * @swagger
@@ -90,7 +91,7 @@ r.get("/",             auth, ctrl.getPedidos);
  *       401:
  *         description: No autorizado
  */
-r.post("/",            auth, ctrl.createPedido);
+r.post("/",            auth, tenant, ctrl.createPedido);
 
 /**
  * @swagger
@@ -111,7 +112,7 @@ r.post("/",            auth, ctrl.createPedido);
  *                 type: string
  *                 enum: [pendiente, en_preparacion, listo, pagado]
  */
-r.get("/estados",      auth, ctrl.getEstados);
+r.get("/estados",      auth, tenant, ctrl.getEstados);
 
 /**
  * @swagger
@@ -125,7 +126,7 @@ r.get("/estados",      auth, ctrl.getEstados);
  *       200:
  *         description: Lista de categorías
  */
-r.get("/categorias",   auth, ctrl.getCategorias);
+r.get("/categorias",   auth, tenant, ctrl.getCategorias);
 
 /**
  * @swagger
@@ -139,7 +140,7 @@ r.get("/categorias",   auth, ctrl.getCategorias);
  *       200:
  *         description: Datos del turno
  */
-r.get("/cocinero",     auth, ctrl.getCocineroTurno);
+r.get("/cocinero",     auth, tenant, ctrl.getCocineroTurno);
 
 /**
  * @swagger
@@ -168,7 +169,7 @@ r.get("/cocinero",     auth, ctrl.getCocineroTurno);
  *       404:
  *         description: Mesa no encontrada
  */
-r.get("/mesa/:mesa_id", auth, ctrl.getByMesa);
+r.get("/mesa/:mesa_id", auth, tenant, ctrl.getByMesa);
 
 /**
  * @swagger
@@ -210,7 +211,7 @@ r.get("/mesa/:mesa_id", auth, ctrl.getByMesa);
  *       404:
  *         description: Pedido no encontrado
  */
-r.patch("/:id/estado", auth, ctrl.updateEstadoPedido);
+r.patch("/:id/estado", auth, tenant, ctrl.updateEstadoPedido);
 
 // ── Rutas de items ───────────────────────────────────────────────
 
@@ -246,7 +247,7 @@ r.patch("/:id/estado", auth, ctrl.updateEstadoPedido);
  *       400:
  *         description: Datos inválidos
  */
-r.patch("/items/mover",      auth, ctrl.moverItems);
+r.patch("/items/mover",      auth, tenant, ctrl.moverItems);
 
 /**
  * @swagger
@@ -285,7 +286,7 @@ r.patch("/items/mover",      auth, ctrl.moverItems);
  *       404:
  *         description: Item no encontrado
  */
-r.patch("/items/:item_id",   auth, ctrl.updateItem);
+r.patch("/items/:item_id",   auth, tenant, ctrl.updateItem);
 
 /**
  * @swagger
@@ -308,6 +309,6 @@ r.patch("/items/:item_id",   auth, ctrl.updateItem);
  *       404:
  *         description: Item no encontrado
  */
-r.delete("/items/:item_id",  auth, ctrl.deleteItem);
+r.delete("/items/:item_id",  auth, tenant, ctrl.deleteItem);
 
 module.exports = r;

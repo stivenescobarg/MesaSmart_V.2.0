@@ -12,6 +12,7 @@ import "./Login.css";
 // BD usa: "admin", "cocina", "bartender"
 const getRutaPorRol = (usuario) => {
   switch (usuario.rol) {
+    case "super_admin": return "/super-admin";  
     case "admin":      return "/admin";
     case "cocina":     return `/kitchen/${usuario.numero || 1}`;
     case "bartender":  return `/bartender/${usuario.numero || 1}`;
@@ -62,7 +63,7 @@ const Login = () => {
       <div className="login-card">
 
         <img src={logoMesaSmart} alt="Logo MesaSmart" className="login-img" />
-        <h1 className="title">MesaSmart</h1>
+        
 
         <form onSubmit={handleLogin}>
 

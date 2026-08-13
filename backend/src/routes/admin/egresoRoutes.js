@@ -1,6 +1,7 @@
 // backend/src/routes/admin/egresoRoutes.js
 const r    = require("express").Router();
 const auth = require("../../middlewares/authMiddleware");
+const tenant = require("../../middlewares/tenantMiddleware");
 const ctrl = require("../../controllers/admin/egresoController");
 
 /**
@@ -12,7 +13,7 @@ const ctrl = require("../../controllers/admin/egresoController");
  *     security:
  *       - bearerAuth: []
  */
-r.post("/",   auth, ctrl.crear);
+r.post("/",   auth, tenant, ctrl.crear);
 
 /**
  * @swagger
@@ -23,7 +24,7 @@ r.post("/",   auth, ctrl.crear);
  *     security:
  *       - bearerAuth: []
  */
-r.get("/",    auth, ctrl.getByCajaActual);
+r.get("/",    auth, tenant, ctrl.getByCajaActual);
 
 /**
  * @swagger
@@ -34,7 +35,7 @@ r.get("/",    auth, ctrl.getByCajaActual);
  *     security:
  *       - bearerAuth: []
  */
-r.get("/categorias", auth, ctrl.getCategorias);
+r.get("/categorias", auth, tenant, ctrl.getCategorias);
 
 /**
  * @swagger
@@ -45,7 +46,7 @@ r.get("/categorias", auth, ctrl.getCategorias);
  *     security:
  *       - bearerAuth: []
  */
-r.get("/historial", auth, ctrl.getHistorial);
+r.get("/historial", auth, tenant,ctrl.getHistorial);
 
 /**
  * @swagger
@@ -56,6 +57,6 @@ r.get("/historial", auth, ctrl.getHistorial);
  *     security:
  *       - bearerAuth: []
  */
-r.get("/graficos", auth, ctrl.getGraficos);
+r.get("/graficos", auth, tenant, ctrl.getGraficos);
 
 module.exports = r;

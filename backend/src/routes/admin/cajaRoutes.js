@@ -1,6 +1,7 @@
 // backend/src/routes/admin/cajaRoutes.js
 const r    = require("express").Router();
 const auth = require("../../middlewares/authMiddleware");
+const tenant = require("../../middlewares/tenantMiddleware"); 
 const role = require("../../middlewares/roleMiddleware");
 const ctrl = require("../../controllers/admin/cajaController");
 
@@ -44,7 +45,7 @@ const ctrl = require("../../controllers/admin/cajaController");
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-r.get("/estado", auth, ctrl.getEstado);
+r.get("/estado", auth, tenant, ctrl.getEstado);
 
 /**
  * @swagger
@@ -98,7 +99,7 @@ r.get("/estado", auth, ctrl.getEstado);
  *       500:
  *         description: Error interno
  */
-r.post("/abrir", auth, role("admin"), ctrl.abrir);
+r.post("/abrir", auth, tenant, role("admin"), ctrl.abrir);
 
 /**
  * @swagger
@@ -151,7 +152,7 @@ r.post("/abrir", auth, role("admin"), ctrl.abrir);
  *       500:
  *         description: Error interno
  */
-r.post("/cerrar", auth, role("admin"), ctrl.cerrar);
+r.post("/cerrar", auth, tenant, role("admin"), ctrl.cerrar);
 
 /**
  * @swagger
@@ -235,7 +236,7 @@ r.post("/cerrar", auth, role("admin"), ctrl.cerrar);
  *       500:
  *         description: Error interno
  */
-r.get("/historial", auth, role("admin"), ctrl.getHistorial);
+r.get("/historial", auth, tenant, role("admin"), ctrl.getHistorial);
 
 /**
  * @swagger
@@ -303,6 +304,6 @@ r.get("/historial", auth, role("admin"), ctrl.getHistorial);
  *       500:
  *         description: Error interno
  */
-r.post("/pago", auth, ctrl.registrarPago);
+r.post("/pago", auth, tenant, ctrl.registrarPago);
 
 module.exports = r;

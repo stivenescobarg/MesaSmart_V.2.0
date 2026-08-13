@@ -105,6 +105,7 @@ import "./Admin.css";
 import Proveedores     from "../components/admin/Proveedores";
 import CuentasPorPagar from "../components/admin/CuentasPorPagar";
 import DashboardFinanciero from "../components/admin/DashboardFinanciero";
+import Analitica from "../components/admin/Analitica";
 
 // ============================================================================
 // COMPONENTE PRINCIPAL
@@ -625,6 +626,9 @@ const AdminDashboard = () => {
 
         {/* SECCIÓN: DASHBOARD FINANCIERO */}
         {seccion === "dashboard-financiero" && <DashboardFinanciero />}
+
+         {/* SECCIÓN: ANALÍTICA */}
+        {seccion === "analitica" && <Analitica />}
 
         {/* SECCIÓN: USUARIOS - CRUD de usuarios del sistema */}
         {seccion === "usuarios" && (

@@ -3,6 +3,7 @@ const r    = require("express").Router();
 const auth = require("../../middlewares/authMiddleware");
 const soloAdmin = require("../../middlewares/roleMiddleware"); // asumiendo firma roleMiddleware(["admin"])
 const ctrl = require("../../controllers/admin/proveedorController");
+const tenant = require("../../middlewares/tenantMiddleware");
 
 /**
  * @swagger
@@ -13,7 +14,7 @@ const ctrl = require("../../controllers/admin/proveedorController");
  *     security:
  *       - bearerAuth: []
  */
-r.post("/",   auth, soloAdmin(["admin"]), ctrl.crear);
+r.post("/",   auth, tenant,soloAdmin(["admin"]), ctrl.crear);
 
 /**
  * @swagger
@@ -24,7 +25,7 @@ r.post("/",   auth, soloAdmin(["admin"]), ctrl.crear);
  *     security:
  *       - bearerAuth: []
  */
-r.get("/",    auth, ctrl.getAll);
+r.get("/",    auth,tenant, ctrl.getAll);
 
 /**
  * @swagger
@@ -35,7 +36,7 @@ r.get("/",    auth, ctrl.getAll);
  *     security:
  *       - bearerAuth: []
  */
-r.get("/:id", auth, ctrl.getById);
+r.get("/:id", auth, tenant, ctrl.getById);
 
 /**
  * @swagger
@@ -46,7 +47,7 @@ r.get("/:id", auth, ctrl.getById);
  *     security:
  *       - bearerAuth: []
  */
-r.put("/:id", auth, soloAdmin(["admin"]), ctrl.actualizar);
+r.put("/:id", auth, tenant, soloAdmin(["admin"]), ctrl.actualizar);
 
 /**
  * @swagger
@@ -57,7 +58,7 @@ r.put("/:id", auth, soloAdmin(["admin"]), ctrl.actualizar);
  *     security:
  *       - bearerAuth: []
  */
-r.patch("/:id/estado", auth, soloAdmin(["admin"]), ctrl.cambiarEstado);
+r.patch("/:id/estado", auth, tenant, soloAdmin(["admin"]), ctrl.cambiarEstado);
 
 /**
  * @swagger
@@ -68,6 +69,6 @@ r.patch("/:id/estado", auth, soloAdmin(["admin"]), ctrl.cambiarEstado);
  *     security:
  *       - bearerAuth: []
  */
-r.delete("/:id", auth, soloAdmin(["admin"]), ctrl.eliminar);
+r.delete("/:id", auth, tenant, soloAdmin(["admin"]), ctrl.eliminar);
 
 module.exports = r;

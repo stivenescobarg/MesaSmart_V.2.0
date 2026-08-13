@@ -8,6 +8,7 @@ const SECCIONES = [
   { key: "mesas",     label: "Mesas",     icono: "⊞" },
   { key: "egresos",   label: "Egresos",   icono: "📤" },
   { key: "dashboard-financiero", label: "Dashboard Financiero", icono: "📊" },
+  { key: "analitica", label: "Analítica", icono: "📈" },
   { key: "proveedores",     label: "Proveedores",      icono: "🏭" },
   { key: "cuentas-pagar",   label: "Cuentas por pagar", icono: "📄" },
   { key: "stock",     label: "Stock",     icono: "📦" }, 

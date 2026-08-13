@@ -1,6 +1,7 @@
 // backend/src/routes/admin/mesaRoutes.js
 const r    = require("express").Router();
 const auth = require("../../middlewares/authMiddleware");
+const tenant = require("../../middlewares/tenantMiddleware");
 const role = require("../../middlewares/roleMiddleware");
 const ctrl = require("../../controllers/admin/mesaController");
 
@@ -24,7 +25,7 @@ const ctrl = require("../../controllers/admin/mesaController");
  *       401:
  *         description: No autorizado
  */
-r.get("/",                    auth, ctrl.getAll);
+r.get("/",                    auth, tenant, ctrl.getAll);
 
 /**
  * @swagger
@@ -72,7 +73,7 @@ r.get("/",                    auth, ctrl.getAll);
  *       403:
  *         description: Acceso denegado (solo admin)
  */
-r.post("/",                   auth, role("admin"), ctrl.create);
+r.post("/",                   auth, tenant, role("admin"), ctrl.create);
 
 /**
  * @swagger
@@ -97,7 +98,7 @@ r.post("/",                   auth, role("admin"), ctrl.create);
  *       404:
  *         description: Mesa no encontrada
  */
-r.delete("/:id",              auth, role("admin"), ctrl.remove);
+r.delete("/:id",              auth, tenant, role("admin"), ctrl.remove);
 
 /**
  * @swagger
@@ -132,7 +133,7 @@ r.delete("/:id",              auth, role("admin"), ctrl.remove);
  *       400:
  *         description: Estado inválido
  */
-r.patch("/:id/estado",        auth, ctrl.updateEstado);
+r.patch("/:id/estado",        auth, tenant, ctrl.updateEstado);
 
 /**
  * @swagger
@@ -168,7 +169,7 @@ r.patch("/:id/estado",        auth, ctrl.updateEstado);
  *       403:
  *         description: Acceso denegado
  */
-r.patch("/:id/posicion",      auth, role("admin"), ctrl.updatePosicion);
+r.patch("/:id/posicion",      auth, tenant, role("admin"), ctrl.updatePosicion);
 
 /**
  * @swagger
@@ -201,7 +202,7 @@ r.patch("/:id/posicion",      auth, role("admin"), ctrl.updatePosicion);
  *       403:
  *         description: Acceso denegado
  */
-r.patch("/:id/config",        auth, role("admin"), ctrl.updateConfig);
+r.patch("/:id/config",        auth, tenant, role("admin"), ctrl.updateConfig);
 
 /**
  * @swagger
@@ -236,6 +237,6 @@ r.patch("/:id/config",        auth, role("admin"), ctrl.updateConfig);
  *       403:
  *         description: Acceso denegado
  */
-r.patch("/batch/posiciones",  auth, role("admin"), ctrl.updatePosicionBatch);
+r.patch("/batch/posiciones",  auth, tenant, role("admin"), ctrl.updatePosicionBatch);
 
 module.exports = r;

@@ -13,6 +13,7 @@ exports.crear = async (req, res) => {
     if (!itemsValidos(items)) return res.status(400).json({ msg: "Incluye al menos una bebida válida." });
 
     const ordenId = await OrdenBar.crear({
+      restaurante_id: req.restaurante_id,
       mesa,
       observacion,
       items: items.map(item => ({
@@ -30,22 +31,28 @@ exports.crear = async (req, res) => {
   }
 };
 
-exports.activas = async (_req, res) => {
-  try { res.json({ ok: true, ordenes: await OrdenBar.activas() }); }
+exports.activas = async (req, res) => {
+  try { res.json({ ok: true, ordenes: await OrdenBar.activas(req.restaurante_id) }); }
   catch (err) {
     console.error("[bar/activas]", err);
     res.status(500).json({ msg: "No fue posible obtener las órdenes." });
   }
 };
 
-exports.historialHoy = async (_req, res) => {
-  try { res.json({ ok: true, ordenes: await OrdenBar.historialHoy() }); }
+exports.historialHoy = async (req, res) => {
+  try { res.json({ ok: true, ordenes: await OrdenBar.historialHoy(req.restaurante_id) }); }
   catch { res.status(500).json({ msg: "No fue posible obtener el historial." }); }
 };
 
-exports.resumen = async (_req, res) => {
+// ⚠️ PENDIENTE: Stock.findAll() todavía no filtra por restaurante_id
+// (stock_productos/stock_movimientos no migradas). El resumen de bar hoy
+// muestra alertas de stock de TODOS los restaurantes mezcladas.
+exports.resumen = async (req, res) => {
   try {
-    const [resumen, inventario] = await Promise.all([OrdenBar.resumenHoy(), Stock.findAll()]);
+    const [resumen, inventario] = await Promise.all([
+      OrdenBar.resumenHoy(req.restaurante_id),
+      Stock.findAll(),
+    ]);
     const alertas_stock = inventario.filter(item => item.categoria === "bar" && item.bajo_stock);
     res.json({ ok: true, resumen, alertas_stock });
   } catch (err) {
@@ -56,7 +63,7 @@ exports.resumen = async (_req, res) => {
 
 exports.actualizarEstado = async (req, res) => {
   try {
-    const resultado = await OrdenBar.actualizarEstado(req.params.id, req.body.estado, req.usuario.id);
+    const resultado = await OrdenBar.actualizarEstado(req.params.id, req.restaurante_id, req.body.estado, req.usuario.id);
     if (resultado.error) return res.status(resultado.status || 400).json({ msg: resultado.error });
     res.json({ ok: true, orden: resultado });
   } catch (err) {
@@ -65,7 +72,8 @@ exports.actualizarEstado = async (req, res) => {
   }
 };
 
-exports.inventario = async (_req, res) => {
+// ⚠️ PENDIENTE: mismo caso — Stock.findAll() sin filtro de tenant todavía.
+exports.inventario = async (req, res) => {
   try {
     const productos = (await Stock.findAll()).filter(producto => producto.categoria === "bar");
     res.json({ ok: true, productos });
@@ -75,6 +83,8 @@ exports.inventario = async (_req, res) => {
   }
 };
 
+// ⚠️ PENDIENTE: mismo caso — un producto_id de otro restaurante podría
+// registrar consumo hoy, porque Stock.findAll() no está acotado por tenant.
 exports.registrarConsumo = async (req, res) => {
   try {
     const { producto_id, cantidad, observacion } = req.body;

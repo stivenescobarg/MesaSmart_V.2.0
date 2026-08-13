@@ -52,7 +52,8 @@ const CuentasPorPagar = ({ toast }) => {
     } finally {
       setCargando(false);
     }
-  }, [filtroEstado, filtroTiempo, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroEstado, filtroTiempo]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -235,87 +236,223 @@ const CuentasPorPagar = ({ toast }) => {
         </div>
       )}
 
-      {/* ── MODAL: NUEVA FACTURA ────────────────────────────── */}
-      {modalCrear && (
-  <div className="modal-overlay" onClick={() => setModalCrear(false)}>
+     {/* ── MODAL: NUEVA FACTURA ────────────────────────────── */}
+{modalCrear && (
+  <div
+    className="modal-overlay"
+    onClick={() => setModalCrear(false)}
+  >
     <div
       className="modal-box"
       style={{
         maxWidth: "480px",
-        maxHeight: "calc(100vh - 80px)", // más margen arriba/abajo
+        width: "100%",
+        maxHeight: "calc(100vh - 80px)",
         height: "auto",
-        overflow: "hidden",              // evita que el contenido se desborde
         display: "flex",
         flexDirection: "column",
+        overflow: "hidden",
         margin: "auto",
-        width: "100%",
         borderRadius: "var(--r-lg)",
         border: "1px solid var(--border-light)",
         background: "var(--bg-card)",
         boxShadow: "var(--shadow)"
       }}
-      onClick={e => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
-      <div className="modal-header modal-header-normal" style={{ flexShrink: 0 }}>
-        <span className="modal-titulo">Nueva factura de proveedor</span>
-        <button className="modal-cerrar" onClick={() => setModalCrear(false)}>✕</button>
+      <div
+        className="modal-header modal-header-normal"
+        style={{ flexShrink: 0 }}
+      >
+        <span className="modal-titulo">
+          Nueva factura de proveedor
+        </span>
+
+        <button
+          className="modal-cerrar"
+          onClick={() => setModalCrear(false)}
+        >
+          ✕
+        </button>
       </div>
-      <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: "1.5rem" }}>
+
+      <div
+        className="modal-body"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto"
+        }}
+      >
         {errores.length > 0 && (
-          <div className="alerta-error" style={{ marginBottom: "0.75rem" }}>
-            {errores.map((e, i) => <p key={i}>• {e}</p>)}
+          <div
+            className="alerta-error"
+            style={{ marginBottom: "0.75rem" }}
+          >
+            {errores.map((e, i) => (
+              <p key={i}>• {e}</p>
+            ))}
           </div>
         )}
 
         <div className="campo-grupo">
-          <label className="campo-label">Número de factura *</label>
-          <input className="campo-input" autoFocus placeholder="Ej: F-001245"
-            value={form.numero} onChange={e => setForm({ ...form, numero: e.target.value })} />
+          <label className="campo-label">
+            Número de factura *
+          </label>
+
+          <input
+            className="campo-input"
+            autoFocus
+            placeholder="Ej: F-001245"
+            value={form.numero}
+            onChange={(e) =>
+              setForm({ ...form, numero: e.target.value })
+            }
+          />
         </div>
 
         <div className="campo-grupo">
-          <label className="campo-label">Proveedor *</label>
-          <select className="campo-input" value={form.proveedor_id}
-            onChange={e => setForm({ ...form, proveedor_id: e.target.value })}>
-            <option value="">Selecciona un proveedor</option>
-            {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+          <label className="campo-label">
+            Proveedor *
+          </label>
+
+          <select
+            className="campo-input"
+            value={form.proveedor_id}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                proveedor_id: e.target.value
+              })
+            }
+          >
+            <option value="">
+              Selecciona un proveedor
+            </option>
+
+            {proveedores.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre}
+              </option>
+            ))}
           </select>
+
           {proveedores.length === 0 && (
-            <p className="texto-muted" style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>
-              No hay proveedores activos — crea uno primero en la sección Proveedores.
+            <p
+              className="texto-muted"
+              style={{
+                fontSize: "0.75rem",
+                marginTop: "0.25rem"
+              }}
+            >
+              No hay proveedores activos — crea uno primero en la sección
+              Proveedores.
             </p>
           )}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "0.75rem"
+          }}
+        >
           <div className="campo-grupo">
-            <label className="campo-label">Fecha *</label>
-            <input className="campo-input" type="date"
-              value={form.fecha} onChange={e => setForm({ ...form, fecha: e.target.value })} />
+            <label className="campo-label">
+              Fecha *
+            </label>
+
+            <input
+              className="campo-input"
+              type="date"
+              value={form.fecha}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  fecha: e.target.value
+                })
+              }
+            />
           </div>
+
           <div className="campo-grupo">
-            <label className="campo-label">Fecha de vencimiento *</label>
-            <input className="campo-input" type="date"
-              value={form.fecha_venc} onChange={e => setForm({ ...form, fecha_venc: e.target.value })} />
+            <label className="campo-label">
+              Fecha de vencimiento *
+            </label>
+
+            <input
+              className="campo-input"
+              type="date"
+              value={form.fecha_venc}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  fecha_venc: e.target.value
+                })
+              }
+            />
           </div>
         </div>
 
         <div className="campo-grupo">
-          <label className="campo-label">Valor total (COP) *</label>
-          <input className="campo-input" type="number" min="0" placeholder="0"
-            value={form.valor_total} onChange={e => setForm({ ...form, valor_total: e.target.value })} />
+          <label className="campo-label">
+            Valor total (COP) *
+          </label>
+
+          <input
+            className="campo-input"
+            type="number"
+            min="0"
+            placeholder="0"
+            value={form.valor_total}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                valor_total: e.target.value
+              })
+            }
+          />
         </div>
 
         <div className="campo-grupo">
-          <label className="campo-label">Observaciones</label>
-          <input className="campo-input" placeholder="Opcional"
-            value={form.observaciones} onChange={e => setForm({ ...form, observaciones: e.target.value })} />
+          <label className="campo-label">
+            Observaciones
+          </label>
+
+          <input
+            className="campo-input"
+            placeholder="Opcional"
+            value={form.observaciones}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                observaciones: e.target.value
+              })
+            }
+          />
         </div>
       </div>
-      <div className="modal-footer" style={{ flexShrink: 0 }}>
-        <button className="btn-ghost" onClick={() => setModalCrear(false)}>Cancelar</button>
-        <button className="btn-primario" onClick={handleCrearFactura} disabled={procesando}>
-          {procesando ? "Guardando..." : "Registrar factura"}
+
+      <div
+        className="modal-footer"
+        style={{ flexShrink: 0 }}
+      >
+        <button
+          className="btn-ghost"
+          onClick={() => setModalCrear(false)}
+        >
+          Cancelar
+        </button>
+
+        <button
+          className="btn-primario"
+          onClick={handleCrearFactura}
+          disabled={procesando}
+        >
+          {procesando
+            ? "Guardando..."
+            : "Registrar factura"}
         </button>
       </div>
     </div>

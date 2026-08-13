@@ -1,6 +1,7 @@
 // backend/src/routes/admin/dashboardFinancieroRoutes.js
 const r    = require("express").Router();
 const auth = require("../../middlewares/authMiddleware");
+const tenant = require("../../middlewares/tenantMiddleware");
 const ctrl = require("../../controllers/admin/dashboardFinancieroController");
 
 /**
@@ -12,7 +13,7 @@ const ctrl = require("../../controllers/admin/dashboardFinancieroController");
  *     security:
  *       - bearerAuth: []
  */
-r.get("/", auth, ctrl.getResumen);
+r.get("/", auth, tenant, ctrl.getResumen);
 
 /**
  * @swagger
@@ -23,6 +24,6 @@ r.get("/", auth, ctrl.getResumen);
  *     security:
  *       - bearerAuth: []
  */
-r.get("/ventas-vs-gastos", auth, ctrl.getVentasVsGastos);
+r.get("/ventas-vs-gastos", auth, tenant, ctrl.getVentasVsGastos);
 
 module.exports = r;

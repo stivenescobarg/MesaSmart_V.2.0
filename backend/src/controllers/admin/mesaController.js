@@ -1,15 +1,12 @@
-// backend/src/controllers/admin/mesaController.js
-// FIX: acepta tanto string como objeto en el body al crear
 const Mesa = require("../../models/Mesa");
 
 exports.getAll = async (req, res) => {
-  try { res.json({ ok: true, mesas: await Mesa.findAll() }); }
+  try { res.json({ ok: true, mesas: await Mesa.findAll(req.restaurante_id) }); }
   catch { res.status(500).json({ msg: "Error al obtener mesas." }); }
 };
 
 exports.create = async (req, res) => {
   try {
-    // Soporta body como string "nombre" o como objeto { nombre, zona_id, ... }
     const nombre    = typeof req.body === "string" ? req.body : req.body?.nombre;
     const zona_id   = req.body?.zona_id   ?? null;
     const capacidad = req.body?.capacidad ?? 4;
@@ -20,7 +17,10 @@ exports.create = async (req, res) => {
     if (!nombre?.trim())
       return res.status(400).json({ msg: "Nombre requerido." });
 
-    const id = await Mesa.create({ nombre: nombre.trim(), zona_id, capacidad, pos_x, pos_y, forma });
+    const id = await Mesa.create({
+      restaurante_id: req.restaurante_id,
+      nombre: nombre.trim(), zona_id, capacidad, pos_x, pos_y, forma,
+    });
     res.status(201).json({ ok: true, id });
   } catch (err) {
     console.error("[mesas/crear]", err);
@@ -30,17 +30,18 @@ exports.create = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
-    const m = await Mesa.findById(req.params.id);
+    const m = await Mesa.findById(req.params.id, req.restaurante_id);
     if (!m) return res.status(404).json({ msg: "Mesa no encontrada." });
     if (m.ocupada) return res.status(409).json({ msg: "Mesa tiene pedidos activos." });
-    await Mesa.delete(req.params.id);
+    await Mesa.delete(req.params.id, req.restaurante_id);
     res.json({ ok: true });
   } catch { res.status(500).json({ msg: "Error al eliminar mesa." }); }
 };
 
 exports.updateEstado = async (req, res) => {
   try {
-    await Mesa.updateEstado(req.params.id, req.body.estado);
+    const ok = await Mesa.updateEstado(req.params.id, req.restaurante_id, req.body.estado);
+    if (!ok) return res.status(404).json({ msg: "Mesa no encontrada." });
     res.json({ ok: true });
   } catch { res.status(500).json({ msg: "Error al actualizar estado." }); }
 };
@@ -50,7 +51,8 @@ exports.updatePosicion = async (req, res) => {
     const { pos_x, pos_y } = req.body;
     if (pos_x == null || pos_y == null)
       return res.status(400).json({ msg: "pos_x y pos_y son requeridos." });
-    await Mesa.updatePosicion(req.params.id, pos_x, pos_y);
+    const ok = await Mesa.updatePosicion(req.params.id, req.restaurante_id, pos_x, pos_y);
+    if (!ok) return res.status(404).json({ msg: "Mesa no encontrada." });
     res.json({ ok: true });
   } catch { res.status(500).json({ msg: "Error al guardar posición." }); }
 };
@@ -60,7 +62,7 @@ exports.updatePosicionBatch = async (req, res) => {
     const { posiciones } = req.body;
     if (!Array.isArray(posiciones) || posiciones.length === 0)
       return res.status(400).json({ msg: "Posiciones requeridas." });
-    await Mesa.updatePosicionBatch(posiciones);
+    await Mesa.updatePosicionBatch(req.restaurante_id, posiciones);
     res.json({ ok: true });
   } catch { res.status(500).json({ msg: "Error al guardar posiciones." }); }
 };
@@ -68,7 +70,8 @@ exports.updatePosicionBatch = async (req, res) => {
 exports.updateConfig = async (req, res) => {
   try {
     const { zona_id, capacidad, forma, nombre } = req.body;
-    await Mesa.updateConfig(req.params.id, { zona_id, capacidad, forma, nombre });
+    const ok = await Mesa.updateConfig(req.params.id, req.restaurante_id, { zona_id, capacidad, forma, nombre });
+    if (!ok) return res.status(404).json({ msg: "Mesa no encontrada." });
     res.json({ ok: true });
   } catch { res.status(500).json({ msg: "Error al actualizar mesa." }); }
 };

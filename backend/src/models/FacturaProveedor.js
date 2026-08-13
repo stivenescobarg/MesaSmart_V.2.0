@@ -1,7 +1,5 @@
-// backend/src/models/FacturaProveedor.js
 const { pool } = require("../config/db");
 
-// Recalcula el estado de una factura según lo pagado vs el total
 const calcularEstado = (valorTotal, valorPagado) => {
   if (valorPagado <= 0) return "pendiente";
   if (valorPagado >= valorTotal) return "pagada";
@@ -9,40 +7,32 @@ const calcularEstado = (valorTotal, valorPagado) => {
 };
 
 const FacturaProveedor = {
-  // Crear factura (cuenta por pagar)
-  crear: async ({ numero, proveedor_id, usuario_id, fecha, fecha_venc, valor_total, observaciones }) => {
+  crear: async ({ restaurante_id, numero, proveedor_id, usuario_id, fecha, fecha_venc, valor_total, observaciones }) => {
     const [r] = await pool.execute(
       `INSERT INTO facturas_proveedor
-         (numero, proveedor_id, usuario_id, fecha, fecha_venc, valor_total, observaciones)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [numero, proveedor_id, usuario_id, fecha, fecha_venc, valor_total, observaciones || null]
+         (restaurante_id, numero, proveedor_id, usuario_id, fecha, fecha_venc, valor_total, observaciones)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [restaurante_id, numero, proveedor_id, usuario_id, fecha, fecha_venc, valor_total, observaciones || null]
     );
     return r.insertId;
   },
 
-  // Listar con filtros: proveedor_id, estado, fecha_desde, fecha_hasta, vencidas, proximas_a_vencer
-  getAll: async ({ proveedor_id, estado, fecha_desde, fecha_hasta, vencidas, proximas } = {}) => {
+  getAll: async ({ restaurante_id, proveedor_id, estado, fecha_desde, fecha_hasta, vencidas, proximas }) => {
     let sql = `
       SELECT f.*, p.nombre AS proveedor_nombre,
              (f.valor_total - f.valor_pagado) AS valor_pendiente
       FROM facturas_proveedor f
       JOIN proveedores p ON p.id = f.proveedor_id
-      WHERE 1=1
+      WHERE f.restaurante_id = ?
     `;
-    const params = [];
+    const params = [restaurante_id];
 
     if (proveedor_id) { sql += " AND f.proveedor_id = ?"; params.push(proveedor_id); }
     if (estado)       { sql += " AND f.estado = ?";       params.push(estado); }
     if (fecha_desde)  { sql += " AND f.fecha >= ?";       params.push(fecha_desde); }
     if (fecha_hasta)  { sql += " AND f.fecha <= ?";       params.push(fecha_hasta); }
-
-    if (vencidas) {
-      sql += " AND f.estado != 'pagada' AND f.fecha_venc < CURDATE()";
-    }
-    if (proximas) {
-      // Próximas a vencer: dentro de los siguientes 7 días, no vencidas aún
-      sql += " AND f.estado != 'pagada' AND f.fecha_venc BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)";
-    }
+    if (vencidas)     { sql += " AND f.estado != 'pagada' AND f.fecha_venc < CURDATE()"; }
+    if (proximas)     { sql += " AND f.estado != 'pagada' AND f.fecha_venc BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)"; }
 
     sql += " ORDER BY f.fecha_venc ASC";
     const [rows] = await pool.execute(sql, params);
@@ -54,14 +44,14 @@ const FacturaProveedor = {
     }));
   },
 
-  getById: async (id) => {
+  getById: async (id, restaurante_id) => {
     const [rows] = await pool.execute(
       `SELECT f.*, p.nombre AS proveedor_nombre,
               (f.valor_total - f.valor_pagado) AS valor_pendiente
        FROM facturas_proveedor f
        JOIN proveedores p ON p.id = f.proveedor_id
-       WHERE f.id = ?`,
-      [id]
+       WHERE f.id = ? AND f.restaurante_id = ?`,
+      [id, restaurante_id]
     );
     if (!rows[0]) return null;
     return {
@@ -72,7 +62,8 @@ const FacturaProveedor = {
     };
   },
 
-  // Historial de pagos/abonos de una factura
+  // Segura vía factura_id: el controlador siempre llama a esto DESPUÉS de
+  // verificar ownership con getById(id, restaurante_id).
   getPagos: async (factura_id) => {
     const [rows] = await pool.execute(
       `SELECT pf.*, u.nombre AS usuario_nombre
@@ -85,15 +76,15 @@ const FacturaProveedor = {
     return rows.map(r => ({ ...r, monto: parseFloat(r.monto) }));
   },
 
-  // Registrar un abono/pago — usa transacción para mantener factura y pago sincronizados
-  registrarPago: async ({ factura_id, usuario_id, monto, metodo_pago, observaciones, fecha }) => {
+  registrarPago: async ({ factura_id, restaurante_id, usuario_id, monto, metodo_pago, observaciones, fecha }) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
 
+      // Verificación de pertenencia ANTES de tocar nada — mismo patrón que Caja.cerrar
       const [facturaRows] = await conn.execute(
-        "SELECT valor_total, valor_pagado FROM facturas_proveedor WHERE id = ? FOR UPDATE",
-        [factura_id]
+        "SELECT valor_total, valor_pagado FROM facturas_proveedor WHERE id = ? AND restaurante_id = ? FOR UPDATE",
+        [factura_id, restaurante_id]
       );
       if (!facturaRows[0]) throw new Error("Factura no encontrada.");
 
@@ -128,19 +119,17 @@ const FacturaProveedor = {
     }
   },
 
-  // Indicadores para el dashboard de cuentas por pagar
-  getIndicadores: async () => {
-    const [rows] = await pool.execute(`
-      SELECT
-        COALESCE(SUM(valor_total - valor_pagado), 0)                                     AS total_por_pagar,
-        COALESCE(SUM(valor_pagado), 0)                                                    AS total_pagado,
-        COALESCE(SUM(CASE WHEN estado != 'pagada' AND fecha_venc < CURDATE()
-                           THEN 1 ELSE 0 END), 0)                                         AS facturas_vencidas,
-        COALESCE(SUM(CASE WHEN estado != 'pagada'
-                           AND fecha_venc BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-                           THEN 1 ELSE 0 END), 0)                                         AS facturas_proximas
-      FROM facturas_proveedor
-    `);
+  getIndicadores: async (restaurante_id) => {
+    const [rows] = await pool.execute(
+      `SELECT
+        COALESCE(SUM(valor_total - valor_pagado), 0) AS total_por_pagar,
+        COALESCE(SUM(valor_pagado), 0) AS total_pagado,
+        COALESCE(SUM(CASE WHEN estado != 'pagada' AND fecha_venc < CURDATE() THEN 1 ELSE 0 END), 0) AS facturas_vencidas,
+        COALESCE(SUM(CASE WHEN estado != 'pagada' AND fecha_venc BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 1 ELSE 0 END), 0) AS facturas_proximas
+       FROM facturas_proveedor
+       WHERE restaurante_id = ?`,
+      [restaurante_id]
+    );
     const r = rows[0];
     return {
       total_por_pagar:   parseFloat(r.total_por_pagar),
@@ -150,8 +139,8 @@ const FacturaProveedor = {
     };
   },
 
-  eliminar: async (id) => {
-    await pool.execute("DELETE FROM facturas_proveedor WHERE id = ?", [id]);
+  eliminar: async (id, restaurante_id) => {
+    await pool.execute("DELETE FROM facturas_proveedor WHERE id = ? AND restaurante_id = ?", [id, restaurante_id]);
   },
 };
 

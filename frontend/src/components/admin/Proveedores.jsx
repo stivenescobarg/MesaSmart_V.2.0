@@ -43,7 +43,8 @@ const Proveedores = ({ toast }) => {
     } finally {
       setCargando(false);
     }
-  }, [filtroEstado, busqueda, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroEstado, busqueda]);
 
   useEffect(() => {
     const id = setTimeout(cargar, 300); // debounce para la búsqueda
@@ -217,96 +218,219 @@ const Proveedores = ({ toast }) => {
       )}
 
       {/* ── MODAL: CREAR / EDITAR ───────────────────────────── */}
-      {modalForm && (
-  <div className="modal-overlay" onClick={() => setModalForm(false)}>
+{modalForm && (
+  <div
+    className="modal-overlay"
+    onClick={() => setModalForm(false)}
+  >
     <div
       className="modal-box"
       style={{
         maxWidth: "520px",
-        maxHeight: "calc(100vh - 80px)",   // más margen arriba/abajo
-        height: "auto",                    // permite que el contenido se ajuste
-        overflow: "hidden",               // evita que el contenido se desborde del contenedor
+        width: "100%",
+        maxHeight: "calc(100vh - 80px)",
+        height: "auto",
         display: "flex",
         flexDirection: "column",
-        margin: "auto",                   // centrado extra
-        width: "100%",
+        overflow: "hidden",
+        margin: "auto",
         borderRadius: "var(--r-lg)",
         border: "1px solid var(--border-light)",
         background: "var(--bg-card)",
         boxShadow: "var(--shadow)"
       }}
-      onClick={e => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
       <div className="modal-header modal-header-normal" style={{ flexShrink: 0 }}>
-        <span className="modal-titulo">{editandoId ? "Editar proveedor" : "Nuevo proveedor"}</span>
-        <button className="modal-cerrar" onClick={() => setModalForm(false)}>✕</button>
+        <span className="modal-titulo">
+          {editandoId ? "Editar proveedor" : "Nuevo proveedor"}
+        </span>
+
+        <button
+          className="modal-cerrar"
+          onClick={() => setModalForm(false)}
+        >
+          ✕
+        </button>
       </div>
-      <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: "1.5rem" }}>
+
+      <div
+        className="modal-body"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto"
+        }}
+      >
         {errores.length > 0 && (
-          <div className="alerta-error" style={{ marginBottom: "0.75rem" }}>
-            {errores.map((e, i) => <p key={i}>• {e}</p>)}
+          <div
+            className="alerta-error"
+            style={{ marginBottom: "0.75rem" }}
+          >
+            {errores.map((e, i) => (
+              <p key={i}>• {e}</p>
+            ))}
           </div>
         )}
 
         <div className="campo-grupo">
           <label className="campo-label">Nombre *</label>
-          <input className="campo-input" autoFocus placeholder="Ej: Distribuidora Sur"
-            value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} />
+          <input
+            className="campo-input"
+            autoFocus
+            placeholder="Ej: Distribuidora Sur"
+            value={form.nombre}
+            onChange={(e) =>
+              setForm({ ...form, nombre: e.target.value })
+            }
+          />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "0.75rem"
+          }}
+        >
           <div className="campo-grupo">
             <label className="campo-label">NIT</label>
-            <input className="campo-input" placeholder="Ej: 900123456-7"
-              value={form.nit} onChange={e => setForm({ ...form, nit: e.target.value })} />
+            <input
+              className="campo-input"
+              placeholder="Ej: 900123456-7"
+              value={form.nit}
+              onChange={(e) =>
+                setForm({ ...form, nit: e.target.value })
+              }
+            />
           </div>
+
           <div className="campo-grupo">
             <label className="campo-label">Categoría</label>
-            <input className="campo-input" list="categorias-proveedor" placeholder="Ej: Insumos"
-              value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })} />
+
+            <input
+              className="campo-input"
+              list="categorias-proveedor"
+              placeholder="Ej: Insumos"
+              value={form.categoria}
+              onChange={(e) =>
+                setForm({ ...form, categoria: e.target.value })
+              }
+            />
+
             <datalist id="categorias-proveedor">
-              {CATEGORIAS_SUGERIDAS.map(c => <option key={c} value={c} />)}
+              {CATEGORIAS_SUGERIDAS.map((c) => (
+                <option key={c} value={c} />
+              ))}
             </datalist>
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "0.75rem"
+          }}
+        >
           <div className="campo-grupo">
             <label className="campo-label">Teléfono</label>
-            <input className="campo-input" placeholder="Ej: 3001234567"
-              value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} />
+
+            <input
+              className="campo-input"
+              placeholder="Ej: 3001234567"
+              value={form.telefono}
+              onChange={(e) =>
+                setForm({ ...form, telefono: e.target.value })
+              }
+            />
           </div>
+
           <div className="campo-grupo">
             <label className="campo-label">Correo</label>
-            <input className="campo-input" type="email" placeholder="proveedor@correo.com"
-              value={form.correo} onChange={e => setForm({ ...form, correo: e.target.value })} />
+
+            <input
+              className="campo-input"
+              type="email"
+              placeholder="proveedor@correo.com"
+              value={form.correo}
+              onChange={(e) =>
+                setForm({ ...form, correo: e.target.value })
+              }
+            />
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "0.75rem"
+          }}
+        >
           <div className="campo-grupo">
             <label className="campo-label">Dirección</label>
-            <input className="campo-input" placeholder="Calle 10 # 5-20"
-              value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} />
+
+            <input
+              className="campo-input"
+              placeholder="Calle 10 # 5-20"
+              value={form.direccion}
+              onChange={(e) =>
+                setForm({ ...form, direccion: e.target.value })
+              }
+            />
           </div>
+
           <div className="campo-grupo">
             <label className="campo-label">Ciudad</label>
-            <input className="campo-input" placeholder="Ej: Medellín"
-              value={form.ciudad} onChange={e => setForm({ ...form, ciudad: e.target.value })} />
+
+            <input
+              className="campo-input"
+              placeholder="Ej: Medellín"
+              value={form.ciudad}
+              onChange={(e) =>
+                setForm({ ...form, ciudad: e.target.value })
+              }
+            />
           </div>
         </div>
 
         <div className="campo-grupo">
           <label className="campo-label">Observaciones</label>
-          <textarea className="queja-input" style={{ minHeight: "60px" }}
+
+          <textarea
+            className="queja-input"
+            style={{ minHeight: "60px" }}
             placeholder="Notas adicionales sobre el proveedor..."
-            value={form.observaciones} onChange={e => setForm({ ...form, observaciones: e.target.value })} />
+            value={form.observaciones}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                observaciones: e.target.value
+              })
+            }
+          />
         </div>
       </div>
+
       <div className="modal-footer" style={{ flexShrink: 0 }}>
-        <button className="btn-ghost" onClick={() => setModalForm(false)}>Cancelar</button>
-        <button className="btn-primario" onClick={handleGuardar} disabled={procesando}>
-          {procesando ? "Guardando..." : editandoId ? "Guardar cambios" : "Crear proveedor"}
+        <button
+          className="btn-ghost"
+          onClick={() => setModalForm(false)}
+        >
+          Cancelar
+        </button>
+
+        <button
+          className="btn-primario"
+          onClick={handleGuardar}
+          disabled={procesando}
+        >
+          {procesando
+            ? "Guardando..."
+            : editandoId
+            ? "Guardar cambios"
+            : "Crear proveedor"}
         </button>
       </div>
     </div>
