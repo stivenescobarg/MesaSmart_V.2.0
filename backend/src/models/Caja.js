@@ -204,6 +204,18 @@ const Venta = {
     } catch (e) { await conn.rollback(); throw e; }
     finally { conn.release(); }
   },
+
+   getAllPeriodo: async ({ restaurante_id, fecha_desde, fecha_hasta }) => {
+    const [rows] = await pool.execute(
+      `SELECT v.id, v.fecha, v.hora, v.mesa_nombre, v.total, v.metodo_pago
+       FROM ventas v
+       JOIN caja c ON c.id = v.caja_id
+       WHERE c.restaurante_id = ? AND v.fecha BETWEEN ? AND ?
+       ORDER BY v.fecha DESC, v.hora DESC`,
+      [restaurante_id, fecha_desde, fecha_hasta]
+    );
+    return rows.map(r => ({ ...r, total: parseFloat(r.total) || 0 }));
+  },
 };
 
 module.exports = { Caja, Venta };

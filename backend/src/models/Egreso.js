@@ -85,6 +85,20 @@ const Egreso = {
     );
     return { total: parseFloat(rows[0].total) || 0, cantidad: parseInt(rows[0].cantidad) || 0 };
   },
+
+  // backend/src/models/Egreso.js  (agregar este método)
+getAllPeriodo: async ({ restaurante_id, fecha_desde, fecha_hasta }) => {
+  const [rows] = await pool.execute(
+    `SELECT e.*, u.nombre AS usuario_nombre
+     FROM egresos e
+     JOIN usuarios u ON u.id = e.usuario_id
+     WHERE e.restaurante_id = ? AND e.fecha BETWEEN ? AND ?
+     ORDER BY e.fecha DESC, e.hora DESC`,
+    [restaurante_id, fecha_desde, fecha_hasta]
+  );
+  return rows.map(r => ({ ...r, monto: parseFloat(r.monto) }));
+},
+
 };
 
 module.exports = Egreso;

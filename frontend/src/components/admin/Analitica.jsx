@@ -9,6 +9,7 @@ import { colorPorIndice } from "../../services/egresoService";
 
 const COP = (n) => `$${(parseFloat(n) || 0).toLocaleString("es-CO")}`;
 const COLORES_METODO = { efectivo: "#22c55e", tarjeta: "#3b82f6", transferencia: "#a855f7" };
+const ALTURA_GRAFICA = 170; // un poco más chica para que 3 en fila se vean cómodas
 
 const TooltipCOP = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -21,6 +22,21 @@ const TooltipCOP = ({ active, payload, label }) => {
     </div>
   );
 };
+
+// Grid reutilizable de 3 columnas (colapsa a menos si no cabe)
+const GridTres = ({ children }) => (
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+      gap: "1rem",
+      marginBottom: "1rem",
+      alignItems: "stretch", // para que todas las cards de la fila tengan igual alto
+    }}
+  >
+    {children}
+  </div>
+);
 
 const Analitica = () => {
   const [periodo,      setPeriodo]      = useState("mes"); // semana | mes | anio
@@ -68,8 +84,19 @@ const Analitica = () => {
         <h2 className="seccion-titulo">📈 Analítica y Gráficas</h2>
       </div>
 
-      {/* ── Filtros ─────────────────────────────────────────── */}
-      <div className="stock-controles" style={{ marginBottom: "1.25rem" }}>
+      {/* ── Filtros (sticky) ── */}
+      <div
+        className="stock-controles"
+        style={{
+          marginBottom: "1.25rem",
+          position: "sticky",
+          top: 0,
+          zIndex: 5,
+          background: "var(--bg, #0b0b0f)",
+          paddingTop: "0.5rem",
+          paddingBottom: "0.5rem",
+        }}
+      >
         <div className="tab-selector">
           {[
             { key: "semana", label: "Última semana" },
@@ -98,16 +125,16 @@ const Analitica = () => {
         <p className="texto-secundario">Cargando analítica...</p>
       ) : (
         <>
-          {/* ── Ventas por período + Ingresos vs Gastos ────────── */}
-          <div className="dashboard-graficas" style={{ marginBottom: "1.25rem" }}>
+          {/* ── FILA 1: Ventas · Ingresos vs Gastos · Métodos de pago ── */}
+          <GridTres>
             {ventasAgrupadas.length > 0 && (
-              <div className="admin-card grafica-card">
-                <h3 className="subtitulo" style={{ marginBottom: "0.75rem" }}>💵 Ventas por período</h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={ventasAgrupadas} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+              <div className="admin-card grafica-card" style={{ padding: "1rem", display: "flex", flexDirection: "column" }}>
+                <h3 className="subtitulo" style={{ marginBottom: "0.5rem", fontSize: "0.85rem" }}>💵 Ventas por período</h3>
+                <ResponsiveContainer width="100%" height={ALTURA_GRAFICA}>
+                  <BarChart data={ventasAgrupadas} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="etiqueta" tick={{ fill: "var(--text-2)", fontSize: 10 }} />
-                    <YAxis tick={{ fill: "var(--text-2)", fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                    <XAxis dataKey="etiqueta" tick={{ fill: "var(--text-2)", fontSize: 9 }} />
+                    <YAxis tick={{ fill: "var(--text-2)", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} width={38} />
                     <Tooltip content={<TooltipCOP />} />
                     <Bar dataKey="total" name="Ventas" fill="var(--amber)" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -116,68 +143,78 @@ const Analitica = () => {
             )}
 
             {ingresosVsGastos.length > 0 && (
-              <div className="admin-card grafica-card">
-                <h3 className="subtitulo" style={{ marginBottom: "0.75rem" }}>📊 Ingresos vs Gastos</h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={ingresosVsGastos} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+              <div className="admin-card grafica-card" style={{ padding: "1rem", display: "flex", flexDirection: "column" }}>
+                <h3 className="subtitulo" style={{ marginBottom: "0.5rem", fontSize: "0.85rem" }}>📊 Ingresos vs Gastos</h3>
+                <ResponsiveContainer width="100%" height={ALTURA_GRAFICA}>
+                  <LineChart data={ingresosVsGastos} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="fecha" tick={{ fill: "var(--text-2)", fontSize: 9 }} />
-                    <YAxis tick={{ fill: "var(--text-2)", fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                    <XAxis dataKey="fecha" tick={{ fill: "var(--text-2)", fontSize: 8 }} />
+                    <YAxis tick={{ fill: "var(--text-2)", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} width={38} />
                     <Tooltip content={<TooltipCOP />} />
-                    <Legend formatter={(v) => <span style={{ color: "var(--text-2)", fontSize: "0.8rem" }}>{v}</span>} />
+                    <Legend formatter={(v) => <span style={{ color: "var(--text-2)", fontSize: "0.7rem" }}>{v}</span>} />
                     <Line type="monotone" dataKey="ingresos" name="Ingresos" stroke="var(--green)" strokeWidth={2} dot={false} />
                     <Line type="monotone" dataKey="gastos"   name="Gastos"   stroke="var(--red)"   strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             )}
-          </div>
 
-          {/* ── Métodos de pago + Categorías más vendidas ──────── */}
-          <div className="dashboard-graficas" style={{ marginBottom: "1.25rem" }}>
             {dataPastelMetodos.length > 0 && (
-              <div className="admin-card grafica-card">
-                <h3 className="subtitulo" style={{ marginBottom: "0.75rem" }}>🥧 Métodos de pago</h3>
-                <ResponsiveContainer width="100%" height={220}>
+              <div className="admin-card grafica-card" style={{ padding: "1rem", display: "flex", flexDirection: "column" }}>
+                <h3 className="subtitulo" style={{ marginBottom: "0.5rem", fontSize: "0.85rem" }}>🥧 Métodos de pago</h3>
+                <ResponsiveContainer width="100%" height={ALTURA_GRAFICA}>
                   <PieChart>
-                    <Pie data={dataPastelMetodos} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                    <Pie data={dataPastelMetodos} cx="50%" cy="50%" innerRadius={38} outerRadius={62} paddingAngle={3} dataKey="value">
                       {dataPastelMetodos.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                     </Pie>
                     <Tooltip formatter={(v) => COP(v)} />
-                    <Legend formatter={(v) => <span style={{ color: "var(--text-2)", fontSize: "0.8rem" }}>{v}</span>} />
+                    <Legend formatter={(v) => <span style={{ color: "var(--text-2)", fontSize: "0.7rem" }}>{v}</span>} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             )}
+          </GridTres>
 
+          {/* ── FILA 2: Categorías · Top productos · Menor rotación ── */}
+          <GridTres>
             {categorias.length > 0 && (
-              <div className="admin-card grafica-card">
-                <h3 className="subtitulo" style={{ marginBottom: "0.75rem" }}>🍽️ Categorías más vendidas</h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={categorias} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <div className="admin-card grafica-card" style={{ padding: "1rem", display: "flex", flexDirection: "column" }}>
+                <h3 className="subtitulo" style={{ marginBottom: "0.5rem", fontSize: "0.85rem" }}>🍽️ Categorías más vendidas</h3>
+                <ResponsiveContainer width="100%" height={ALTURA_GRAFICA}>
+                  <BarChart data={categorias} layout="vertical" margin={{ top: 5, right: 15, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis type="number" tick={{ fill: "var(--text-2)", fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                    <YAxis type="category" dataKey="categoria" tick={{ fill: "var(--text-2)", fontSize: 11 }} width={90} />
+                    <XAxis type="number" tick={{ fill: "var(--text-2)", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                    <YAxis type="category" dataKey="categoria" tick={{ fill: "var(--text-2)", fontSize: 10 }} width={70} />
                     <Tooltip content={<TooltipCOP />} />
                     <Bar dataKey="total" name="Ventas" fill="var(--morado)" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
-          </div>
 
-          {/* ── Top productos + Menor rotación ──────────────────── */}
-          <div className="dashboard-graficas">
             {topProductos.length > 0 && (
-              <div className="admin-card grafica-card">
-                <h3 className="subtitulo" style={{ marginBottom: "0.75rem" }}>⭐ Top 5 productos más vendidos</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <div
+                className="admin-card grafica-card"
+                style={{ padding: "1rem", display: "flex", flexDirection: "column", minHeight: `${ALTURA_GRAFICA + 60}px` }}
+              >
+                <h3 className="subtitulo" style={{ marginBottom: "0.5rem", fontSize: "0.85rem" }}>⭐ Top 5 más vendidos</h3>
+                <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "space-evenly" }}>
                   {topProductos.map((p, i) => (
-                    <div key={p.nombre} style={{ display: "flex", alignItems: "center", gap: "0.6rem", fontSize: "0.85rem" }}>
-                      <span className="chip chip-amber" style={{ minWidth: "24px", justifyContent: "center" }}>{i + 1}</span>
-                      <span style={{ flex: 1 }}>{p.nombre}</span>
-                      <span className="texto-muted" style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.78rem" }}>{p.unidades} und.</span>
-                      <span style={{ fontFamily: "'DM Mono', monospace", color: "var(--green)", fontWeight: 600 }}>{COP(p.total)}</span>
+                    <div
+                      key={p.nombre}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "0.5rem",
+                        fontSize: "0.78rem",
+                        padding: "0.25rem 0",
+                        borderBottom: i < topProductos.length - 1 ? "1px solid var(--border, #26262e)" : "none",
+                      }}
+                    >
+                      <span className="chip chip-amber" style={{ minWidth: "20px", justifyContent: "center", padding: "0.05rem", fontSize: "0.72rem" }}>{i + 1}</span>
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
+                      <span className="texto-muted" style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem" }}>{p.unidades} und.</span>
+                      <span style={{ fontFamily: "'DM Mono', monospace", color: "var(--green)", fontWeight: 600, fontSize: "0.75rem", minWidth: "70px", textAlign: "right" }}>
+                        {COP(p.total)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -185,24 +222,35 @@ const Analitica = () => {
             )}
 
             {menorRotacion.length > 0 && (
-              <div className="admin-card grafica-card">
-                <h3 className="subtitulo" style={{ marginBottom: "0.75rem" }}>🐌 Menor rotación (todo el catálogo)</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {menorRotacion.map((p) => (
-                    <div key={p.nombre} style={{ display: "flex", alignItems: "center", gap: "0.6rem", fontSize: "0.85rem" }}>
-                      <span style={{ flex: 1 }}>{p.nombre}</span>
-                      <span className={`chip ${p.unidades === 0 ? "chip-rojo" : "chip-neutro"}`}>
-                        {p.unidades} {p.unidades === 1 ? "unidad" : "unidades"}
+              <div
+                className="admin-card grafica-card"
+                style={{ padding: "1rem", display: "flex", flexDirection: "column", minHeight: `${ALTURA_GRAFICA + 60}px` }}
+              >
+                <h3 className="subtitulo" style={{ marginBottom: "0.5rem", fontSize: "0.85rem" }}>🐌 Menor rotación</h3>
+                <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "space-evenly" }}>
+                  {menorRotacion.map((p, i) => (
+                    <div
+                      key={p.nombre}
+                      style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        gap: "0.5rem", fontSize: "0.78rem",
+                        padding: "0.25rem 0",
+                        borderBottom: i < menorRotacion.length - 1 ? "1px solid var(--border, #26262e)" : "none",
+                      }}
+                    >
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</span>
+                      <span className={`chip ${p.unidades === 0 ? "chip-rojo" : "chip-neutro"}`} style={{ padding: "0.1rem 0.4rem", fontSize: "0.7rem" }}>
+                        {p.unidades} {p.unidades === 1 ? "und." : "und."}
                       </span>
                     </div>
                   ))}
                 </div>
-                <p className="texto-muted" style={{ fontSize: "0.72rem", marginTop: "0.75rem" }}>
-                  Incluye todo el catálogo (no solo el período filtrado arriba), para detectar productos que casi nunca se piden.
+                <p className="texto-muted" style={{ fontSize: "0.65rem", marginTop: "0.5rem" }}>
+                  Incluye todo el catálogo, no solo el período filtrado.
                 </p>
               </div>
             )}
-          </div>
+          </GridTres>
 
           {ventasAgrupadas.length === 0 && ingresosVsGastos.length === 0 && (
             <div className="estado-vacio">

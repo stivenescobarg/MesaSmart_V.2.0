@@ -30,10 +30,42 @@ const request = async (endpoint, options = {}) => {
   return data;
 };
 
+const downloadFile = async (endpoint, filename) => {
+  const token = authService.getToken();
+
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem("ms_token");
+      window.location.href = "/login";
+    }
+    // El backend en error manda JSON, no binario, así que aquí SÍ es seguro leer .json()
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.msg || `Error ${res.status}`);
+  }
+
+  const blob = await res.blob();
+  const url  = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 export const api = {
   get:    (endpoint)       => request(endpoint, { method: "GET" }),
   post:   (endpoint, body) => request(endpoint, { method: "POST",   body: JSON.stringify(body) }),
-  put: (endpoint, body) => request(endpoint, { method: "PUT", body: JSON.stringify(body) }),
+  put:    (endpoint, body) => request(endpoint, { method: "PUT",    body: JSON.stringify(body) }),
   patch:  (endpoint, body) => request(endpoint, { method: "PATCH",  body: JSON.stringify(body) }),
   delete: (endpoint)       => request(endpoint, { method: "DELETE" }),
+  download: downloadFile,
 };

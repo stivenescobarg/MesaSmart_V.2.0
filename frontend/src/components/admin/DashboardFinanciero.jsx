@@ -10,6 +10,13 @@ const COP = (n) => `$${(parseFloat(n) || 0).toLocaleString("es-CO")}`;
 
 const COLORES_METODO = { efectivo: "#22c55e", tarjeta: "#3b82f6", transferencia: "#a855f7" };
 
+const hoyISO = () => new Date().toISOString().split("T")[0];
+const haceDiasISO = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().split("T")[0];
+};
+
 const TooltipCOP = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -47,10 +54,16 @@ const TarjetaKPI = ({ etiqueta, valor, sub, color = "var(--amber)", icono }) => 
 );
 
 const DashboardFinanciero = () => {
-  const [datos,    setDatos]    = useState(null);
+  const [datos,     setDatos]     = useState(null);
   const [tendencia, setTendencia] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [error,    setError]    = useState(false);
+  const [cargando,  setCargando]  = useState(true);
+  const [error,     setError]     = useState(false);
+
+  // ── Filtro de período para el reporte / Excel ──────────────
+  const [desde, setDesde] = useState(() => haceDiasISO(30));
+  const [hasta, setHasta] = useState(() => hoyISO());
+  const [descargando, setDescargando] = useState(false);
+  const [errorDescarga, setErrorDescarga] = useState("");
 
   const cargar = useCallback(async () => {
     try {
@@ -73,6 +86,28 @@ const DashboardFinanciero = () => {
     const id = setInterval(cargar, 30000);
     return () => clearInterval(id);
   }, [cargar]);
+
+  const handleDescargar = async () => {
+    setErrorDescarga("");
+
+    if (!desde || !hasta) {
+      setErrorDescarga("Selecciona ambas fechas.");
+      return;
+    }
+    if (desde > hasta) {
+      setErrorDescarga("La fecha 'Desde' no puede ser posterior a 'Hasta'.");
+      return;
+    }
+
+    setDescargando(true);
+    try {
+      await dashboardFinancieroService.descargarExcel(desde, hasta);
+    } catch (err) {
+      setErrorDescarga(err.message || "No se pudo generar el Excel. Intenta de nuevo.");
+    } finally {
+      setDescargando(false);
+    }
+  };
 
   if (cargando) {
     return (
@@ -103,6 +138,37 @@ const DashboardFinanciero = () => {
       <div className="seccion-header">
         <h2 className="seccion-titulo">📊 Dashboard Financiero</h2>
         <span className="chip chip-verde">● En vivo</span>
+      </div>
+
+      {/* ── Filtro de período + descarga de Excel ───────────────── */}
+      <div className="admin-card" style={{ display: "flex", gap: "0.75rem", alignItems: "flex-end", flexWrap: "wrap", marginBottom: "1.25rem" }}>
+        <div>
+          <label className="texto-secundario" style={{ display: "block", fontSize: "0.8rem" }}>Desde</label>
+          <input
+            type="date"
+            value={desde}
+            max={hasta}
+            onChange={(e) => setDesde(e.target.value)}
+            className="input-fecha"
+          />
+        </div>
+        <div>
+          <label className="texto-secundario" style={{ display: "block", fontSize: "0.8rem" }}>Hasta</label>
+          <input
+            type="date"
+            value={hasta}
+            min={desde}
+            max={hoyISO()}
+            onChange={(e) => setHasta(e.target.value)}
+            className="input-fecha"
+          />
+        </div>
+        <button className="btn btn-verde" onClick={handleDescargar} disabled={descargando}>
+          {descargando ? "Generando..." : "📥 Descargar Excel del período"}
+        </button>
+        {errorDescarga && (
+          <span style={{ color: "var(--red)", fontSize: "0.8rem", width: "100%" }}>{errorDescarga}</span>
+        )}
       </div>
 
       {/* ── KPIs principales ─────────────────────────────────── */}

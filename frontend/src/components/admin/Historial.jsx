@@ -1,6 +1,6 @@
 // frontend/src/components/admin/Historial.jsx
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 const ICONO_METODO = {
   efectivo:      "💵",
@@ -8,20 +8,100 @@ const ICONO_METODO = {
   transferencia: "📲",
 };
 
+const POR_PAGINA = 3; // <-- ajusta cuántas jornadas quieres por página
+
 // Formatea cualquier fecha de MySQL a "31 mar 2026"
 const formatearFecha = (valor) => {
   if (!valor) return "—";
-  // Si viene como "2026-03-31" o "2026-03-31T05:00:00.000Z"
-  // Tomamos solo la parte de fecha para evitar desfase de zona horaria
   const solo = typeof valor === "string" ? valor.split("T")[0] : valor;
   const [anio, mes, dia] = String(solo).split("-");
   const meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
   return `${dia} ${meses[parseInt(mes, 10) - 1]} ${anio}`;
 };
 
+// Paginador reutilizable
+const Paginador = ({ paginaActual, totalPaginas, onCambiar }) => {
+  if (totalPaginas <= 1) return null;
+
+  const paginas = [];
+  const rango = 1;
+  for (let i = 1; i <= totalPaginas; i++) {
+    if (i === 1 || i === totalPaginas || (i >= paginaActual - rango && i <= paginaActual + rango)) {
+      paginas.push(i);
+    } else if (paginas[paginas.length - 1] !== "...") {
+      paginas.push("...");
+    }
+  }
+
+  return (
+    <div className="paginador" style={{
+      display: "flex", alignItems: "center", justifyContent: "center",
+      gap: "0.4rem", marginTop: "1rem", flexWrap: "wrap",
+    }}>
+      <button
+        className="btn-secundario"
+        style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem" }}
+        disabled={paginaActual === 1}
+        onClick={() => onCambiar(paginaActual - 1)}
+      >
+        ← Anterior
+      </button>
+
+      {paginas.map((p, i) =>
+        p === "..." ? (
+          <span key={`dots-${i}`} className="texto-muted" style={{ padding: "0 0.3rem" }}>…</span>
+        ) : (
+          <button
+            key={p}
+            className={`btn-secundario ${p === paginaActual ? "activo" : ""}`}
+            style={{
+              padding: "0.3rem 0.65rem",
+              fontSize: "0.8rem",
+              fontWeight: p === paginaActual ? 700 : 400,
+              background: p === paginaActual ? "var(--acento, #6366f1)" : undefined,
+              color: p === paginaActual ? "#fff" : undefined,
+            }}
+            onClick={() => onCambiar(p)}
+          >
+            {p}
+          </button>
+        )
+      )}
+
+      <button
+        className="btn-secundario"
+        style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem" }}
+        disabled={paginaActual === totalPaginas}
+        onClick={() => onCambiar(paginaActual + 1)}
+      >
+        Siguiente →
+      </button>
+    </div>
+  );
+};
+
 const Historial = ({ historial }) => {
   const [diaExpandido,   setDiaExpandido]   = useState(null);
   const [ventaExpandida, setVentaExpandida] = useState(null);
+  const [pagina,         setPagina]         = useState(1);
+
+  const totalPaginas = Math.max(1, Math.ceil((historial?.length || 0) / POR_PAGINA));
+
+  // Si el historial cambia de tamaño y la página actual queda fuera de rango, ajusta
+  useEffect(() => {
+    if (pagina > totalPaginas) setPagina(totalPaginas);
+  }, [totalPaginas]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const historialPagina = useMemo(() => {
+    const inicio = (pagina - 1) * POR_PAGINA;
+    return (historial || []).slice(inicio, inicio + POR_PAGINA);
+  }, [historial, pagina]);
+
+  const cambiarPagina = (nueva) => {
+    setPagina(nueva);
+    setDiaExpandido(null);
+    setVentaExpandida(null);
+  };
 
   if (!historial || historial.length === 0) {
     return (
@@ -46,7 +126,9 @@ const Historial = ({ historial }) => {
       </div>
 
       <div className="historial-lista">
-        {[...historial].map((dia, i) => {
+        {historialPagina.map((dia, idxPagina) => {
+          // índice real dentro del array completo, para keys de expansión consistentes
+          const i = (pagina - 1) * POR_PAGINA + idxPagina;
           const expandido = diaExpandido === i;
           const ventas    = dia.ventas || [];
 
@@ -65,7 +147,6 @@ const Historial = ({ historial }) => {
                 onClick={() => { setDiaExpandido(expandido ? null : i); setVentaExpandida(null); }}
               >
                 <div className="historial-fecha-col">
-                  {/* Fecha limpia: "31 mar 2026" */}
                   <span className="historial-fecha">
                     📅 {formatearFecha(dia.fecha)}
                   </span>
@@ -211,6 +292,12 @@ const Historial = ({ historial }) => {
           );
         })}
       </div>
+
+      <Paginador
+        paginaActual={pagina}
+        totalPaginas={totalPaginas}
+        onCambiar={cambiarPagina}
+      />
     </div>
   );
 };

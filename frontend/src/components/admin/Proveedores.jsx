@@ -1,15 +1,77 @@
 // frontend/src/components/admin/Proveedores.jsx
 // Gestión de proveedores — mismo patrón visual que Usuarios.jsx / Stock.jsx
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { proveedorService } from "../../services/proveedorService";
 import Modal from "./Modal";
 
 const CATEGORIAS_SUGERIDAS = ["Insumos", "Bebidas", "Carnes", "Verduras", "Servicios", "Otros"];
+const POR_PAGINA = 10; // <-- ajusta cuántos proveedores por página
 
 const FORM_VACIO = {
   nombre: "", nit: "", telefono: "", correo: "",
   direccion: "", ciudad: "", categoria: "", observaciones: "",
+};
+
+// Paginador reutilizable
+const Paginador = ({ paginaActual, totalPaginas, onCambiar }) => {
+  if (totalPaginas <= 1) return null;
+
+  const paginas = [];
+  const rango = 1;
+  for (let i = 1; i <= totalPaginas; i++) {
+    if (i === 1 || i === totalPaginas || (i >= paginaActual - rango && i <= paginaActual + rango)) {
+      paginas.push(i);
+    } else if (paginas[paginas.length - 1] !== "...") {
+      paginas.push("...");
+    }
+  }
+
+  return (
+    <div className="paginador" style={{
+      display: "flex", alignItems: "center", justifyContent: "center",
+      gap: "0.4rem", marginTop: "1rem", flexWrap: "wrap",
+    }}>
+      <button
+        className="btn-secundario"
+        style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem" }}
+        disabled={paginaActual === 1}
+        onClick={() => onCambiar(paginaActual - 1)}
+      >
+        ← Anterior
+      </button>
+
+      {paginas.map((p, i) =>
+        p === "..." ? (
+          <span key={`dots-${i}`} className="texto-muted" style={{ padding: "0 0.3rem" }}>…</span>
+        ) : (
+          <button
+            key={p}
+            className={`btn-secundario ${p === paginaActual ? "activo" : ""}`}
+            style={{
+              padding: "0.3rem 0.65rem",
+              fontSize: "0.8rem",
+              fontWeight: p === paginaActual ? 700 : 400,
+              background: p === paginaActual ? "var(--acento, #6366f1)" : undefined,
+              color: p === paginaActual ? "#fff" : undefined,
+            }}
+            onClick={() => onCambiar(p)}
+          >
+            {p}
+          </button>
+        )
+      )}
+
+      <button
+        className="btn-secundario"
+        style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem" }}
+        disabled={paginaActual === totalPaginas}
+        onClick={() => onCambiar(paginaActual + 1)}
+      >
+        Siguiente →
+      </button>
+    </div>
+  );
 };
 
 const Proveedores = ({ toast }) => {
@@ -19,6 +81,9 @@ const Proveedores = ({ toast }) => {
   // Filtros
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [busqueda,     setBusqueda]     = useState("");
+
+  // Paginación
+  const [pagina, setPagina] = useState(1);
 
   // Modal crear/editar
   const [modalForm,  setModalForm]  = useState(false);
@@ -50,6 +115,22 @@ const Proveedores = ({ toast }) => {
     const id = setTimeout(cargar, 300); // debounce para la búsqueda
     return () => clearTimeout(id);
   }, [cargar]);
+
+  // Al cambiar filtro o búsqueda, vuelve a la página 1
+  useEffect(() => {
+    setPagina(1);
+  }, [filtroEstado, busqueda]);
+
+  // Si la lista se achica (ej. tras eliminar) y la página actual queda vacía, retrocede
+  const totalPaginas = Math.max(1, Math.ceil(proveedores.length / POR_PAGINA));
+  useEffect(() => {
+    if (pagina > totalPaginas) setPagina(totalPaginas);
+  }, [totalPaginas]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const proveedoresPagina = useMemo(() => {
+    const inicio = (pagina - 1) * POR_PAGINA;
+    return proveedores.slice(inicio, inicio + POR_PAGINA);
+  }, [proveedores, pagina]);
 
   const abrirCrear = () => {
     setEditandoId(null);
@@ -166,55 +247,63 @@ const Proveedores = ({ toast }) => {
           </p>
         </div>
       ) : (
-        <div className="tabla-wrapper">
-          <table className="tabla">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>NIT</th>
-                <th>Categoría</th>
-                <th>Contacto</th>
-                <th>Ciudad</th>
-                <th>Estado</th>
-                <th className="th-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {proveedores.map(p => (
-                <tr key={p.id}>
-                  <td className="td-nombre">{p.nombre}</td>
-                  <td style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.82rem" }}>{p.nit || "—"}</td>
-                  <td>{p.categoria ? <span className="chip chip-neutro">{p.categoria}</span> : "—"}</td>
-                  <td style={{ fontSize: "0.82rem" }}>
-                    {p.telefono && <div>{p.telefono}</div>}
-                    {p.correo && <div className="texto-muted">{p.correo}</div>}
-                    {!p.telefono && !p.correo && "—"}
-                  </td>
-                  <td>{p.ciudad || "—"}</td>
-                  <td>
-                    <span className={`chip ${p.estado === "activo" ? "chip-verde" : "chip-neutro"}`}>
-                      {p.estado === "activo" ? "Activo" : "Inactivo"}
-                    </span>
-                  </td>
-                  <td className="td-center">
-                    <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center" }}>
-                      <button className="btn-ghost" style={{ fontSize: "0.75rem", padding: "0.3rem 0.6rem" }}
-                        onClick={() => abrirEditar(p)}>
-                        ✏️
-                      </button>
-                      <button className="btn-ghost" style={{ fontSize: "0.75rem", padding: "0.3rem 0.6rem" }}
-                        onClick={() => handleToggleEstado(p)}
-                        title={p.estado === "activo" ? "Desactivar" : "Activar"}>
-                        {p.estado === "activo" ? "⏸" : "▶"}
-                      </button>
-                      <button className="btn-eliminar" onClick={() => setModalEliminar(p)}>✕</button>
-                    </div>
-                  </td>
+        <>
+          <div className="tabla-wrapper">
+            <table className="tabla">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>NIT</th>
+                  <th>Categoría</th>
+                  <th>Contacto</th>
+                  <th>Ciudad</th>
+                  <th>Estado</th>
+                  <th className="th-center">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {proveedoresPagina.map(p => (
+                  <tr key={p.id}>
+                    <td className="td-nombre">{p.nombre}</td>
+                    <td style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.82rem" }}>{p.nit || "—"}</td>
+                    <td>{p.categoria ? <span className="chip chip-neutro">{p.categoria}</span> : "—"}</td>
+                    <td style={{ fontSize: "0.82rem" }}>
+                      {p.telefono && <div>{p.telefono}</div>}
+                      {p.correo && <div className="texto-muted">{p.correo}</div>}
+                      {!p.telefono && !p.correo && "—"}
+                    </td>
+                    <td>{p.ciudad || "—"}</td>
+                    <td>
+                      <span className={`chip ${p.estado === "activo" ? "chip-verde" : "chip-neutro"}`}>
+                        {p.estado === "activo" ? "Activo" : "Inactivo"}
+                      </span>
+                    </td>
+                    <td className="td-center">
+                      <div style={{ display: "flex", gap: "0.4rem", justifyContent: "center" }}>
+                        <button className="btn-ghost" style={{ fontSize: "0.75rem", padding: "0.3rem 0.6rem" }}
+                          onClick={() => abrirEditar(p)}>
+                          ✏️
+                        </button>
+                        <button className="btn-ghost" style={{ fontSize: "0.75rem", padding: "0.3rem 0.6rem" }}
+                          onClick={() => handleToggleEstado(p)}
+                          title={p.estado === "activo" ? "Desactivar" : "Activar"}>
+                          {p.estado === "activo" ? "⏸" : "▶"}
+                        </button>
+                        <button className="btn-eliminar" onClick={() => setModalEliminar(p)}>✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Paginador
+            paginaActual={pagina}
+            totalPaginas={totalPaginas}
+            onCambiar={setPagina}
+          />
+        </>
       )}
 
       {/* ── MODAL: CREAR / EDITAR ───────────────────────────── */}

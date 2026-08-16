@@ -15,6 +15,9 @@ const ctrl = require("../../controllers/admin/dashboardFinancieroController");
  */
 r.get("/", auth, tenant, ctrl.getResumen);
 
+r.get("/reporte", auth, tenant, ctrl.getReportePeriodo);
+r.get("/reporte/excel", auth, tenant, ctrl.exportarExcel);
+
 /**
  * @swagger
  * /api/dashboard-financiero/ventas-vs-gastos:

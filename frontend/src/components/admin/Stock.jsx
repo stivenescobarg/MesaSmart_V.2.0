@@ -105,6 +105,8 @@ const Stock = ({ toast }) => {
   const [modalAjuste,   setModalAjuste]   = useState(null);
   const [modalEliminar, setModalEliminar] = useState(null);
   const [procesando,    setProcesando]    = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const PRODUCTOS_POR_PAGINA = 8; // ajusta según tu grid (múltiplo de columnas)
 
   // Form crear
   const [form, setForm] = useState({
@@ -127,6 +129,7 @@ const Stock = ({ toast }) => {
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => { setPagina(1); }, [categoriaTab, busqueda]);
 
   // Filtrar por tab y búsqueda
   const productosFiltrados = productos
@@ -136,6 +139,16 @@ const Stock = ({ toast }) => {
       p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       p.proveedor.toLowerCase().includes(busqueda.toLowerCase())
     );
+      
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(productosFiltrados.length / PRODUCTOS_POR_PAGINA)
+  );
+
+  const productosPagina = productosFiltrados.slice(
+    (pagina - 1) * PRODUCTOS_POR_PAGINA,
+    pagina * PRODUCTOS_POR_PAGINA
+  );
 
   const bajoStock = productos.filter(p => p.bajo_stock);
   const totalCocina = productos.filter(p => p.categoria === "cocina").length;
@@ -307,7 +320,7 @@ const Stock = ({ toast }) => {
         </div>
       ) : (
         <div className="stock-grid">
-          {productosFiltrados.map(p => (
+          {productosPagina.map(p => (
             <TarjetaProducto
               key={p.id}
               p={p}
@@ -316,6 +329,38 @@ const Stock = ({ toast }) => {
               onEliminar={(prod)=> setModalEliminar(prod)}
             />
           ))}
+        </div>
+      )}
+
+      {totalPaginas > 1 && (
+        <div className="stock-paginacion" style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "0.75rem",
+          marginTop: "1rem",
+        }}>
+          <button
+            className="btn-ghost"
+            disabled={pagina === 1}
+            onClick={() => setPagina(p => p - 1)}
+            style={{ opacity: pagina === 1 ? 0.4 : 1 }}
+          >
+            ← Anterior
+          </button>
+
+          <span className="texto-muted" style={{ fontSize: "0.82rem" }}>
+            Página {pagina} de {totalPaginas}
+          </span>
+
+          <button
+            className="btn-ghost"
+            disabled={pagina === totalPaginas}
+            onClick={() => setPagina(p => p + 1)}
+            style={{ opacity: pagina === totalPaginas ? 0.4 : 1 }}
+          >
+            Siguiente →
+          </button>
         </div>
       )}
 
