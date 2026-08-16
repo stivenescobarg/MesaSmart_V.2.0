@@ -1,9 +1,16 @@
 // frontend/src/services/api.js
-// Cliente HTTP base. Lee el token y lo agrega a cada petición.
-// Si el backend responde 401 → limpia el token y redirige al login.
-
 import { authService } from "./authService";
 import { API_URL } from "./config";
+
+const handleUnauthorized = (hadToken) => {
+  // Solo redirigimos a la fuerza si HABÍA una sesión activa que expiró.
+  // Si no había token, es un intento de login fallido: dejamos que
+  // el componente que hizo la llamada maneje el error normalmente.
+  if (hadToken) {
+    localStorage.removeItem("ms_token");
+    window.location.href = "/login";
+  }
+};
 
 const request = async (endpoint, options = {}) => {
   const token = authService.getToken();
@@ -21,8 +28,7 @@ const request = async (endpoint, options = {}) => {
 
   if (!res.ok) {
     if (res.status === 401) {
-      localStorage.removeItem("ms_token");
-      window.location.href = "/login";
+      handleUnauthorized(Boolean(token));
     }
     throw new Error(data.msg || `Error ${res.status}`);
   }
@@ -42,10 +48,8 @@ const downloadFile = async (endpoint, filename) => {
 
   if (!res.ok) {
     if (res.status === 401) {
-      localStorage.removeItem("ms_token");
-      window.location.href = "/login";
+      handleUnauthorized(Boolean(token));
     }
-    // El backend en error manda JSON, no binario, así que aquí SÍ es seguro leer .json()
     const data = await res.json().catch(() => ({}));
     throw new Error(data.msg || `Error ${res.status}`);
   }

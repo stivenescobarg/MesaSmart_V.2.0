@@ -1,24 +1,21 @@
 // frontend/src/pages/Login.jsx
-// LIMPIO: sin localStorage, sin hash, sin usuarios quemados.
-// Solo consume el backend via AuthContext.
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logoMesaSmart from "../assets/Logo-MesaSmart.png";
 import "./Login.css";
 
-// Redirección según el rol que devuelve la BD
-// BD usa: "admin", "cocina", "bartender"
 const getRutaPorRol = (usuario) => {
   switch (usuario.rol) {
-    case "super_admin": return "/super-admin";  
+    case "super_admin": return "/super-admin";
     case "admin":      return "/admin";
     case "cocina":     return `/kitchen/${usuario.numero || 1}`;
     case "bartender":  return `/bartender/${usuario.numero || 1}`;
     default:           return "/admin";
   }
 };
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const Login = () => {
   const navigate = useNavigate();
@@ -30,29 +27,54 @@ const Login = () => {
   const [cargandoBtn, setCargandoBtn] = useState(false);
   const [mostrarPass, setMostrarPass] = useState(false);
 
-  // Si ya hay sesión activa → redirigir según rol de la BD
+  const errorTimerRef = useRef(null);
+
   useEffect(() => {
     if (!cargando && usuario) {
       navigate(getRutaPorRol(usuario), { replace: true });
     }
   }, [usuario, cargando, navigate]);
 
+  // Autolimpia el error después de un tiempo, pero solo por React,
+  // nunca por un reload o navegación externa.
+  useEffect(() => {
+    if (error) {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => setError(""), 6000);
+    }
+    return () => clearTimeout(errorTimerRef.current);
+  }, [error]);
+
   const handleLogin = async (e) => {
     e?.preventDefault();
-    if (!correo.trim() || !password) {
+
+    const correoLimpio = correo.trim();
+
+    if (!correoLimpio || !password) {
       setError("Completa todos los campos.");
       return;
     }
+    if (!EMAIL_REGEX.test(correoLimpio)) {
+      setError("Ingresa un correo electrónico válido.");
+      return;
+    }
+
     setCargandoBtn(true);
     setError("");
 
-    const resultado = await login(correo.trim(), password);
-
-    if (!resultado.ok) {
-      setError(resultado.error || "Correo o contraseña incorrectos ❌");
+    try {
+      const resultado = await login(correoLimpio, password);
+      if (!resultado.ok) {
+        setError(resultado.error || "Correo o contraseña incorrectos.");
+      }
+      // Si ok=true, el useEffect de arriba redirige.
+    } catch (err) {
+      // Si login() llegara a lanzar en vez de devolver {ok:false},
+      // lo atrapamos aquí para que NUNCA se propague a un reload.
+      setError("No se pudo iniciar sesión. Intenta de nuevo.");
+    } finally {
       setCargandoBtn(false);
     }
-    // Si ok=true, el useEffect de arriba redirige automáticamente
   };
 
   if (cargando) return null;
@@ -63,17 +85,29 @@ const Login = () => {
       <div className="login-card">
 
         <img src={logoMesaSmart} alt="Logo MesaSmart" className="login-img" />
-        
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} noValidate>
 
-          {error && <div className="login-error" role="alert">{error}</div>}
+          {error && (
+            <div className="login-error" role="alert">
+              <span className="login-error-icon">!</span>
+              <span className="login-error-text">{error}</span>
+              <button
+                type="button"
+                className="login-error-close"
+                onClick={() => setError("")}
+                aria-label="Cerrar aviso"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           <label>Correo</label>
           <input
-            type="email"
+            type="text"
             value={correo}
-            onChange={(e) => { setCorreo(e.target.value); setError(""); }}
+            onChange={(e) => { setCorreo(e.target.value); }}
             placeholder="usuario@mesasmart.com"
             autoComplete="username"
             autoFocus
@@ -84,7 +118,7 @@ const Login = () => {
             <input
               type={mostrarPass ? "text" : "password"}
               value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              onChange={(e) => { setPassword(e.target.value); }}
               placeholder="••••••••"
               className="campo-input-pass"
               autoComplete="current-password"
