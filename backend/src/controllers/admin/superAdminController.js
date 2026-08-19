@@ -1,6 +1,10 @@
+// backend/src/controllers/admin/superAdminController.js
 const Restaurante = require("../../models/Restaurante");
 const bcrypt      = require("bcryptjs");
 const { pool }   = require("../../config/db");
+const { invalidarCache } = require("../../middlewares/requierePlan");
+
+const PLANES_VALIDOS = ["basico", "completo"];
 
 exports.listarRestaurantes = async (_req, res) => {
   try {
@@ -22,6 +26,10 @@ exports.crearRestaurante = async (req, res) => {
     if (!admin_nombre?.trim() || !admin_correo?.trim() || !admin_password?.trim())
       return res.status(400).json({ msg: "Datos del admin del restaurante son requeridos." });
 
+    // El plan debe ser uno de los valores válidos del enum; si viene vacío
+    // o inválido, se cae al plan Básico por defecto.
+    const planFinal = PLANES_VALIDOS.includes(plan) ? plan : "basico";
+
     // Verificar que el slug no exista ya
     const existente = await Restaurante.getBySlug(slug.trim());
     if (existente)
@@ -32,7 +40,7 @@ exports.crearRestaurante = async (req, res) => {
     // Crear restaurante en estado 'pendiente' — activar por separado
     const [resResult] = await conn.execute(
       `INSERT INTO restaurantes (nombre, slug, estado, plan) VALUES (?, ?, 'pendiente', ?)`,
-      [nombre.trim(), slug.trim(), plan || null]
+      [nombre.trim(), slug.trim(), planFinal]
     );
     const restaurante_id = resResult.insertId;
 
@@ -61,6 +69,7 @@ exports.activarRestaurante = async (req, res) => {
   try {
     const ok = await Restaurante.activar(req.params.id);
     if (!ok) return res.status(404).json({ msg: "Restaurante no encontrado o ya estaba activo." });
+    invalidarCache(req.params.id);
     res.json({ ok: true, msg: "Restaurante activado correctamente." });
   } catch (err) {
     console.error("[super-admin/activar]", err);
@@ -72,6 +81,7 @@ exports.suspenderRestaurante = async (req, res) => {
   try {
     const ok = await Restaurante.suspender(req.params.id);
     if (!ok) return res.status(404).json({ msg: "Restaurante no encontrado o no estaba activo." });
+    invalidarCache(req.params.id);
     res.json({ ok: true, msg: "Restaurante suspendido. Las sesiones activas expirarán en máximo 8h." });
   } catch (err) {
     console.error("[super-admin/suspender]", err);

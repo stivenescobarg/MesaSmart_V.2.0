@@ -2,6 +2,7 @@ const { Caja, Venta } = require("../../models/Caja");
 const Egreso          = require("../../models/Egreso");
 const Mesa            = require("../../models/Mesa");
 const generarPDF      = require("../../utils/generarPDF");
+const { tieneFeature } = require("../../middlewares/requierePlan");
 
 exports.getEstado = async (req, res) => {
   try {
@@ -34,16 +35,23 @@ exports.cerrar = async (req, res) => {
 
     const resultado = await Caja.cerrar(caja.id, req.usuario.id, req.restaurante_id);
 
+    // El reporte PDF automático es exclusivo del Plan Completo (ver planes.js).
+    // Cerrar caja en sí es una función Básica, así que NO bloqueamos la ruta
+    // con requierePlan — solo omitimos el PDF si el restaurante no califica.
     let pdfBase64 = null;
-    try {
-      pdfBase64 = await generarPDF({
-        caja:      { ...datosPDF.caja, ...resultado },
-        ventas:    datosPDF.ventas,
-        egresos,
-        cerradoPor: req.usuario,
-      });
-    } catch (pdfErr) {
-      console.error("[PDF] Error al generar:", pdfErr.message);
+    const puedeGenerarPDF = await tieneFeature(req.restaurante_id, "reporte_pdf_diario");
+
+    if (puedeGenerarPDF) {
+      try {
+        pdfBase64 = await generarPDF({
+          caja:      { ...datosPDF.caja, ...resultado },
+          ventas:    datosPDF.ventas,
+          egresos,
+          cerradoPor: req.usuario,
+        });
+      } catch (pdfErr) {
+        console.error("[PDF] Error al generar:", pdfErr.message);
+      }
     }
 
     res.json({ ok: true, ...resultado, pdf: pdfBase64 });
