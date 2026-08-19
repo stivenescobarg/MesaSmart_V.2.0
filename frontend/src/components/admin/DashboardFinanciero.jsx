@@ -5,6 +5,8 @@ import {
   XAxis, YAxis, CartesianGrid,
 } from "recharts";
 import { dashboardFinancieroService } from "../../services/dashboardFinancieroService";
+import { usePaginacion } from "../../hooks/usePaginacion";
+import Paginador from "../common/Paginador";
 
 const COP = (n) => `$${(parseFloat(n) || 0).toLocaleString("es-CO")}`;
 
@@ -29,7 +31,6 @@ const TooltipCOP = ({ active, payload, label }) => {
   );
 };
 
-// Flecha + color según si la comparación es positiva, negativa o sin datos
 const Comparativa = ({ etiqueta, valor }) => {
   if (valor === null || valor === undefined) {
     return <span className="texto-muted" style={{ fontSize: "0.75rem" }}>{etiqueta}: sin datos previos</span>;
@@ -59,11 +60,13 @@ const DashboardFinanciero = () => {
   const [cargando,  setCargando]  = useState(true);
   const [error,     setError]     = useState(false);
 
-  // ── Filtro de período para el reporte / Excel ──────────────
   const [desde, setDesde] = useState(() => haceDiasISO(30));
   const [hasta, setHasta] = useState(() => hoyISO());
   const [descargando, setDescargando] = useState(false);
   const [errorDescarga, setErrorDescarga] = useState("");
+
+  // ── Vista del dashboard: "resumen" (KPIs + tendencia) o "detalle" (pastel + producto estrella) ──
+  const [vista, setVista] = useState("resumen");
 
   const cargar = useCallback(async () => {
     try {
@@ -109,6 +112,40 @@ const DashboardFinanciero = () => {
     }
   };
 
+  const kpis          = datos?.kpis || {};
+  const comparaciones = datos?.comparaciones || {};
+  const productoEstrella   = datos?.productoEstrella || null;
+  const metodosPagoMes     = datos?.metodosPagoMes || [];
+  const facturasPendientes = datos?.facturasPendientes || {};
+
+  const dataPastel = (metodosPagoMes || [])
+    .filter(m => m.total > 0)
+    .map(m => ({ name: m.metodo, value: m.total, color: COLORES_METODO[m.metodo] || "#f59e0b" }));
+
+  const tarjetasKPI = datos ? [
+    { icono: "🏦", etiqueta: "Caja disponible", valor: COP(kpis.caja_disponible), color: "var(--amber)" },
+    { icono: "💰", etiqueta: "Ventas del día", valor: COP(kpis.ventas_dia), color: "var(--green)",
+      sub: <Comparativa etiqueta="vs ayer" valor={comparaciones.ventas_vs_ayer} /> },
+    { icono: "📈", etiqueta: "Utilidad del día", valor: COP(kpis.utilidad_dia),
+      color: kpis.utilidad_dia >= 0 ? "var(--green)" : "var(--red)" },
+    { icono: "📤", etiqueta: "Gastos del día", valor: COP(kpis.gastos_dia), color: "var(--red)" },
+    { icono: "🧮", etiqueta: "Margen de utilidad", valor: `${kpis.margen_utilidad}%`,
+      color: kpis.margen_utilidad >= 0 ? "var(--green)" : "var(--red)" },
+    { icono: "🎟️", etiqueta: "Ticket promedio", valor: COP(kpis.ticket_promedio), color: "var(--blue)" },
+    { icono: "👥", etiqueta: "Clientes atendidos (hoy)", valor: kpis.clientes_atendidos, color: "var(--morado)" },
+    { icono: "📋", etiqueta: "Pedidos realizados (hoy)", valor: kpis.pedidos_realizados, color: "var(--naranja)" },
+    { icono: "💵", etiqueta: "Ventas del mes", valor: COP(kpis.ventas_mes), color: "var(--green)",
+      sub: <Comparativa etiqueta="vs mes pasado" valor={comparaciones.ventas_vs_mes_pasado} /> },
+    { icono: "📤", etiqueta: "Gastos del mes", valor: COP(kpis.gastos_mes), color: "var(--red)" },
+    { icono: "📄", etiqueta: "Facturas pendientes", valor: kpis.facturas_pendientes,
+      color: kpis.facturas_pendientes > 0 ? "var(--amber)" : "var(--green)",
+      sub: facturasPendientes.vencidas > 0 ? `${facturasPendientes.vencidas} vencida(s)` : "Ninguna vencida" },
+    { icono: "📅", etiqueta: "Comparación semanal", valor: "",
+      sub: <Comparativa etiqueta="vs semana pasada" valor={comparaciones.ventas_vs_semana_pasada} /> },
+  ] : [];
+
+  const { pagina, totalPaginas, itemsPagina, irAPagina, siguiente, anterior } = usePaginacion(tarjetasKPI,10);
+
   if (cargando) {
     return (
       <div className="seccion-container">
@@ -126,12 +163,6 @@ const DashboardFinanciero = () => {
       </div>
     );
   }
-
-  const { kpis, comparaciones, productoEstrella, metodosPagoMes, facturasPendientes } = datos;
-
-  const dataPastel = (metodosPagoMes || [])
-    .filter(m => m.total > 0)
-    .map(m => ({ name: m.metodo, value: m.total, color: COLORES_METODO[m.metodo] || "#f59e0b" }));
 
   return (
     <div className="seccion-container">
@@ -171,71 +202,90 @@ const DashboardFinanciero = () => {
         )}
       </div>
 
-      {/* ── KPIs principales ─────────────────────────────────── */}
-      <div className="dashboard-grid">
-        <TarjetaKPI icono="🏦" etiqueta="Caja disponible" valor={COP(kpis.caja_disponible)} color="var(--amber)" />
-        <TarjetaKPI icono="💰" etiqueta="Ventas del día" valor={COP(kpis.ventas_dia)} color="var(--green)"
-          sub={<Comparativa etiqueta="vs ayer" valor={comparaciones.ventas_vs_ayer} />} />
-        <TarjetaKPI icono="📈" etiqueta="Utilidad del día" valor={COP(kpis.utilidad_dia)}
-          color={kpis.utilidad_dia >= 0 ? "var(--green)" : "var(--red)"} />
-        <TarjetaKPI icono="📤" etiqueta="Gastos del día" valor={COP(kpis.gastos_dia)} color="var(--red)" />
-        <TarjetaKPI icono="🧮" etiqueta="Margen de utilidad" valor={`${kpis.margen_utilidad}%`}
-          color={kpis.margen_utilidad >= 0 ? "var(--green)" : "var(--red)"} />
-        <TarjetaKPI icono="🎟️" etiqueta="Ticket promedio" valor={COP(kpis.ticket_promedio)} color="var(--blue)" />
-        <TarjetaKPI icono="👥" etiqueta="Clientes atendidos (hoy)" valor={kpis.clientes_atendidos} color="var(--morado)" />
-        <TarjetaKPI icono="📋" etiqueta="Pedidos realizados (hoy)" valor={kpis.pedidos_realizados} color="var(--naranja)" />
-        <TarjetaKPI icono="💵" etiqueta="Ventas del mes" valor={COP(kpis.ventas_mes)} color="var(--green)"
-          sub={<Comparativa etiqueta="vs mes pasado" valor={comparaciones.ventas_vs_mes_pasado} />} />
-        <TarjetaKPI icono="📤" etiqueta="Gastos del mes" valor={COP(kpis.gastos_mes)} color="var(--red)" />
-        <TarjetaKPI icono="📄" etiqueta="Facturas pendientes" valor={kpis.facturas_pendientes}
-          color={kpis.facturas_pendientes > 0 ? "var(--amber)" : "var(--green)"}
-          sub={facturasPendientes.vencidas > 0 ? `${facturasPendientes.vencidas} vencida(s)` : "Ninguna vencida"} />
-        <TarjetaKPI icono="📅" etiqueta="Comparación semanal" valor=""
-          sub={<Comparativa etiqueta="vs semana pasada" valor={comparaciones.ventas_vs_semana_pasada} />} />
+      {/* ── Selector de vista ────────────────────────────────── */}
+      <div className="tab-selector" style={{ marginBottom: "1.25rem" }}>
+        <button
+          className={`tab-btn ${vista === "resumen" ? "activo" : ""}`}
+          onClick={() => setVista("resumen")}
+        >
+          📊 Resumen
+        </button>
+        <button
+          className={`tab-btn ${vista === "detalle" ? "activo" : ""}`}
+          onClick={() => setVista("detalle")}
+        >
+          🥧 Detalle
+        </button>
       </div>
 
-      {/* ── Gráficos ─────────────────────────────────────────── */}
-      <div className="dashboard-graficas" style={{ marginTop: "1.25rem" }}>
-        {tendencia.length > 0 && (
-          <div className="admin-card grafica-card">
-            <h3 className="subtitulo" style={{ marginBottom: "0.75rem" }}>📈 Ventas vs Gastos (últimos 7 días)</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={tendencia} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="dia" tick={{ fill: "var(--text-2)", fontSize: 11 }} />
-                <YAxis tick={{ fill: "var(--text-2)", fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                <Tooltip content={<TooltipCOP />} />
-                <Legend formatter={(v) => <span style={{ color: "var(--text-2)", fontSize: "0.8rem" }}>{v}</span>} />
-                <Line type="monotone" dataKey="ventas" name="Ventas" stroke="var(--green)" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="gastos" name="Gastos" stroke="var(--red)"   strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+      {/* ══════════════ VISTA: RESUMEN ══════════════ */}
+      {vista === "resumen" && (
+        <>
+          <div className="dashboard-grid">
+            {itemsPagina.map((k, i) => (
+              <TarjetaKPI key={i} {...k} />
+            ))}
           </div>
-        )}
 
-        {dataPastel.length > 0 && (
-          <div className="admin-card grafica-card">
-            <h3 className="subtitulo" style={{ marginBottom: "0.75rem" }}>🥧 Ventas por método de pago (mes)</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={dataPastel} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
-                  {dataPastel.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip formatter={(v) => COP(v)} />
-                <Legend formatter={(v) => <span style={{ color: "var(--text-2)", fontSize: "0.8rem" }}>{v}</span>} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
+          <Paginador
+            pagina={pagina}
+            totalPaginas={totalPaginas}
+            onAnterior={anterior}
+            onSiguiente={siguiente}
+            onIrA={irAPagina}
+          />
 
-      {/* ── Producto estrella ────────────────────────────────── */}
-      {productoEstrella && (
-        <div className="admin-card" style={{ marginTop: "1.25rem" }}>
-          <h3 className="subtitulo" style={{ marginBottom: "0.5rem" }}>⭐ Producto estrella del mes</h3>
-          <p style={{ fontSize: "1rem", fontWeight: 600 }}>{productoEstrella.nombre}</p>
-          <p className="texto-secundario">{productoEstrella.cantidad} unidades vendidas</p>
-        </div>
+          {tendencia.length > 0 && (
+            <div className="admin-card grafica-card" style={{ marginTop: "1.25rem" }}>
+              <h3 className="subtitulo" style={{ marginBottom: "0.75rem" }}>📈 Ventas vs Gastos (últimos 7 días)</h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={tendencia} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="dia" tick={{ fill: "var(--text-2)", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "var(--text-2)", fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip content={<TooltipCOP />} />
+                  <Legend formatter={(v) => <span style={{ color: "var(--text-2)", fontSize: "0.8rem" }}>{v}</span>} />
+                  <Line type="monotone" dataKey="ventas" name="Ventas" stroke="var(--green)" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="gastos" name="Gastos" stroke="var(--red)"   strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ══════════════ VISTA: DETALLE ══════════════ */}
+      {vista === "detalle" && (
+        <>
+          {dataPastel.length > 0 && (
+            <div className="admin-card grafica-card">
+              <h3 className="subtitulo" style={{ marginBottom: "0.75rem" }}>🥧 Ventas por método de pago (mes)</h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={dataPastel} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                    {dataPastel.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v) => COP(v)} />
+                  <Legend formatter={(v) => <span style={{ color: "var(--text-2)", fontSize: "0.8rem" }}>{v}</span>} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {productoEstrella && (
+            <div className="admin-card" style={{ marginTop: "1.25rem" }}>
+              <h3 className="subtitulo" style={{ marginBottom: "0.5rem" }}>⭐ Producto estrella del mes</h3>
+              <p style={{ fontSize: "1rem", fontWeight: 600 }}>{productoEstrella.nombre}</p>
+              <p className="texto-secundario">{productoEstrella.cantidad} unidades vendidas</p>
+            </div>
+          )}
+
+          {!dataPastel.length && !productoEstrella && (
+            <div className="estado-vacio">
+              <p className="texto-secundario">Sin datos de detalle todavía.</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
