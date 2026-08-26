@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { facturaProveedorService, colorEstadoFactura, etiquetaEstadoFactura } from "../../services/facturaProveedorService";
 import { proveedorService } from "../../services/proveedorService";
+import RequierePlanCompleto from "./RequierePlanCompleto";
 
 const COP = (n) => `$${(parseFloat(n) || 0).toLocaleString("es-CO")}`;
 const METODOS_PAGO = ["efectivo", "tarjeta", "transferencia"];
@@ -16,6 +17,9 @@ const CuentasPorPagar = ({ toast }) => {
   const [proveedores, setProveedores] = useState([]);
   const [indicadores, setIndicadores] = useState(null);
   const [cargando,    setCargando]    = useState(true);
+  // Distingue "no hay plan" del resto de errores para mostrar el upsell
+  // en vez del estado vacío genérico.
+  const [planInsuficiente, setPlanInsuficiente] = useState(false);
 
   // Filtros
   const [filtroEstado, setFiltroEstado] = useState("todas");
@@ -47,8 +51,13 @@ const CuentasPorPagar = ({ toast }) => {
       ]);
       setFacturas(dataFacturas.facturas || []);
       setIndicadores(dataIndicadores.indicadores || null);
+      setPlanInsuficiente(false);
     } catch (err) {
-      if (toast) toast.error("Error al cargar cuentas por pagar: " + err.message);
+      if (err.codigo === "PLAN_INSUFICIENTE") {
+        setPlanInsuficiente(true);
+      } else if (toast) {
+        toast.error("Error al cargar cuentas por pagar: " + err.message);
+      }
     } finally {
       setCargando(false);
     }
@@ -121,6 +130,17 @@ const CuentasPorPagar = ({ toast }) => {
       setProcesando(false);
     }
   };
+
+  if (planInsuficiente) {
+    return (
+      <div className="seccion-container">
+        <div className="seccion-header">
+          <h2 className="seccion-titulo">📄 Proveedores / Cuentas por pagar</h2>
+        </div>
+        <RequierePlanCompleto nombreSeccion="Cuentas por pagar" />
+      </div>
+    );
+  }
 
   return (
     <div className="seccion-container">

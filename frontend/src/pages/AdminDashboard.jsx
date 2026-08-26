@@ -506,15 +506,11 @@ const AdminDashboard = () => {
   // --------------------------------------------------------------------------
   // CREAR USUARIO
   // --------------------------------------------------------------------------
-  const handleCrearUsuario = async ({ correo, password, rol }) => {
-    try {
-      await usuarioService.crear({ correo, password, rol });
-      await cargarUsuarios(); // Recarga la lista actualizada
-      toast.exito(`Usuario ${correo} creado`);
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
+  const handleCrearUsuario = async ({ nombre, correo, correo_personal, telefono, password, rol }) => {
+  await usuarioService.crear({ nombre, correo, correo_personal, telefono, password, rol });
+  await cargarUsuarios();
+  toast.exito(`Usuario ${correo} creado`);
+};
 
   // --------------------------------------------------------------------------
   // ELIMINAR USUARIO

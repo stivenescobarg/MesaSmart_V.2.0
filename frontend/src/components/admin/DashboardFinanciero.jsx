@@ -7,6 +7,7 @@ import {
 import { dashboardFinancieroService } from "../../services/dashboardFinancieroService";
 import { usePaginacion } from "../../hooks/usePaginacion";
 import Paginador from "../common/Paginador";
+import RequierePlanCompleto from "./RequierePlanCompleto";
 
 const COP = (n) => `$${(parseFloat(n) || 0).toLocaleString("es-CO")}`;
 
@@ -59,6 +60,8 @@ const DashboardFinanciero = () => {
   const [tendencia, setTendencia] = useState([]);
   const [cargando,  setCargando]  = useState(true);
   const [error,     setError]     = useState(false);
+  // Distingue "no hay plan" de cualquier otro error (red caída, 500, etc.)
+  const [planInsuficiente, setPlanInsuficiente] = useState(false);
 
   const [desde, setDesde] = useState(() => haceDiasISO(30));
   const [hasta, setHasta] = useState(() => hoyISO());
@@ -77,8 +80,13 @@ const DashboardFinanciero = () => {
       setDatos(resumen);
       setTendencia(ventasVsGastos.datos || []);
       setError(false);
-    } catch {
-      setError(true);
+      setPlanInsuficiente(false);
+    } catch (err) {
+      if (err.codigo === "PLAN_INSUFICIENTE") {
+        setPlanInsuficiente(true);
+      } else {
+        setError(true);
+      }
     } finally {
       setCargando(false);
     }
@@ -106,7 +114,11 @@ const DashboardFinanciero = () => {
     try {
       await dashboardFinancieroService.descargarExcel(desde, hasta);
     } catch (err) {
-      setErrorDescarga(err.message || "No se pudo generar el Excel. Intenta de nuevo.");
+      setErrorDescarga(
+        err.codigo === "PLAN_INSUFICIENTE"
+          ? "La exportación a Excel requiere el Plan Completo."
+          : (err.message || "No se pudo generar el Excel. Intenta de nuevo.")
+      );
     } finally {
       setDescargando(false);
     }
@@ -151,6 +163,15 @@ const DashboardFinanciero = () => {
       <div className="seccion-container">
         <div className="seccion-header"><h2 className="seccion-titulo">📊 Dashboard Financiero</h2></div>
         <p className="texto-secundario">Cargando métricas financieras...</p>
+      </div>
+    );
+  }
+
+  if (planInsuficiente) {
+    return (
+      <div className="seccion-container">
+        <div className="seccion-header"><h2 className="seccion-titulo">📊 Dashboard Financiero</h2></div>
+        <RequierePlanCompleto nombreSeccion="El Dashboard Financiero" />
       </div>
     );
   }

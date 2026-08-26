@@ -9,6 +9,7 @@ import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from "recharts";
+import RequierePlanCompleto from "./RequierePlanCompleto";
 
 const COP = (n) => `$${(parseFloat(n) || 0).toLocaleString("es-CO")}`;
 
@@ -35,6 +36,11 @@ const TooltipCOP = ({ active, payload, label }) => {
 const Egresos = ({ cajaAbierta, onEgresoCreado }) => {
   const [tab, setTab] = useState("registro"); // registro | control
 
+  // Ambas pestañas de este módulo dependen de la misma feature de plan
+  // ("gastos"), así que un 403 PLAN_INSUFICIENTE en cualquiera de las dos
+  // bloquea el módulo completo con el mismo mensaje de upsell.
+  const [planInsuficiente, setPlanInsuficiente] = useState(false);
+
   // ── Tab "Registro del día" (comportamiento original) ──
   const [egresos,      setEgresos]      = useState([]);
   const [descripcion,  setDescripcion]  = useState("");
@@ -58,7 +64,11 @@ const Egresos = ({ cajaAbierta, onEgresoCreado }) => {
     try {
       const data = await egresoService.getActuales();
       setEgresos(data.egresos || []);
-    } catch { /* silencioso */ }
+      setPlanInsuficiente(false);
+    } catch (err) {
+      if (err.codigo === "PLAN_INSUFICIENTE") setPlanInsuficiente(true);
+      // si no es por plan, se queda en silencio como antes
+    }
   };
 
   useEffect(() => { if (cajaAbierta) cargarEgresos(); }, [cajaAbierta]);
@@ -82,7 +92,11 @@ const Egresos = ({ cajaAbierta, onEgresoCreado }) => {
       await cargarEgresos();
       if (onEgresoCreado) onEgresoCreado();
     } catch (err) {
-      setError(err.message || "Error al registrar egreso.");
+      if (err.codigo === "PLAN_INSUFICIENTE") {
+        setPlanInsuficiente(true);
+      } else {
+        setError(err.message || "Error al registrar egreso.");
+      }
     } finally {
       setCargando(false);
     }
@@ -103,7 +117,11 @@ const Egresos = ({ cajaAbierta, onEgresoCreado }) => {
       setHistorial(dataHist.egresos || []);
       setPorCategoria(dataGraf.porCategoria || []);
       setPorDia(dataGraf.porDia || []);
-    } catch { /* silencioso */ }
+      setPlanInsuficiente(false);
+    } catch (err) {
+      if (err.codigo === "PLAN_INSUFICIENTE") setPlanInsuficiente(true);
+      // si no es por plan, se queda en silencio como antes
+    }
     finally { setCargandoControl(false); }
   }, [periodo, fechaDesde, fechaHasta, filtroCat]);
 
@@ -117,6 +135,17 @@ const Egresos = ({ cajaAbierta, onEgresoCreado }) => {
   const promedioDiario = porDia.length > 0 ? totalHistorial / porDia.length : 0;
   const mayorGasto  = porCategoria[0] || null;   // ya viene ordenado DESC por total
   const menorGasto  = porCategoria.length > 0 ? porCategoria[porCategoria.length - 1] : null;
+
+  if (planInsuficiente) {
+    return (
+      <div className="seccion-container">
+        <div className="seccion-header">
+          <h2 className="seccion-titulo">💸 Egresos y Control de Gastos</h2>
+        </div>
+        <RequierePlanCompleto nombreSeccion="Egresos y Control de Gastos" />
+      </div>
+    );
+  }
 
   return (
     <div className="seccion-container">

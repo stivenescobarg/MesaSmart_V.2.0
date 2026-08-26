@@ -12,6 +12,20 @@ const handleUnauthorized = (hadToken) => {
   }
 };
 
+// Construye el Error a partir de la respuesta del backend, conservando
+// los campos extra que manda requierePlan.js (codigo, feature, plan_actual)
+// además del status HTTP. Así un componente puede hacer:
+//   if (err.codigo === "PLAN_INSUFICIENTE") { ...mostrar upsell... }
+// en vez de solo mostrar err.message como error genérico.
+const construirError = (data, status) => {
+  const err = new Error(data.msg || `Error ${status}`);
+  err.status = status;
+  if (data.codigo)      err.codigo = data.codigo;
+  if (data.feature)     err.feature = data.feature;
+  if (data.plan_actual) err.plan_actual = data.plan_actual;
+  return err;
+};
+
 const request = async (endpoint, options = {}) => {
   const token = authService.getToken();
 
@@ -30,7 +44,7 @@ const request = async (endpoint, options = {}) => {
     if (res.status === 401) {
       handleUnauthorized(Boolean(token));
     }
-    throw new Error(data.msg || `Error ${res.status}`);
+    throw construirError(data, res.status);
   }
 
   return data;
@@ -51,7 +65,7 @@ const downloadFile = async (endpoint, filename) => {
       handleUnauthorized(Boolean(token));
     }
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.msg || `Error ${res.status}`);
+    throw construirError(data, res.status);
   }
 
   const blob = await res.blob();

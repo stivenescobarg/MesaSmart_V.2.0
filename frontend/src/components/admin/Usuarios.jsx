@@ -20,76 +20,109 @@ const COLOR_ROL = {
 const etiquetaRol = (rol) =>
   ({ admin: "Administrador", cocina: "Cocina", bartender: "Bartender" }[rol] || rol);
 
-const validarFormulario = (correo, password, confirmar) => {
+const validarFormulario = (nombre, correo, correoPersonal, telefono, password, confirmar) => {
   const errores = [];
-  if (!correo.includes("@"))  errores.push("El correo no tiene un formato válido.");
-  if (password.length < 6)    errores.push("La contraseña debe tener al menos 6 caracteres.");
-  if (password !== confirmar)  errores.push("Las contraseñas no coinciden.");
+  if (!nombre.trim())                errores.push("El nombre completo es obligatorio.");
+  if (!correo.includes("@"))         errores.push("El correo del sistema no tiene un formato válido.");
+  if (!correoPersonal.includes("@")) errores.push("El correo personal no tiene un formato válido.");
+  if (!/^\d{7,15}$/.test(telefono))  errores.push("El número de teléfono no es válido.");
+  if (password.length < 6)           errores.push("La contraseña debe tener al menos 6 caracteres.");
+  if (password !== confirmar)        errores.push("Las contraseñas no coinciden.");
   return errores;
 };
 
+// activo puede venir como 1/0 (tinyint de MySQL) o true/false
+const esActivo = (u) => u.activo === 1 || u.activo === true || u.activo === "1";
+
 const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
   const [formulario,       setFormulario]       = useState(false);
+  const [nombre,           setNombre]           = useState("");
   const [correo,           setCorreo]           = useState("");
+  const [correoPersonal,   setCorreoPersonal]   = useState("");
+  const [telefono,         setTelefono]         = useState("");
   const [password,         setPassword]         = useState("");
   const [confirmar,        setConfirmar]        = useState("");
   const [rol,              setRol]              = useState("cocina");
   const [errores,          setErrores]          = useState([]);
+  const [creando,          setCreando]          = useState(false);
   const [mostrarPass,      setMostrarPass]      = useState(false);
-  const [modalEliminar,    setModalEliminar]    = useState(false);
-  const [usuarioAEliminar, setUsuarioAEliminar] = useState(null);
+  const [expandidoId,      setExpandidoId]      = useState(null);
+  const [pestana,          setPestana]          = useState("activos"); // "activos" | "desactivados"
+  const [modalDesactivar,  setModalDesactivar]  = useState(false);
+  const [usuarioADesactivar, setUsuarioADesactivar] = useState(null);
   const [passSeguridad,    setPassSeguridad]    = useState("");
   const [errorModal,       setErrorModal]       = useState("");
-  const [eliminando,       setEliminando]       = useState(false);
+  const [desactivando,     setDesactivando]     = useState(false);
+
+  const activos       = usuarios.filter(esActivo);
+  const desactivados  = usuarios.filter((u) => !esActivo(u));
+  const listaVisible  = pestana === "activos" ? activos : desactivados;
 
   const limpiarFormulario = () => {
-    setCorreo(""); setPassword(""); setConfirmar("");
+    setNombre(""); setCorreo(""); setCorreoPersonal(""); setTelefono("");
+    setPassword(""); setConfirmar("");
     setRol("cocina"); setErrores([]); setFormulario(false);
   };
 
-  const handleCrear = () => {
-    const errs = validarFormulario(correo, password, confirmar);
+  const handleCrear = async () => {
+    const errs = validarFormulario(nombre, correo, correoPersonal, telefono, password, confirmar);
     if (errs.length > 0) { setErrores(errs); return; }
-    onCrearUsuario({ correo, password, rol });
-    limpiarFormulario();
+
+    setCreando(true);
+    setErrores([]);
+    try {
+      await onCrearUsuario({
+        nombre,
+        correo,
+        correo_personal: correoPersonal,
+        telefono,
+        password,
+        rol,
+      });
+      limpiarFormulario(); // solo se cierra/limpia si no hubo error
+    } catch (err) {
+      setErrores([err.message || "Error al crear el usuario."]);
+      // el formulario se queda abierto con lo que ya escribió
+    } finally {
+      setCreando(false);
+    }
   };
 
-  const abrirModalEliminar = (usuario) => {
-    setUsuarioAEliminar(usuario);
+  const toggleExpandir = (id) => {
+    setExpandidoId((actual) => (actual === id ? null : id));
+  };
+
+  const abrirModalDesactivar = (usuario) => {
+    setUsuarioADesactivar(usuario);
     setPassSeguridad("");
     setErrorModal("");
-    setModalEliminar(true);
+    setModalDesactivar(true);
   };
 
-  // FIX BUG 3: esperar la promesa del padre y capturar errores del backend
-  const confirmarEliminar = async () => {
+  const confirmarDesactivar = async () => {
     if (passSeguridad !== PASSWORD_SEGURIDAD) {
       setErrorModal("Contraseña de seguridad incorrecta.");
       return;
     }
 
-    // FIX: verificar que el id exista y sea válido
-    const idUsuario = usuarioAEliminar?.id;
+    const idUsuario = usuarioADesactivar?.id;
     if (!idUsuario) {
       setErrorModal("No se pudo identificar el usuario. Recarga la página.");
       return;
     }
 
-    setEliminando(true);
+    setDesactivando(true);
     setErrorModal("");
 
     try {
-      // FIX: await para esperar la respuesta real del backend
       await onEliminarUsuario(idUsuario);
-      // Solo cerrar el modal si el backend respondió OK
-      setModalEliminar(false);
-      setUsuarioAEliminar(null);
+      setModalDesactivar(false);
+      setUsuarioADesactivar(null);
       setPassSeguridad("");
     } catch (err) {
-      // Si el backend responde con error, mostrarlo en el modal
-      setErrorModal(err.message || "Error al eliminar. Intenta de nuevo.");
+      setErrorModal(err.message || "Error al desactivar. Intenta de nuevo.");
     } finally {
-      setEliminando(false);
+      setDesactivando(false);
     }
   };
 
@@ -97,7 +130,7 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
     <div className="seccion-container">
       <div className="seccion-header">
         <h2 className="seccion-titulo">Gestión de usuarios</h2>
-        <span className="chip chip-neutro">{usuarios.length} usuario(s)</span>
+        <span className="chip chip-neutro">{activos.length} activo(s)</span>
       </div>
 
       {!formulario && (
@@ -118,10 +151,31 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
           )}
 
           <div className="campo-grupo">
-            <label className="campo-label">Correo electrónico</label>
+            <label className="campo-label">Nombre completo</label>
+            <input className="campo-input" type="text"
+              placeholder="Juan Pérez"
+              value={nombre} onChange={(e) => setNombre(e.target.value)} />
+          </div>
+
+          <div className="campo-grupo">
+            <label className="campo-label">Correo del sistema</label>
             <input className="campo-input" type="email"
               placeholder="usuario@mesasmart.com"
               value={correo} onChange={(e) => setCorreo(e.target.value)} />
+          </div>
+
+          <div className="campo-grupo">
+            <label className="campo-label">Correo personal</label>
+            <input className="campo-input" type="email"
+              placeholder="correo.personal@gmail.com"
+              value={correoPersonal} onChange={(e) => setCorreoPersonal(e.target.value)} />
+          </div>
+
+          <div className="campo-grupo">
+            <label className="campo-label">Número de teléfono</label>
+            <input className="campo-input" type="tel"
+              placeholder="3001234567"
+              value={telefono} onChange={(e) => setTelefono(e.target.value)} />
           </div>
 
           <div className="campo-grupo">
@@ -159,63 +213,111 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
           </div>
 
           <div className="form-botones">
-            <button className="btn-primario" onClick={handleCrear}>Crear usuario</button>
+            <button className="btn-primario" onClick={handleCrear} disabled={creando}>
+              {creando ? "Creando..." : "Crear usuario"}
+            </button>
             <button className="btn-ghost" onClick={limpiarFormulario}>Cancelar</button>
           </div>
         </div>
       )}
 
+      {/* ── PESTAÑAS ── */}
+      <div className="rol-selector" style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
+        <button type="button"
+          className={`btn-rol ${pestana === "activos" ? "activo" : ""}`}
+          onClick={() => setPestana("activos")}>
+          Activos ({activos.length})
+        </button>
+        <button type="button"
+          className={`btn-rol ${pestana === "desactivados" ? "activo" : ""}`}
+          onClick={() => setPestana("desactivados")}>
+          Desactivados ({desactivados.length})
+        </button>
+      </div>
+
       {/* ── LISTA ── */}
       <div className="usuarios-lista">
-        {usuarios.length === 0 ? (
+        {listaVisible.length === 0 ? (
           <p className="texto-secundario" style={{ marginTop: "1.5rem" }}>
-            No hay usuarios registrados.
+            {pestana === "activos"
+              ? "No hay usuarios activos."
+              : "No hay usuarios desactivados."}
           </p>
         ) : (
-          usuarios.map((u) => (
-            <div key={u.id} className="usuario-row">
-              <div className="usuario-info">
-                <span className="usuario-correo">{u.correo}</span>
-                <span className={`chip ${COLOR_ROL[u.rol] || "chip-neutro"}`}>
-                  {etiquetaRol(u.rol)} {u.numero ? `#${u.numero}` : ""}
-                </span>
-              </div>
-              <div className="usuario-meta">
-                {u.creado_en && (
-                  <span className="texto-muted usuario-fecha">
-                    {new Date(u.creado_en).toLocaleDateString("es-CO")}
-                  </span>
+          listaVisible.map((u) => {
+            const expandido = expandidoId === u.id;
+            return (
+              <div key={u.id} className="usuario-item">
+                <div
+                  className="usuario-row"
+                  onClick={() => toggleExpandir(u.id)}
+                  style={{ cursor: "pointer", opacity: esActivo(u) ? 1 : 0.6 }}
+                  title="Ver información completa"
+                >
+                  <div className="usuario-info">
+                    <span className="usuario-correo">{u.correo}</span>
+                    <span className={`chip ${COLOR_ROL[u.rol] || "chip-neutro"}`}>
+                      {etiquetaRol(u.rol)} {u.numero ? `#${u.numero}` : ""}
+                    </span>
+                    {!esActivo(u) && (
+                      <span className="chip chip-neutro">Desactivado</span>
+                    )}
+                  </div>
+                  <div className="usuario-meta">
+                    {u.creado_en && (
+                      <span className="texto-muted usuario-fecha">
+                        {new Date(u.creado_en).toLocaleDateString("es-CO")}
+                      </span>
+                    )}
+                    <span className="texto-muted" style={{ fontSize: "0.75rem" }}>
+                      {expandido ? "▲" : "▼"}
+                    </span>
+                    {esActivo(u) && (
+                      <button className="btn-eliminar"
+                        onClick={(e) => { e.stopPropagation(); abrirModalDesactivar(u); }}
+                        title="Desactivar usuario">✕</button>
+                    )}
+                  </div>
+                </div>
+
+                {expandido && (
+                  <div className="admin-card usuario-detalle" style={{ marginTop: "0.5rem" }}>
+                    <p><strong>Nombre completo:</strong> {u.nombre || "—"}</p>
+                    <p><strong>Correo del sistema:</strong> {u.correo}</p>
+                    <p><strong>Correo personal:</strong> {u.correo_personal || "—"}</p>
+                    <p><strong>Teléfono:</strong> {u.telefono || "—"}</p>
+                    <p><strong>Rol:</strong> {etiquetaRol(u.rol)}</p>
+                    <p><strong>Estado:</strong> {esActivo(u) ? "Activo" : "Desactivado"}</p>
+                  </div>
                 )}
-                <button className="btn-eliminar"
-                  onClick={() => abrirModalEliminar(u)}
-                  title="Eliminar usuario">✕</button>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
-      {/* ── MODAL ELIMINACIÓN ── */}
+      {/* ── MODAL DESACTIVACIÓN ── */}
       <Modal
-        abierto={modalEliminar}
-        titulo="Eliminar usuario"
+        abierto={modalDesactivar}
+        titulo="Desactivar usuario"
         variante="peligro"
-        labelConfirmar={eliminando ? "Eliminando..." : "Eliminar"}
+        labelConfirmar={desactivando ? "Desactivando..." : "Desactivar"}
         labelCancelar="Cancelar"
-        onConfirmar={confirmarEliminar}
+        onConfirmar={confirmarDesactivar}
         onCancelar={() => {
-          if (eliminando) return; // no cerrar mientras procesa
-          setModalEliminar(false);
-          setUsuarioAEliminar(null);
+          if (desactivando) return; // no cerrar mientras procesa
+          setModalDesactivar(false);
+          setUsuarioADesactivar(null);
         }}
       >
-        {usuarioAEliminar && (
+        {usuarioADesactivar && (
           <div>
             <p className="texto-secundario" style={{ marginBottom: "1rem" }}>
-              Vas a eliminar a{" "}
+              Vas a desactivar a{" "}
               <strong style={{ color: "var(--text-1)" }}>
-                {usuarioAEliminar.correo}
-              </strong>. Esta acción no se puede deshacer.
+                {usuarioADesactivar.correo}
+              </strong>. El usuario no podrá volver a iniciar sesión. Quedará como constancia
+              en la pestaña "Desactivados", no se elimina de la base de datos.
             </p>
             <div className="campo-grupo">
               <label className="campo-label">Contraseña de seguridad</label>
@@ -225,7 +327,7 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
                 placeholder="Ingresa la contraseña de seguridad"
                 value={passSeguridad}
                 onChange={(e) => { setPassSeguridad(e.target.value); setErrorModal(""); }}
-                onKeyDown={(e) => e.key === "Enter" && confirmarEliminar()}
+                onKeyDown={(e) => e.key === "Enter" && confirmarDesactivar()}
                 autoFocus
               />
             </div>

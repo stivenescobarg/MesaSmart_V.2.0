@@ -49,21 +49,24 @@
 }
 
 /* ── RESET ───────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  background: var(--bg);
-  color: var(--text-1);
-  font-family: 'DM Sans', sans-serif;
+.admin-container,
+.admin-container *,
+.admin-container *::before,
+.admin-container *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+ 
+.admin-container {
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 99px; }
-
+ 
+.admin-container ::-webkit-scrollbar { width: 5px; height: 5px; }
+.admin-container ::-webkit-scrollbar-track { background: transparent; }
+.admin-container ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 99px; }
 /* ── CONTENEDOR ──────────────────────────────────────────────── */
 .admin-container { min-height: 100vh; display: flex; flex-direction: column; }
 
@@ -201,7 +204,13 @@ button { font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.
 }
 .btn-primario:hover:not(:disabled) { background: #fbbf24; box-shadow: 0 0 16px rgba(245,158,11,.3); transform: translateY(-1px); }
 .btn-primario:disabled { opacity: 0.35; cursor: not-allowed; }
-
+.admin-container button {
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+}
 .btn-secundario {
   background: transparent; color: var(--amber);
   border-color: var(--amber-border);
@@ -480,7 +489,11 @@ select.campo-input {
 /* ── ESTADOS VACÍOS ──────────────────────────────────────────── */
 .estado-vacio { text-align: center; padding: 3rem 1rem; color: var(--text-2); font-size: 0.9rem; }
 
-hr { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+.admin-container hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.25rem 0;
+}
 
 /* ── RESPONSIVE ──────────────────────────────────────────────── */
 @media (max-width: 640px) {

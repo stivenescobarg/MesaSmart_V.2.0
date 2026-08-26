@@ -1,4 +1,3 @@
-// backend/src/controllers/admin/userController.js
 const bcrypt = require("bcryptjs");
 const User   = require("../../models/User");
 const Sesion = require("../../models/Sesion");
@@ -11,14 +10,37 @@ exports.getAll = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { nombre, correo, password, rol } = req.body;
-    if (!correo || !password || !rol)
+    const { nombre, correo, correo_personal, telefono, password, rol } = req.body;
+
+    if (!nombre?.trim() || !correo || !correo_personal || !telefono || !password || !rol)
       return res.status(400).json({ msg: "Faltan campos." });
+
+    if (!/^\S+@\S+\.\S+$/.test(correo))
+      return res.status(400).json({ msg: "El correo del sistema no tiene un formato válido." });
+
+    if (!/^\S+@\S+\.\S+$/.test(correo_personal))
+      return res.status(400).json({ msg: "El correo personal no tiene un formato válido." });
+
+    if (!/^\d{7,15}$/.test(telefono))
+      return res.status(400).json({ msg: "El número de teléfono no es válido." });
+
+    if (password.length < 6)
+      return res.status(400).json({ msg: "La contraseña debe tener al menos 6 caracteres." });
+
     const hash   = await bcrypt.hash(password, 10);
     const numero = (await User.countByRol(rol)) + 1;
-    const id     = await User.create({
-      nombre: nombre || correo.split("@")[0], correo, password: hash, rol, numero,
+
+    const id = await User.create({
+      restaurante_id: req.usuario?.restaurante_id, // ajusta si tu middleware lo expone distinto
+      nombre: nombre.trim(),
+      correo,
+      correo_personal,
+      telefono,
+      password: hash,
+      rol,
+      numero,
     });
+
     res.status(201).json({ ok: true, id });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY")
