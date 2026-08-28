@@ -187,6 +187,48 @@ PIN_ELIMINAR=
 
 ---
 
+## 🚀 Levantando el proyecto con Docker
+
+Para ejecutar MesaSmart de forma rápida y sin preocupaciones por dependencias:
+
+### Requisitos previos
+- **Docker Desktop** instalado en tu máquina ([descargar aquí](https://www.docker.com/products/docker-desktop))
+- **Variables de entorno configuradas** en `backend/.env`
+
+### Comando para iniciar
+```bash
+docker compose up --build
+```
+
+### Configuración importante
+
+| Componente | Ubicación | Detalles |
+|-----------|-----------|----------|
+| **Backend** | `http://localhost:3001` | API FastAPI con credenciales de `backend/.env` |
+| **Frontend** | `http://localhost:5173` | Interfaz de usuario (Vite) |
+| **Base de Datos** | Aiven | Alojada en la nube, sin configuración local necesaria |
+
+### ¿Qué hace `docker compose up --build`?
+1. Construye las imágenes de Docker del backend y frontend
+2. Inicia los contenedores en la red de Docker
+3. El backend se conecta automáticamente a la BD de Aiven usando las credenciales de `.env`
+4. Ambos servicios quedan disponibles en pocos segundos
+
+### Parar el proyecto
+```bash
+docker compose down
+```
+
+### Verificar que funciona
+- Abre el navegador en `http://localhost:5173`
+- El backend debería responder en `http://localhost:3001/docs` (si está expuesto)
+
+---
+
+**Nota:** Este enfoque es ideal para nuevos integrantes del equipo, ya que **elimina la necesidad de instalar dependencias locales** y asegura que todos trabajen con el mismo entorno.
+
+
+---
 # 🚀 Instalación Local
 
 ## 1. Clonar el repositorio

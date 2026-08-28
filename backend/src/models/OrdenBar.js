@@ -1,13 +1,5 @@
 const { pool } = require("../config/db");
 
-const ESTADOS = ["pendiente", "en_preparacion", "listo", "cancelado"];
-const TRANSICIONES = {
-  pendiente: ["en_preparacion", "cancelado"],
-  en_preparacion: ["listo", "cancelado"],
-  listo: [],
-  cancelado: [],
-};
-
 const parseItems = (orden) => ({
   ...orden,
   items: typeof orden.items === "string" ? JSON.parse(orden.items) : orden.items,
@@ -35,17 +27,6 @@ const enriquecerImagenes = async (ordenes) => {
 };
 
 const OrdenBar = {
-  estados: ESTADOS,
-
-  async crear({ restaurante_id, mesa, items, observacion }) {
-    const [result] = await pool.execute(
-      `INSERT INTO ordenes_bar (restaurante_id, mesa, items, observacion)
-       VALUES (?, ?, ?, ?)`,
-      [restaurante_id, mesa.trim(), JSON.stringify(items), observacion || null]
-    );
-    return result.insertId;
-  },
-
   async activas(restaurante_id) {
     const [rows] = await pool.query(
       `SELECT id, mesa, items, observacion, estado, creado_en, iniciado_en, listo_en
@@ -94,33 +75,21 @@ const OrdenBar = {
     return { ...resumen, bebidas_hoy };
   },
 
-  async actualizarEstado(id, restaurante_id, estado, usuarioId = null) {
-    if (!ESTADOS.includes(estado)) return { error: "Estado inválido." };
-    const conn = await pool.getConnection();
-    try {
-      await conn.beginTransaction();
-      const [[orden]] = await conn.execute(
-        "SELECT id, estado, items FROM ordenes_bar WHERE id = ? AND restaurante_id = ? FOR UPDATE",
-        [id, restaurante_id]
-      );
-      if (!orden) {
-        await conn.rollback();
-        return { error: "Orden no encontrada.", status: 404 };
-      }
-      if (!TRANSICIONES[orden.estado].includes(estado)) {
-        await conn.rollback();
-        return { error: `No se puede cambiar una orden ${orden.estado} a ${estado}.`, status: 409 };
-      }
-      const camposFecha = estado === "en_preparacion"
-        ? ", iniciado_en = COALESCE(iniciado_en, NOW())"
-        : estado === "listo" ? ", listo_en = NOW()" : "";
-      await conn.execute(`UPDATE ordenes_bar SET estado = ?${camposFecha} WHERE id = ?`, [estado, id]);
-      await conn.commit();
-      return { id: Number(id), estado };
-    } catch (error) {
-      await conn.rollback();
-      throw error;
-    } finally { conn.release(); }
+  // Órdenes creadas por intervalo de N minutos, dentro de la ventana de tiempo indicada.
+  // Devuelve filas { bucket, cantidad } donde bucket = 0 es el intervalo más reciente
+  // (los últimos `intervalo_minutos` minutos) y crece hacia el pasado.
+  async actividadReciente(restaurante_id, minutos = 60, intervalo_minutos = 5) {
+    const [rows] = await pool.query(
+      `SELECT
+         FLOOR(TIMESTAMPDIFF(MINUTE, creado_en, NOW()) / ?) AS bucket,
+         COUNT(*) AS cantidad
+       FROM ordenes_bar
+       WHERE restaurante_id = ?
+         AND creado_en >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+       GROUP BY bucket`,
+      [intervalo_minutos, restaurante_id, minutos]
+    );
+    return rows;
   },
 };
 

@@ -1,30 +1,52 @@
+// backend/src/controllers/admin/barController.js
 const OrdenBar = require("../../models/OrdenBar");
-const Stock = require("../../models/Stock");
+const barOrderService = require("../../services/barOrderService");
+const barInventoryService = require("../../services/barInventoryService");
 
-const itemsValidos = (items) => Array.isArray(items) && items.length > 0 && items.every(item =>
-  item && typeof item.nombre === "string" && item.nombre.trim() &&
-  Number.isFinite(Number(item.cantidad)) && Number(item.cantidad) > 0
-);
+const itemsValidos = (items) =>
+  Array.isArray(items) &&
+  items.length > 0 &&
+  items.every(
+    (item) =>
+      item &&
+      typeof item.nombre === "string" &&
+      item.nombre.trim() &&
+      Number.isFinite(Number(item.cantidad)) &&
+      Number(item.cantidad) > 0
+  );
 
 exports.crear = async (req, res) => {
   try {
     const { mesa, items, observacion } = req.body;
-    if (!mesa?.trim()) return res.status(400).json({ msg: "La mesa es requerida." });
-    if (!itemsValidos(items)) return res.status(400).json({ msg: "Incluye al menos una bebida válida." });
+    const restaurante_id = req.restaurante_id;
 
-    const ordenId = await OrdenBar.crear({
-      restaurante_id: req.restaurante_id,
-      mesa,
-      observacion,
-      items: items.map(item => ({
+    if (!restaurante_id || !Number.isFinite(Number(restaurante_id)))
+      return res.status(400).json({ msg: "El restaurante es requerido." });
+    if (!mesa?.trim())
+      return res.status(400).json({ msg: "La mesa es requerida." });
+    if (!itemsValidos(items))
+      return res.status(400).json({ msg: "Incluye al menos una bebida válida." });
+
+    const resultado = await barOrderService.crear({
+      restaurante_id: Number(restaurante_id),
+      mesa: mesa.trim(),
+      items: items.map((item) => ({
         nombre: item.nombre.trim(),
         cantidad: Number(item.cantidad),
         imgKey: item.imgKey || null,
         adiciones: Array.isArray(item.adiciones) ? item.adiciones : [],
         opcion: item.opcion || null,
       })),
+      observacion: observacion || null,
+      usuario_id: req.usuario?.id || null,
+      ip_address: req.ip || req.connection.remoteAddress || null,
     });
-    res.status(201).json({ ok: true, id: ordenId });
+
+    if (!resultado.ok) {
+      return res.status(400).json({ msg: resultado.error });
+    }
+
+    res.status(201).json({ ok: true, id: resultado.id, mensaje: resultado.mensaje });
   } catch (err) {
     console.error("[bar/crear]", err);
     res.status(500).json({ msg: "No fue posible registrar la orden del bar." });
@@ -32,28 +54,30 @@ exports.crear = async (req, res) => {
 };
 
 exports.activas = async (req, res) => {
-  try { res.json({ ok: true, ordenes: await OrdenBar.activas(req.restaurante_id) }); }
-  catch (err) {
+  try {
+    res.json({ ok: true, ordenes: await OrdenBar.activas(req.restaurante_id) });
+  } catch (err) {
     console.error("[bar/activas]", err);
     res.status(500).json({ msg: "No fue posible obtener las órdenes." });
   }
 };
 
 exports.historialHoy = async (req, res) => {
-  try { res.json({ ok: true, ordenes: await OrdenBar.historialHoy(req.restaurante_id) }); }
-  catch { res.status(500).json({ msg: "No fue posible obtener el historial." }); }
+  try {
+    res.json({ ok: true, ordenes: await OrdenBar.historialHoy(req.restaurante_id) });
+  } catch (err) {
+    console.error("[bar/historialHoy]", err);
+    res.status(500).json({ msg: "No fue posible obtener el historial." });
+  }
 };
 
-// ⚠️ PENDIENTE: Stock.findAll() todavía no filtra por restaurante_id
-// (stock_productos/stock_movimientos no migradas). El resumen de bar hoy
-// muestra alertas de stock de TODOS los restaurantes mezcladas.
 exports.resumen = async (req, res) => {
   try {
     const [resumen, inventario] = await Promise.all([
       OrdenBar.resumenHoy(req.restaurante_id),
-      Stock.findAll(),
+      barInventoryService.obtenerInventario(req.restaurante_id),
     ]);
-    const alertas_stock = inventario.filter(item => item.categoria === "bar" && item.bajo_stock);
+    const alertas_stock = inventario.filter((item) => item.bajo_stock);
     res.json({ ok: true, resumen, alertas_stock });
   } catch (err) {
     console.error("[bar/resumen]", err);
@@ -63,19 +87,28 @@ exports.resumen = async (req, res) => {
 
 exports.actualizarEstado = async (req, res) => {
   try {
-    const resultado = await OrdenBar.actualizarEstado(req.params.id, req.restaurante_id, req.body.estado, req.usuario.id);
-    if (resultado.error) return res.status(resultado.status || 400).json({ msg: resultado.error });
-    res.json({ ok: true, orden: resultado });
+    const resultado = await barOrderService.actualizarEstado(
+      req.params.id,
+      req.restaurante_id,
+      req.body.estado,
+      req.usuario?.id || null,
+      req.ip || req.connection.remoteAddress || null
+    );
+
+    if (!resultado.ok) {
+      return res.status(resultado.status || 400).json({ msg: resultado.error });
+    }
+
+    res.json({ ok: true, orden: { id: resultado.id, estado: resultado.estado } });
   } catch (err) {
     console.error("[bar/actualizarEstado]", err);
     res.status(500).json({ msg: "No fue posible actualizar la orden." });
   }
 };
 
-// ⚠️ PENDIENTE: mismo caso — Stock.findAll() sin filtro de tenant todavía.
 exports.inventario = async (req, res) => {
   try {
-    const productos = (await Stock.findAll()).filter(producto => producto.categoria === "bar");
+    const productos = await barInventoryService.obtenerInventario(req.restaurante_id);
     res.json({ ok: true, productos });
   } catch (err) {
     console.error("[bar/inventario]", err);
@@ -83,31 +116,73 @@ exports.inventario = async (req, res) => {
   }
 };
 
-// ⚠️ PENDIENTE: mismo caso — un producto_id de otro restaurante podría
-// registrar consumo hoy, porque Stock.findAll() no está acotado por tenant.
 exports.registrarConsumo = async (req, res) => {
   try {
+    const restaurante_id = req.restaurante_id;
     const { producto_id, cantidad, observacion } = req.body;
     const cantidadNumerica = Number(cantidad);
+
     if (!Number.isFinite(cantidadNumerica) || cantidadNumerica <= 0) {
       return res.status(400).json({ msg: "La cantidad debe ser mayor que cero." });
     }
-    const producto = (await Stock.findAll()).find(item =>
-      Number(item.id) === Number(producto_id) && item.categoria === "bar"
-    );
-    if (!producto) return res.status(404).json({ msg: "Producto de bar no encontrado." });
 
-    const id = await Stock.registrarMovimiento({
-      producto_id: producto.id,
-      usuario_id: req.usuario.id,
-      tipo: "egreso",
-      cantidad: cantidadNumerica,
-      observacion: observacion?.trim() || "Consumo registrado desde el panel de bar",
-      fecha: new Date().toISOString().slice(0, 10),
+    const producto = await barInventoryService.obtenerProducto(restaurante_id, producto_id);
+    if (!producto) {
+      return res.status(404).json({ msg: "Producto de bar no encontrado." });
+    }
+
+    const resultado = await barInventoryService.reducirInventario(
+      restaurante_id,
+      producto_id,
+      cantidadNumerica,
+      "consumo_manual",
+      req.usuario?.id || null,
+      req.ip || req.connection.remoteAddress || null
+    );
+
+    if (!resultado.ok) {
+      return res.status(400).json({ msg: resultado.error });
+    }
+
+    res.status(201).json({
+      ok: true,
+      id: producto_id,
+      mensaje: resultado.mensaje,
+      cantidad_actual: resultado.cantidad_actual,
     });
-    res.status(201).json({ ok: true, id });
   } catch (err) {
     console.error("[bar/consumo]", err);
     res.status(500).json({ msg: "No fue posible registrar el consumo." });
+  }
+};
+
+// Actividad de órdenes creadas en la última hora, agrupada en intervalos de 5 minutos.
+// Pensado para BarActivityChart.jsx.
+exports.actividad = async (req, res) => {
+  try {
+    const INTERVALO_MINUTOS = 5;
+    const TOTAL_INTERVALOS = 12; // última hora
+
+    const buckets = await OrdenBar.actividadReciente(
+      req.restaurante_id,
+      INTERVALO_MINUTOS * TOTAL_INTERVALOS,
+      INTERVALO_MINUTOS
+    );
+    const cantidadPorBucket = new Map(buckets.map((b) => [Number(b.bucket), Number(b.cantidad)]));
+
+    const ahora = new Date();
+    const actividad = [];
+    for (let i = TOTAL_INTERVALOS - 1; i >= 0; i--) {
+      const tiempo = new Date(ahora.getTime() - i * INTERVALO_MINUTOS * 60000);
+      actividad.push({
+        tiempo: tiempo.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }),
+        ordenes: cantidadPorBucket.get(i) || 0,
+      });
+    }
+
+    res.json({ ok: true, actividad });
+  } catch (err) {
+    console.error("[bar/actividad]", err);
+    res.status(500).json({ msg: "No fue posible obtener la actividad del bar." });
   }
 };
