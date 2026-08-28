@@ -9,8 +9,8 @@ exports.create = async (req, res) => {
 
   try {
     await pool.execute(
-      "INSERT INTO quejas (mesa, mensaje) VALUES (?, ?)",
-      [mesa || "Sin mesa", mensaje.trim()]
+      "INSERT INTO quejas (restaurante_id, mesa, mensaje) VALUES (?, ?, ?)",
+      [req.restaurante_id, mesa || "Sin mesa", mensaje.trim()]
     );
     res.status(201).json({ ok: true });
   } catch (err) {
@@ -19,9 +19,12 @@ exports.create = async (req, res) => {
   }
 };
 
-exports.getAll = async (_req, res) => {
+exports.getAll = async (req, res) => {
   try {
-    const [rows] = await pool.execute("SELECT * FROM quejas ORDER BY fecha DESC");
+    const [rows] = await pool.execute(
+      "SELECT * FROM quejas WHERE restaurante_id = ? ORDER BY fecha DESC",
+      [req.restaurante_id]
+    );
     res.json(rows);
   } catch (err) {
     console.error("[quejas/getAll]", err);
@@ -38,10 +41,14 @@ exports.updateEstado = async (req, res) => {
   }
 
   try {
-    await pool.execute(
-      "UPDATE quejas SET estado = ? WHERE id = ?",
-      [estado, req.params.id]
+    // Verifica pertenencia antes de actualizar — mismo patrón de siempre
+    const [r] = await pool.execute(
+      "UPDATE quejas SET estado = ? WHERE id = ? AND restaurante_id = ?",
+      [estado, req.params.id, req.restaurante_id]
     );
+    if (r.affectedRows === 0) {
+      return res.status(404).json({ error: "Queja no encontrada" });
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error("[quejas/updateEstado]", err);

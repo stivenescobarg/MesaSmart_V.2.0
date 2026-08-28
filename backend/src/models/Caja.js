@@ -1,28 +1,53 @@
-// backend/src/models/Caja.js — ACTUALIZADO con egresos en cierre
+// backend/src/models/Caja.js — con aislamiento multi-tenant (Fase 3)
 const { pool } = require("../config/db");
 
 const Caja = {
-  abrir: async (usuario_id, monto_inicial) => {
+  abrir: async (usuario_id, monto_inicial, restaurante_id) => {
     const [r] = await pool.execute(
-      "INSERT INTO caja (usuario_id, monto_inicial) VALUES (?, ?)",
-      [usuario_id, monto_inicial]
+      "INSERT INTO caja (usuario_id, monto_inicial, apertura, restaurante_id) VALUES (?, ?, ?, ?)",
+      [usuario_id, monto_inicial, new Date(), restaurante_id]
     );
     return r.insertId;
   },
 
-  getAbierta: async () => {
+  // cosnt Caja = async(usuario_id, monto_inicial, restaurante_id) => {
+  //   const result = await prisma.caja.create({
+  //     data: {
+  //       usuario_id,
+  //       monto_inicial,
+  //       apertura: new Date(),
+  //       restaurante_id,
+  //     },
+  //   });
+  //   return result.id;
+  // }
+
+  getAbierta: async (restaurante_id) => {
     const [r] = await pool.execute(
-      "SELECT * FROM caja WHERE estado='abierta' ORDER BY apertura DESC LIMIT 1"
+      "SELECT * FROM caja WHERE estado='abierta' AND restaurante_id=? ORDER BY apertura DESC LIMIT 1",
+      [restaurante_id]
     );
     return r[0] || null;
   },
 
-  cerrar: async (caja_id, cerrado_por) => {
+  cerrar: async (caja_id, cerrado_por, restaurante_id) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
 
-      // Totales de ventas
+      // Verificación de pertenencia ANTES de tocar nada — si alguien manda un caja_id
+      // que no es suyo (de otro restaurante), esto corta aquí con un 404, no con datos cruzados.
+      const [[cajaRow]] = await conn.execute(
+        "SELECT id, monto_inicial FROM caja WHERE id=? AND restaurante_id=? FOR UPDATE",
+        [caja_id, restaurante_id]
+      );
+      if (!cajaRow) {
+        await conn.rollback();
+        const err = new Error("Caja no encontrada para este restaurante.");
+        err.status = 404;
+        throw err;
+      }
+
       const [t] = await conn.execute(
         `SELECT
            COALESCE(SUM(total), 0) as tv,
@@ -34,31 +59,25 @@ const Caja = {
         [caja_id]
       );
 
-      // Total egresos
       const [eg] = await conn.execute(
         "SELECT COALESCE(SUM(monto), 0) as total_egresos FROM egresos WHERE caja_id = ?",
         [caja_id]
       );
 
-      const [c] = await conn.execute(
-        "SELECT monto_inicial FROM caja WHERE id = ?", [caja_id]
-      );
-
       const tv  = parseFloat(t[0].tv)  || 0;
       const ef  = parseFloat(t[0].ef)  || 0;
       const te  = parseFloat(eg[0].total_egresos) || 0;
-      const mi  = parseFloat(c[0]?.monto_inicial) || 0;
+      const mi  = parseFloat(cajaRow.monto_inicial) || 0;
       const mf  = mi + tv;
-      const efn = ef - te; // efectivo real disponible
+      const efn = ef - te;
+      const ahora = new Date();
 
-      // Actualizar caja
       await conn.execute(
-        `UPDATE caja SET estado='cerrada', cierre=NOW(),
-         total_ventas=?, monto_final=? WHERE id=?`,
-        [tv, mf, caja_id]
+        `UPDATE caja SET estado='cerrada', cierre=?,
+         total_ventas=?, monto_final=? WHERE id=? AND restaurante_id=?`,
+        [ahora, tv, mf, caja_id, restaurante_id]
       );
 
-      // Guardar en historial
       await conn.execute(
         `INSERT INTO historial_caja
          (caja_id, fecha, monto_inicial, total_ventas, monto_final,
@@ -76,6 +95,8 @@ const Caja = {
     finally { conn.release(); }
   },
 
+  // Sin cambios: ya se llama siempre con un caja_id que vino de una consulta
+  // previa filtrada por tenant (getAbierta o getDatosParaPDF), así que es segura.
   getVentas: async (caja_id) => {
     const [ventas] = await pool.execute(
       "SELECT * FROM ventas WHERE caja_id=? ORDER BY creado_en", [caja_id]
@@ -90,12 +111,15 @@ const Caja = {
     return ventas;
   },
 
-  getHistorial: async () => {
+  getHistorial: async (restaurante_id) => {
     const [jornadas] = await pool.execute(
       `SELECT hc.*, u.nombre as cerrado_por_nombre
        FROM historial_caja hc
+       JOIN caja c ON c.id = hc.caja_id
        LEFT JOIN usuarios u ON u.id = hc.cerrado_por
-       ORDER BY hc.fecha DESC`
+       WHERE c.restaurante_id = ?
+       ORDER BY hc.fecha DESC`,
+      [restaurante_id]
     );
     for (const dia of jornadas) {
       const [ventas] = await pool.execute(
@@ -124,13 +148,12 @@ const Caja = {
     return jornadas;
   },
 
-  // Para el PDF: datos completos de cierre
-  getDatosParaPDF: async (caja_id) => {
+  getDatosParaPDF: async (caja_id, restaurante_id) => {
     const [caja] = await pool.execute(
       `SELECT c.*, u.nombre as abierto_por_nombre
        FROM caja c JOIN usuarios u ON u.id = c.usuario_id
-       WHERE c.id = ? LIMIT 1`,
-      [caja_id]
+       WHERE c.id = ? AND c.restaurante_id = ? LIMIT 1`,
+      [caja_id, restaurante_id]
     );
     if (!caja[0]) return null;
 
@@ -151,12 +174,14 @@ const Caja = {
 };
 
 const Venta = {
+  // Sin cambios en esta pieza: caja_id ya viene tenant-scoped desde el controlador
   registrar: async ({ caja_id, pedido_id, mesa_nombre, total, metodo_pago, usuario_id, items }) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
-      const fecha = new Date().toISOString().split("T")[0];
-      const hora  = new Date().toTimeString().slice(0, 8);
+      const ahora = new Date();
+      const fecha = ahora.toISOString().split("T")[0];
+      const hora  = ahora.toISOString().split("T")[1].slice(0, 8);
       const [r] = await conn.execute(
         `INSERT INTO ventas (caja_id, pedido_id, mesa_nombre, total, metodo_pago, usuario_id, fecha, hora)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -178,6 +203,18 @@ const Venta = {
       return venta_id;
     } catch (e) { await conn.rollback(); throw e; }
     finally { conn.release(); }
+  },
+
+   getAllPeriodo: async ({ restaurante_id, fecha_desde, fecha_hasta }) => {
+    const [rows] = await pool.execute(
+      `SELECT v.id, v.fecha, v.hora, v.mesa_nombre, v.total, v.metodo_pago
+       FROM ventas v
+       JOIN caja c ON c.id = v.caja_id
+       WHERE c.restaurante_id = ? AND v.fecha BETWEEN ? AND ?
+       ORDER BY v.fecha DESC, v.hora DESC`,
+      [restaurante_id, fecha_desde, fecha_hasta]
+    );
+    return rows.map(r => ({ ...r, total: parseFloat(r.total) || 0 }));
   },
 };
 

@@ -2,6 +2,7 @@
 const r    = require("express").Router();
 const auth = require("../../middlewares/authMiddleware");
 const role = require("../../middlewares/roleMiddleware");
+const tenant = require("../../middlewares/tenantMiddleware");
 const ctrl = require("../../controllers/admin/metricaController");
 
 /**
@@ -22,7 +23,7 @@ const ctrl = require("../../controllers/admin/metricaController");
  *       403:
  *         description: Acceso denegado
  */
-r.get("/resumen",       auth, role("admin"), ctrl.getResumen);
+r.get("/resumen",       auth, tenant, role("admin"), ctrl.getResumen);
 
 /**
  * @swagger
@@ -57,7 +58,7 @@ r.get("/resumen",       auth, role("admin"), ctrl.getResumen);
  *       403:
  *         description: Acceso denegado
  */
-r.get("/ventas-por-dia",auth, role("admin"), ctrl.getVentasPorDia);
+r.get("/ventas-por-dia",auth, tenant, role("admin"), ctrl.getVentasPorDia);
 
 /**
  * @swagger
@@ -86,6 +87,6 @@ r.get("/ventas-por-dia",auth, role("admin"), ctrl.getVentasPorDia);
  *       403:
  *         description: Acceso denegado
  */
-r.get("/metodos-pago",  auth, role("admin"), ctrl.getMetodosPago);
+r.get("/metodos-pago",  auth, tenant, role("admin"), ctrl.getMetodosPago);
 
 module.exports = r;

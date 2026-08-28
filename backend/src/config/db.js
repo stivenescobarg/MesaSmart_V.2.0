@@ -9,7 +9,7 @@ const pool = mysql.createPool({
   database:           process.env.DB_NAME     || "mesasmart",
   waitForConnections: true,
   connectionLimit:    10,
-  timezone:           "-05:00",
+  timezone:           "Z", // 👈 UTC — coincide con el servidor de Aiven, sin conversiones implícitas
 });
 
 const connectDB = async () => {

@@ -2,39 +2,48 @@
 const { pool } = require("../config/db");
 
 const Zona = {
-  findAll: async () => {
+  findAll: async (restaurante_id) => {
     const [rows] = await pool.execute(
-      "SELECT * FROM zonas WHERE activa = TRUE ORDER BY orden ASC"
+      "SELECT * FROM zonas WHERE activa = TRUE AND restaurante_id = ? ORDER BY orden ASC",
+      [restaurante_id]
     );
     return rows;
   },
 
-  findById: async (id) => {
+  findById: async (id, restaurante_id) => {
     const [rows] = await pool.execute(
-      "SELECT * FROM zonas WHERE id = ? AND activa = TRUE LIMIT 1", [id]
+      "SELECT * FROM zonas WHERE id = ? AND restaurante_id = ? AND activa = TRUE LIMIT 1",
+      [id, restaurante_id]
     );
     return rows[0] || null;
   },
 
-  create: async ({ nombre, color, orden }) => {
+  create: async ({ restaurante_id, nombre, color, orden }) => {
     const [r] = await pool.execute(
-      "INSERT INTO zonas (nombre, color, orden) VALUES (?, ?, ?)",
-      [nombre, color || "#f59e0b", orden || 0]
+      "INSERT INTO zonas (restaurante_id, nombre, color, orden) VALUES (?, ?, ?, ?)",
+      [restaurante_id, nombre, color || "#f59e0b", orden || 0]
     );
     return r.insertId;
   },
 
-  update: async (id, { nombre, color, orden }) => {
-    await pool.execute(
-      "UPDATE zonas SET nombre=?, color=?, orden=? WHERE id=?",
-      [nombre, color, orden, id]
+  update: async (id, restaurante_id, { nombre, color, orden }) => {
+    const [r] = await pool.execute(
+      "UPDATE zonas SET nombre=?, color=?, orden=? WHERE id=? AND restaurante_id=?",
+      [nombre, color, orden, id, restaurante_id]
     );
+    return r.affectedRows > 0;
   },
 
-  delete: async (id) => {
-    // Desasociar mesas antes de eliminar la zona
-    await pool.execute("UPDATE mesas SET zona_id = NULL WHERE zona_id = ?", [id]);
-    await pool.execute("UPDATE zonas SET activa = FALSE WHERE id = ?", [id]);
+  delete: async (id, restaurante_id) => {
+    await pool.execute(
+      "UPDATE mesas SET zona_id = NULL WHERE zona_id = ? AND restaurante_id = ?",
+      [id, restaurante_id]
+    );
+    const [r] = await pool.execute(
+      "UPDATE zonas SET activa = FALSE WHERE id = ? AND restaurante_id = ?",
+      [id, restaurante_id]
+    );
+    return r.affectedRows > 0;
   },
 };
 

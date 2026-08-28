@@ -117,7 +117,8 @@ const Caja = ({
   const horaApertura = caja?.apertura
     ? new Date(caja.apertura).toLocaleTimeString("es-CO", {
         hour: "2-digit",
-        minute: "2-digit"
+        minute: "2-digit",
+        timeZone: "America/Bogota"
       })
     : "—";
 

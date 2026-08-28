@@ -10,15 +10,9 @@ html, body {
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  background: #f4f6fb; /* Color base claro */
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  overflow-x: hidden;
 }
 
 #root {
   width: 100%;
   min-height: 100vh;
-  background: #f4f6fb;
-  display: flex;
-  flex-direction: column;
 }

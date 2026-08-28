@@ -1,6 +1,9 @@
-// backend/src/routes/quejaRoutes.js (o donde la tengas)
+// backend/src/routes/quejaRoutes.js 
 const router = require("express").Router();
 const auth = require("../middlewares/authMiddleware");
+const tenant = require("../middlewares/tenantMiddleware");
+const publicTenant = require("../middlewares/publicTenantMiddleware");
+
 const role = require("../middlewares/roleMiddleware");
 const ctrl = require("../controllers/quejaController");
 
@@ -35,7 +38,7 @@ const ctrl = require("../controllers/quejaController");
  *       400:
  *         description: Datos inválidos
  */
-router.post("/", ctrl.create);
+router.post("/:slug", publicTenant, ctrl.create)
 
 /**
  * @swagger
@@ -57,7 +60,7 @@ router.post("/", ctrl.create);
  *       403:
  *         description: Acceso denegado
  */
-router.get("/", auth, role("admin"), ctrl.getAll);
+router.get("/", auth, tenant, role("admin"), ctrl.getAll);
 
 /**
  * @swagger
@@ -93,6 +96,6 @@ router.get("/", auth, role("admin"), ctrl.getAll);
  *       404:
  *         description: Queja no encontrada
  */
-router.patch("/:id/estado", auth, role("admin"), ctrl.updateEstado);
+router.patch("/:id/estado", auth, tenant, role("admin"), ctrl.updateEstado);
 
 module.exports = router;

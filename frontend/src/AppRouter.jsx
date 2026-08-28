@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import PrivateRoute from "./components/admin/PrivateRoute";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -12,6 +12,15 @@ const AppRouter = () => (
   <Routes>
     <Route path="/" element={<Navigate to="/login" replace />} />
     <Route path="/login" element={<Login />} />
+
+    <Route
+  path="/super-admin"
+  element={
+    <PrivateRoute rolesPermitidos={["super_admin"]}>
+      <SuperAdminDashboard />
+    </PrivateRoute>
+  }
+/>
 
     <Route
       path="/admin"

@@ -1,6 +1,7 @@
 // backend/src/routes/admin/zonaRoutes.js
 const r    = require("express").Router();
 const auth = require("../../middlewares/authMiddleware");
+const tenant = require("../../middlewares/tenantMiddleware");
 const role = require("../../middlewares/roleMiddleware");
 const ctrl = require("../../controllers/admin/zonaController");
 
@@ -31,7 +32,7 @@ const ctrl = require("../../controllers/admin/zonaController");
  *       401:
  *         description: No autorizado
  */
-r.get("/",         auth, ctrl.getAll);
+r.get("/",         auth, tenant,  ctrl.getAll);
 
 /**
  * @swagger
@@ -62,7 +63,7 @@ r.get("/",         auth, ctrl.getAll);
  *       403:
  *         description: Acceso denegado (solo admin)
  */
-r.post("/",        auth, role("admin"), ctrl.create);
+r.post("/",        auth, tenant, role("admin"), ctrl.create);
 
 /**
  * @swagger
@@ -97,7 +98,7 @@ r.post("/",        auth, role("admin"), ctrl.create);
  *       404:
  *         description: Zona no encontrada
  */
-r.patch("/:id",    auth, role("admin"), ctrl.update);
+r.patch("/:id",    auth, tenant, role("admin"), ctrl.update);
 
 /**
  * @swagger
@@ -121,6 +122,6 @@ r.patch("/:id",    auth, role("admin"), ctrl.update);
  *       404:
  *         description: Zona no encontrada
  */
-r.delete("/:id",   auth, role("admin"), ctrl.remove);
+r.delete("/:id",   auth, tenant, role("admin"), ctrl.remove);
 
 module.exports = r;

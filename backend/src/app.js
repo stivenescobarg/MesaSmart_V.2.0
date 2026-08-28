@@ -17,6 +17,11 @@ const pedidosCocinaRoutes = require("./routes/pedidos");
 const quejaRoutes = require("./routes/quejaRoutes");
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
+const proveedorRoutes        = require("./routes/admin/proveedorRoutes");
+const facturaProveedorRoutes = require("./routes/admin/facturaProveedorRoutes");
+const dashboardFinancieroRoutes = require("./routes/admin/dashboardFinancieroRoutes");
+const analiticaRoutes = require("./routes/admin/analiticaRoutes");
+const superAdminRoutes = require("./routes/admin/superAdminRoutes");
 const ingredienteRoutes = require("./routes/ingredienteRoutes");
 
 const app = express();
@@ -36,6 +41,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/usuarios", userRoutes);
+app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/mesas", mesaRoutes);
 app.use("/api/zonas", zonaRoutes);
 app.use("/api/pedidos", pedidoRoutes);
@@ -48,6 +54,10 @@ app.use("/api/stock", stockRoutes);
 app.use("/api/bar", barRoutes);
 app.use("/api/menu", productosRoutes);
 app.use("/api/quejas", quejaRoutes);
+app.use("/api/proveedores", proveedorRoutes);
+app.use("/api/facturas-proveedor", facturaProveedorRoutes);
+app.use("/api/dashboard-financiero", dashboardFinancieroRoutes);
+app.use("/api/analitica", analiticaRoutes);
 app.use("/api/ingredientes", ingredienteRoutes);
 
 app.get("/api/ping", (_req, res) => {

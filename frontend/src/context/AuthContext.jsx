@@ -51,6 +51,6 @@ export const useAuth = () => {
   return ctx;
 };
 
-// Roles de la BD: "admin", "cocina", "bartender"
+// Roles de la BD: "admin", "cocina", "bartender", super admin
 const etiquetaRol = (rol) =>
-  ({ admin: "Administrador", cocina: "Cocina", bartender: "Bartender" }[rol] || rol);
+  ({ admin: "Administrador", cocina: "Cocina", bartender: "Bartender", super_admin: "Super Admin" }[rol] || rol);

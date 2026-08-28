@@ -1,4 +1,3 @@
-// backend/src/routes/pedidos.js
 const express  = require("express");
 const router   = express.Router();
 const { pool } = require("../config/db");
@@ -32,35 +31,21 @@ router.get("/", auth, async (req, res) => {
     if (pedidos.length === 0) return res.json([]);
 
     const ids = pedidos.map(p => p.id);
-
-    // ── imagen removida: la columna no existe en detalle_pedido ──
-    // Si la agregas con ALTER TABLE, puedes volver a incluirla aquí
     const [items] = await pool.query(`
-      SELECT
-        pedido_id,
-        nombre,
-        cantidad,
-        precio,
-        categoria,
-        observacion
-      FROM detalle_pedido
-      WHERE pedido_id IN (?) AND categoria = 'comida'
+      SELECT dp.pedido_id, dp.nombre, dp.cantidad, dp.precio, dp.categoria, dp.observacion, p.imagen
+      FROM detalle_pedido dp
+      LEFT JOIN productos p ON p.nombre COLLATE utf8mb4_unicode_ci = dp.nombre COLLATE utf8mb4_unicode_ci
+      WHERE dp.pedido_id IN (?) AND dp.categoria = 'comida'
     `, [ids]);
 
     const itemsMap = {};
     items.forEach(item => {
       if (!itemsMap[item.pedido_id]) itemsMap[item.pedido_id] = [];
-      // imagen null por defecto hasta que se agregue la columna a la BD
-      itemsMap[item.pedido_id].push({ ...item, imagen: null });
+      itemsMap[item.pedido_id].push(item);
     });
 
     const resultado = pedidos
-      .map(p => ({
-        ...p,
-        hora:  p.creado_en,
-        notas: p.observacion || "",
-        items: itemsMap[p.id] || [],
-      }))
+      .map(p => ({ ...p, hora: p.creado_en, notas: p.observacion || "", items: itemsMap[p.id] || [] }))
       .filter(p => p.items.length > 0);
 
     res.json(resultado);
@@ -107,9 +92,7 @@ router.post("/", async (req, res) => {
 
     if (!mesaId) return res.status(400).json({ error: "Mesa requerida" });
 
-    const total = items.reduce(
-      (acc, i) => acc + (Number(i.precio) * Number(i.cantidad)), 0
-    );
+    const total = items.reduce((acc, i) => acc + (Number(i.precio) * Number(i.cantidad)), 0);
 
     // 👇 el otro cambio clave: restaurante_id ahora sí viaja en el INSERT
     const [pedidoResult] = await conn.execute(
@@ -121,24 +104,13 @@ router.post("/", async (req, res) => {
 
     for (const item of items) {
       await conn.execute(
-        `INSERT INTO detalle_pedido
-          (pedido_id, nombre, cantidad, precio, categoria, observacion)
+        `INSERT INTO detalle_pedido (pedido_id, nombre, cantidad, precio, categoria, observacion)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-          pedidoId,
-          item.nombre,
-          item.cantidad || 1,
-          item.precio   || 0,
-          item.categoria || "comida",
-          item.observacion || item.notas || null,
-        ]
+        [pedidoId, item.nombre, item.cantidad || 1, item.precio || 0, item.categoria || "comida", item.observacion || item.notas || null]
       );
     }
 
-    await conn.execute(
-      "UPDATE mesas SET estado = 'ocupada' WHERE id = ?", [mesaId]
-    );
-
+    await conn.execute("UPDATE mesas SET estado = 'ocupada' WHERE id = ?", [mesaId]);
     await conn.commit();
     res.json({ ok: true, pedido_id: pedidoId });
   } catch (err) {
@@ -178,11 +150,14 @@ console.log("🏠 RESTAURANTE DEL TOKEN:", restauranteId);
       "UPDATE pedidos SET estado = ? WHERE id = ? AND restaurante_id = ?",
       [estado, req.params.id, restauranteId]
     );
+    await conn.commit();
+    if (r.affectedRows === 0) return res.status(404).json({ error: "Pedido no encontrado" });
     res.json({ ok: true });
   } catch (err) {
+    await conn.rollback();
     console.error("❌ Error PATCH /api/pedidos-cocina/:id/estado:", err);
     res.status(500).json({ error: "Error al actualizar estado" });
-  }
+  } finally { conn.release(); }
 });
 
 module.exports = router;

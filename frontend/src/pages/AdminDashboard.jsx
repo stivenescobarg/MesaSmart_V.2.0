@@ -102,6 +102,11 @@ import Stock from "../components/admin/Stock";
 import "./Admin.css";
 // Estilos específicos del panel de administración
 
+import Proveedores     from "../components/admin/Proveedores";
+import CuentasPorPagar from "../components/admin/CuentasPorPagar";
+import DashboardFinanciero from "../components/admin/DashboardFinanciero";
+import Analitica from "../components/admin/Analitica";
+
 // ============================================================================
 // COMPONENTE PRINCIPAL
 // ============================================================================
@@ -501,15 +506,11 @@ const AdminDashboard = () => {
   // --------------------------------------------------------------------------
   // CREAR USUARIO
   // --------------------------------------------------------------------------
-  const handleCrearUsuario = async ({ correo, password, rol }) => {
-    try {
-      await usuarioService.crear({ correo, password, rol });
-      await cargarUsuarios(); // Recarga la lista actualizada
-      toast.exito(`Usuario ${correo} creado`);
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
+  const handleCrearUsuario = async ({ nombre, correo, correo_personal, telefono, password, rol }) => {
+  await usuarioService.crear({ nombre, correo, correo_personal, telefono, password, rol });
+  await cargarUsuarios();
+  toast.exito(`Usuario ${correo} creado`);
+};
 
   // --------------------------------------------------------------------------
   // ELIMINAR USUARIO
@@ -612,6 +613,18 @@ const AdminDashboard = () => {
 
         {/* SECCIÓN: QUEJAS - Gestión de reclamos de clientes */}
         {seccion === "quejas" && <Quejas toast={toast} />}
+
+           {/* SECCIÓN: PROVEEDORES */}
+        {seccion === "proveedores" && <Proveedores toast={toast} />}
+ 
+        {/* SECCIÓN: CUENTAS POR PAGAR */}
+        {seccion === "cuentas-pagar" && <CuentasPorPagar toast={toast} />}
+
+        {/* SECCIÓN: DASHBOARD FINANCIERO */}
+        {seccion === "dashboard-financiero" && <DashboardFinanciero />}
+
+         {/* SECCIÓN: ANALÍTICA */}
+        {seccion === "analitica" && <Analitica />}
 
         {/* SECCIÓN: USUARIOS - CRUD de usuarios del sistema */}
         {seccion === "usuarios" && (

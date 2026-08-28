@@ -1,198 +1,189 @@
-// frontend/src/pages/BartenderDashboard.jsx
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+//frontend/src/pages/BartenderDashboard.jsx
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { imagenes } from "../data/imagenes";
-import { API_URL } from "../services/config";
+import { getImage } from "../utils/getImage";
+import { barService } from "../services/barService";
+import BarStock from "../components/bar/BarStock";
 import "./Bartender.css";
 
-const OrdenModal = ({ orden, onClose, onListo }) => {
-  if (!orden) return null;
-  return (
-    <div className="bd-modal-overlay" onClick={onClose}>
-      <div className="bd-modal" onClick={e => e.stopPropagation()}>
-        <div className="bd-modal-handle" />
-        <button className="bd-modal-close" onClick={onClose}>✕</button>
-        <div className="bd-modal-header">
-          <h2 className="bd-modal-title">{orden.mesa}</h2>
-          <span className="badge badge-pendiente">Pendiente</span>
-        </div>
-        <p className="bd-modal-time">
-          🕐 {new Date(orden.creado_en).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
-        </p>
-        <div className="bd-modal-items">
-          {orden.items?.map((item, i) => {
-            const nombre    = typeof item === "object" ? item.nombre   : item.replace(/ x\d+$/, "");
-            const cantidad  = typeof item === "object" ? item.cantidad : (item.match(/ x(\d+)$/)?.[1] || "1");
-            const imgKey    = typeof item === "object" ? item.imgKey   : null;
-            const adiciones = typeof item === "object" ? (item.adiciones || []) : [];
-            const opcion    = typeof item === "object" ? item.opcion   : null;
-            const imagen    = imgKey ? imagenes[imgKey] : null;
-            return (
-              <div key={i} className="bd-modal-item">
-                <div className="bd-modal-item-img">
-                  {imagen ? <img src={imagen} alt={nombre} /> : <span>🍹</span>}
-                </div>
-                <div className="bd-modal-item-info">
-                  <p className="bd-modal-item-name">{nombre}</p>
-                  <p className="bd-modal-item-qty">Cantidad: {cantidad}</p>
-                  {typeof item === "object" && item.descripcion && (
-                    <p className="bd-modal-item-desc">{item.descripcion}</p>
-                  )}
-                  {opcion && <p className="bd-modal-item-opcion">📌 {opcion}</p>}
-                  {adiciones.length > 0 && (
-                    <div className="bd-modal-item-adiciones">
-                      {adiciones.map((a, j) => (
-                        <span key={j} className="bd-adicion-tag">+ {a}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <button className="bd-modal-btn-listo" onClick={() => { onListo(orden); onClose(); }}>
-          ✅ Marcar como listo
-        </button>
-      </div>
-    </div>
-  );
+const ESTADOS = {
+  pendiente: { etiqueta: "Pendiente", accion: "Iniciar preparación", siguiente: "en_preparacion" },
+  en_preparacion: { etiqueta: "En preparación", accion: "Marcar como listo", siguiente: "listo" },
+  listo: { etiqueta: "Listo" },
 };
 
+const hora = fecha => new Date(fecha).toLocaleTimeString("es-CO", {
+  hour: "2-digit", minute: "2-digit",
+});
+
+const hace = fecha => {
+  const minutos = Math.max(0, Math.floor((Date.now() - new Date(fecha)) / 60000));
+  return minutos < 1 ? "Ahora" : minutos < 60 ? `${minutos} min` : `${Math.floor(minutos / 60)} h`;
+};
+
+const Estado = ({ estado }) => <span className={`bd-status bd-status-${estado}`}>
+  {ESTADOS[estado]?.etiqueta || estado}
+</span>;
+
+const DetalleOrden = ({ orden, onClose, onAvanzar, guardando }) => {
+  if (!orden) return null;
+  const configuracion = ESTADOS[orden.estado];
+  return <div className="bd-modal-overlay" onClick={onClose}>
+    <section className="bd-modal" onClick={event => event.stopPropagation()} aria-modal="true" role="dialog">
+      <button className="bd-modal-close" onClick={onClose} aria-label="Cerrar">✕</button>
+      <div className="bd-modal-header">
+        <div>
+          <p className="bd-eyebrow">Orden #{orden.id}</p>
+          <h2 className="bd-modal-title">{orden.mesa}</h2>
+          <p className="bd-modal-time">Recibida {hora(orden.creado_en)} · hace {hace(orden.creado_en)}</p>
+        </div>
+        <Estado estado={orden.estado} />
+      </div>
+      {orden.observacion && <p className="bd-order-note">📌 {orden.observacion}</p>}
+      <div className="bd-modal-items">
+        {orden.items.map((item, indice) => {
+          const imagen = getImage(item.nombre, item.imagen || item.imgKey);
+          return <article className="bd-modal-item" key={`${item.nombre}-${indice}`}>
+            <div className="bd-modal-item-img">{imagen ? <img src={imagen} alt="" /> : "🍹"}</div>
+            <div className="bd-modal-item-info">
+              <p className="bd-modal-item-name">{item.nombre}</p>
+              <p className="bd-modal-item-qty">Cantidad: {item.cantidad}</p>
+              {item.opcion && <p className="bd-modal-item-opcion">{item.opcion}</p>}
+              {item.adiciones?.length > 0 && <p className="bd-modal-item-desc">+ {item.adiciones.join(" · ")}</p>}
+            </div>
+          </article>;
+        })}
+      </div>
+      {configuracion?.siguiente && <button className="bd-modal-btn-listo" disabled={guardando}
+        onClick={() => onAvanzar(orden, configuracion.siguiente)}>
+        {guardando ? "Actualizando..." : configuracion.accion}
+      </button>}
+    </section>
+  </div>;
+};
+
+const OrderItemsPreview = ({ items }) => <div className="bd-items">
+  {items?.slice(0, 4).map((item, indice) => {
+    const img = getImage(item.nombre, item.imagen || item.imgKey);
+    return <div key={indice} className="bd-item">
+      <div className="bd-item-img">
+        {img ? <img src={img} alt={item.nombre} /> : <span className="bd-item-placeholder">🍹</span>}
+      </div>
+      <span className="bd-item-qty">×{item.cantidad}</span>
+      <p className="bd-item-nombre">{item.nombre}</p>
+    </div>;
+  })}
+  {(items?.length || 0) > 4 && <p className="bd-items-mas">+{items.length - 4} más — toca para ver todo</p>}
+</div>;
+
 const BartenderDashboard = () => {
-  const { id }     = useParams();
-  const navigate   = useNavigate();
-  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const { logout, usuario } = useAuth();
+  const [ordenes, setOrdenes] = useState([]);
+  const [historial, setHistorial] = useState([]);
+  const [resumen, setResumen] = useState({ activas: 0, pendientes: 0, en_preparacion: 0, listas_hoy: 0, bebidas_hoy: 0 });
+  const [alertas, setAlertas] = useState([]);
+  const [filtro, setFiltro] = useState("activas");
+  const [seleccionada, setSeleccionada] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+  const [vista, setVista] = useState("pedidos");
+  const [temaOscuro, setTemaOscuro] = useState(() => localStorage.getItem("ms_bar_theme") !== "light");
 
-  const [ordenes,     setOrdenes]     = useState([]);
-  const [ordenSel,    setOrdenSel]    = useState(null);
-  const [completadas, setCompletadas] = useState(0);
-  const [filtro,      setFiltro]      = useState(null);
-
-  const cargarOrdenes = async () => {
+  const cargar = useCallback(async ({ silencioso = false } = {}) => {
     try {
-      const res  = await fetch(`${API_URL}/bar/ordenes`);
-      const data = await res.json();
-      if (data.ok) {
-        setOrdenes(data.ordenes.map(o => ({
-          ...o,
-          items: typeof o.items === "string" ? JSON.parse(o.items) : o.items,
-        })));
-      }
+      const [activas, resumenBar, historialBar] = await Promise.all([
+        barService.getActivas(), barService.getResumen(), barService.getHistorial(),
+      ]);
+      setOrdenes(activas.ordenes || []);
+      setResumen(resumenBar.resumen || {});
+      setAlertas(resumenBar.alertas_stock || []);
+      setHistorial(historialBar.ordenes || []);
+      setError("");
     } catch (err) {
-      console.error("Error cargando órdenes:", err);
+      if (!silencioso) setError(err.message || "No fue posible conectar con el bar.");
+    } finally {
+      if (!silencioso) setCargando(false);
     }
-  };
-
-  useEffect(() => {
-    cargarOrdenes();
-    const interval = setInterval(cargarOrdenes, 5000);
-    return () => clearInterval(interval);
   }, []);
 
-  const marcarListo = async (orden) => {
+  useEffect(() => {
+    cargar();
+    const intervalo = window.setInterval(() => cargar({ silencioso: true }), 10000);
+    return () => window.clearInterval(intervalo);
+  }, [cargar]);
+
+  useEffect(() => { localStorage.setItem("ms_bar_theme", temaOscuro ? "dark" : "light"); }, [temaOscuro]);
+
+  const avanzar = async (orden, estado) => {
+    setGuardando(true);
     try {
-      await fetch(`${API_URL}/bar/orden/${orden.id}`, { method: "PATCH" });
-      setCompletadas(c => c + 1);
-      cargarOrdenes();
+      await barService.actualizarEstado(orden.id, estado);
+      setSeleccionada(null);
+      await cargar();
     } catch (err) {
-      console.error("Error marcando listo:", err);
-    }
+      setError(err.message || "No fue posible actualizar la orden.");
+    } finally { setGuardando(false); }
   };
 
-  const handleSalir = async () => {
-    await logout();
-    navigate("/login", { replace: true });
-  };
+  const visibles = useMemo(() => filtro === "historial" ? historial : ordenes.filter(orden =>
+    filtro === "activas" || orden.estado === filtro
+  ), [filtro, ordenes, historial]);
 
-  const totalBebidas = ordenes.reduce((acc, o) => acc + (o.items?.length || 0), 0);
-  const getNombreItem = item =>
-    typeof item === "object" ? item.nombre : item.replace(/ x\d+$/, "");
+  const salir = async () => { await logout(); navigate("/login", { replace: true }); };
 
-  const ordenesFiltradas = filtro === "completadas" ? [] : ordenes;
-
-  const tituloFiltro = filtro === "activas"     ? "Órdenes activas"
-                     : filtro === "completadas" ? "Completadas hoy"
-                     : filtro === "bebidas"     ? "Total bebidas"
-                     : "Órdenes activas";
-
-  const handleFiltro = (tipo) => {
-    setFiltro(prev => prev === tipo ? null : tipo);
-  };
-
-  return (
-    <div className="bd-container">
-
-      {ordenSel && (
-        <OrdenModal orden={ordenSel} onClose={() => setOrdenSel(null)} onListo={marcarListo} />
-      )}
-
-      <div className="bd-header">
-        <div>
-          <h1 className="bd-title"><span>Bartender</span></h1>
-          <p className="bd-subtitle">Bartender {id} — turno activo</p>
-        </div>
-        <button className="btn-salir" onClick={handleSalir}>Salir →</button>
+  return <div className={`bd-container ${temaOscuro ? "bd-dark" : "bd-light"}`}>
+    {seleccionada && <DetalleOrden orden={seleccionada} onClose={() => setSeleccionada(null)}
+      onAvanzar={avanzar} guardando={guardando} />}
+    <header className="bd-header">
+      <div>
+        <p className="bd-eyebrow">MesaSmart · operación en vivo</p>
+        <h1 className="bd-title">🍹 <span>Bar</span></h1>
+        <p className="bd-subtitle">{usuario?.nombre || "Bartender"} · turno activo · actualización cada 10 segundos</p>
       </div>
+      <div className="bd-header-actions"><button className="bd-theme" onClick={() => setTemaOscuro(actual => !actual)} title="Cambiar tema">
+        {temaOscuro ? "☀️ Claro" : "🌙 Oscuro"}</button><button className="btn-salir" onClick={salir}>Salir →</button></div>
+    </header>
 
-      <div className="bd-metrics">
-        <div
-          className="metric-card"
-          onClick={() => handleFiltro("activas")}
-          style={{ cursor: "pointer", border: filtro === "activas" ? "1px solid var(--accent)" : "" }}
-        >
-          <p className="metric-label">Órdenes activas</p>
-          <p className="metric-value">{ordenes.length}</p>
-        </div>
-        <div
-          className="metric-card"
-          onClick={() => handleFiltro("completadas")}
-          style={{ cursor: "pointer", border: filtro === "completadas" ? "1px solid var(--accent)" : "" }}
-        >
-          <p className="metric-label">Completadas hoy</p>
-          <p className="metric-value">{completadas}</p>
-        </div>
-        <div
-          className="metric-card"
-          onClick={() => handleFiltro("bebidas")}
-          style={{ cursor: "pointer", border: filtro === "bebidas" ? "1px solid var(--accent)" : "" }}
-        >
-          <p className="metric-label">Total bebidas</p>
-          <p className="metric-value">{totalBebidas}</p>
-        </div>
+    {error && <div className="bd-error">⚠️ {error}<button onClick={() => cargar()}>Reintentar</button></div>}
+    {alertas.length > 0 && <div className="bd-stock-alert">⚠️ Inventario bajo: {alertas.map(item => item.nombre).join(", ")}</div>}
+
+    <main className="bd-main">
+      <nav className="bd-view-tabs" aria-label="Vistas del bar"><button className={vista === "pedidos" ? "activo" : ""} onClick={() => setVista("pedidos")}>📋 Pedidos</button>
+        <button className={vista === "inventario" ? "activo" : ""} onClick={() => setVista("inventario")}>📦 Inventario</button></nav>
+      {vista === "inventario" ? <BarStock onActualizarResumen={cargar} /> : <>
+      <section className="bd-metrics" aria-label="Resumen del turno">
+        {[
+          ["activas", "Órdenes activas", resumen.activas || 0],
+          ["pendiente", "Pendientes", resumen.pendientes || 0],
+          ["en_preparacion", "Preparando", resumen.en_preparacion || 0],
+          ["historial", "Listas hoy", resumen.listas_hoy || 0],
+        ].map(([clave, etiqueta, valor]) => <button key={clave}
+          className={`metric-card ${filtro === clave ? "active" : ""}`} onClick={() => setFiltro(clave)}>
+          <span className="metric-label">{etiqueta}</span><strong className="metric-value">{valor}</strong>
+        </button>)}
+      </section>
+      <div className="bd-toolbar">
+        <div><h2 className="bd-section-title">{filtro === "historial" ? "Historial de hoy" : "Órdenes del bar"}</h2>
+          <p>{resumen.bebidas_hoy || 0} bebidas registradas hoy</p></div>
+        <button className="bd-refresh" onClick={() => cargar()} disabled={cargando}>↻ Actualizar</button>
       </div>
-
-      <h2 className="bd-section-title">{tituloFiltro}</h2>
-
-      {filtro === "completadas" ? (
-        <p className="bd-empty">No hay órdenes completadas aún 🍹</p>
-      ) : ordenesFiltradas.length === 0 ? (
-        <p className="bd-empty">Sin órdenes pendientes 🍹</p>
-      ) : (
-        <div className="bd-orders">
-          {ordenesFiltradas.map((orden) => (
-            <div key={orden.id} className="order-card" onClick={() => setOrdenSel(orden)}>
-              <div className="order-num pendiente">
-                M{orden.mesa?.replace(/\D/g, "") || "?"}
-              </div>
-              <div className="order-info">
-                <p className="order-mesa">{orden.mesa}</p>
-                <p className="order-items">
-                  {orden.items?.map(getNombreItem).join(" · ")}
-                </p>
-              </div>
-              <span className="badge badge-pendiente">Pendiente</span>
-              <button className="btn-listo" onClick={e => { e.stopPropagation(); marcarListo(orden); }}>
-                Listo
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-    </div>
-  );
+      {cargando ? <div className="bd-empty">Cargando órdenes...</div> : visibles.length === 0 ? <div className="bd-empty">🍹 No hay órdenes en esta vista.</div> :
+        <section className="bd-orders">{visibles.map(orden => <article key={orden.id} className="order-card"
+          onClick={() => setSeleccionada(orden)}>
+          <div className="order-num">{orden.mesa.replace(/^Mesa\s*/i, "M")}</div>
+          <div className="order-info"><div className="bd-card-top"><p className="order-mesa">{orden.mesa}</p><Estado estado={orden.estado} /></div>
+            <OrderItemsPreview items={orden.items} />
+            <p className="bd-card-time">{hora(orden.creado_en)} · hace {hace(orden.creado_en)}</p></div>
+          {ESTADOS[orden.estado]?.siguiente && <button className="btn-listo" disabled={guardando} onClick={event => {
+            event.stopPropagation(); avanzar(orden, ESTADOS[orden.estado].siguiente);
+          }}>{ESTADOS[orden.estado].accion}</button>}
+        </article>)}</section>}
+      </>}
+    </main>
+  </div>;
 };
 
 export default BartenderDashboard;
