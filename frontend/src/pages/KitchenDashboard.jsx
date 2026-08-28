@@ -11,6 +11,7 @@ import StockCocina                           from "../components/kitchen/StockCo
 import KitchenSidebar                        from "../components/kitchen/KitchenSidebar";
 import PedidosActivityPanel                  from "../components/kitchen/PedidosActivityPanel";
 import "./KitchenDashboard.css";
+import { authService } from "../services/authService";
 
 // Ítems del sidebar según la vista activa (Fase 1: solo Pedidos/Preparación/Listo
 // filtran lo que ya funciona; Historial y Alertas son placeholders — Fase 2)
@@ -237,7 +238,9 @@ const PEDIDOS_POR_PAGINA = 12;
 
   const cargar = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/pedidos-cocina`);
+      const res = await fetch(`${API_URL}/pedidos-cocina`, {
+  headers: { Authorization: `Bearer ${authService.getToken()}` },
+});
       if (!res.ok) throw new Error();
       const data = await res.json();
       if (Array.isArray(data)) {

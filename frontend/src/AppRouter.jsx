@@ -40,7 +40,8 @@ const AppRouter = () => (
       }
     />
 
-    <Route path="/menu" element={<Menu />} />
+    {/* 👇 este es el único cambio: /menu ahora recibe restauranteId y mesaId */}
+    <Route path="/menu/:restauranteId/:mesaId" element={<Menu />} />
     <Route path="/producto" element={<DetalleProducto />} />
 
     <Route

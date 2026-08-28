@@ -23,11 +23,11 @@ exports.login = async (req, res) => {
       dispositivo: req.headers["user-agent"],
     });
 
-    const token = jwt.sign(
-      { id: usuario.id, rol: usuario.rol, jti },
-      process.env.JWT_SECRET,
-      { expiresIn: "8h" }
-    );
+const token = jwt.sign(
+  { id: usuario.id, rol: usuario.rol, restaurante_id: usuario.restaurante_id, jti },
+  process.env.JWT_SECRET,
+  { expiresIn: "8h" }
+);
 
     res.json({
       ok: true,

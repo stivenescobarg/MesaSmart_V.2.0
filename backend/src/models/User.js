@@ -9,18 +9,19 @@ const User = {
   },
   findById: async (id) => {
     const [r] = await pool.execute(
-      "SELECT id,nombre,correo,rol,numero,creado_en FROM usuarios WHERE id=? AND activo=TRUE LIMIT 1", [id]);
+      // 👇 agregamos restaurante_id a la lista de columnas
+      "SELECT id,nombre,correo,rol,numero,restaurante_id,creado_en FROM usuarios WHERE id=? AND activo=TRUE LIMIT 1", [id]);
     return r[0] || null;
   },
   findAll: async () => {
     const [r] = await pool.execute(
-      "SELECT id,nombre,correo,rol,numero,activo,creado_en FROM usuarios ORDER BY creado_en DESC");
+      "SELECT id,nombre,correo,rol,numero,restaurante_id,activo,creado_en FROM usuarios ORDER BY creado_en DESC");
     return r;
   },
-  create: async ({ nombre, correo, password, rol, numero }) => {
+  create: async ({ nombre, correo, password, rol, numero, restaurante_id }) => {
     const [r] = await pool.execute(
-      "INSERT INTO usuarios (nombre,correo,password,rol,numero) VALUES (?,?,?,?,?)",
-      [nombre, correo, password, rol, numero]);
+      "INSERT INTO usuarios (nombre,correo,password,rol,numero,restaurante_id) VALUES (?,?,?,?,?,?)",
+      [nombre, correo, password, rol, numero, restaurante_id]);
     return r.insertId;
   },
   delete: async (id) => {

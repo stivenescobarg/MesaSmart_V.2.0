@@ -105,7 +105,7 @@ const Login = () => {
           <button
             type="button"
             className="btn-menu"
-            onClick={() => navigate("/menu")}
+            onClick={() => navigate("/menu/1/1")}
           >
             Menú
           </button>
