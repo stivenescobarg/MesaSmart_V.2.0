@@ -1,3 +1,4 @@
+// frontend/src/services/barService.js
 import { api } from "./api";
 
 export const barService = {
@@ -7,4 +8,5 @@ export const barService = {
   actualizarEstado: (id, estado) => api.patch(`/bar/ordenes/${id}/estado`, { estado }),
   getInventario: () => api.get("/bar/inventario"),
   registrarConsumo: (data) => api.post("/bar/inventario/consumos", data),
+  getActividad: () => api.get("/bar/actividad"),
 };

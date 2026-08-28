@@ -1,11 +1,16 @@
-//frontend/src/pages/BartenderDashboard.jsx
+//frontend/src/pages/BartenderDashboard.jsx (VERSIÓN NUEVA - Layout 3 columnas)
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../hooks/useTheme";
 import { getImage } from "../utils/getImage";
 import { barService } from "../services/barService";
 import BarStock from "../components/bar/BarStock";
+import SidebarNav from "../components/bar/SidebarNav";
+import MetricsPanel from "../components/bar/MetricsPanel";
+import "./BarLayout.css";
 import "./Bartender.css";
+
 
 const ESTADOS = {
   pendiente: { etiqueta: "Pendiente", accion: "Iniciar preparación", siguiente: "en_preparacion" },
@@ -80,6 +85,7 @@ const OrderItemsPreview = ({ items }) => <div className="bd-items">
 const BartenderDashboard = () => {
   const navigate = useNavigate();
   const { logout, usuario } = useAuth();
+  const { esOscuro, toggleThema } = useTheme();
   const [ordenes, setOrdenes] = useState([]);
   const [historial, setHistorial] = useState([]);
   const [resumen, setResumen] = useState({ activas: 0, pendientes: 0, en_preparacion: 0, listas_hoy: 0, bebidas_hoy: 0 });
@@ -90,7 +96,7 @@ const BartenderDashboard = () => {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [vista, setVista] = useState("pedidos");
-  const [temaOscuro, setTemaOscuro] = useState(() => localStorage.getItem("ms_bar_theme") !== "light");
+  const [navActual, setNavActual] = useState("pedidos");
 
   const cargar = useCallback(async ({ silencioso = false } = {}) => {
     try {
@@ -115,8 +121,6 @@ const BartenderDashboard = () => {
     return () => window.clearInterval(intervalo);
   }, [cargar]);
 
-  useEffect(() => { localStorage.setItem("ms_bar_theme", temaOscuro ? "dark" : "light"); }, [temaOscuro]);
-
   const avanzar = async (orden, estado) => {
     setGuardando(true);
     try {
@@ -134,55 +138,90 @@ const BartenderDashboard = () => {
 
   const salir = async () => { await logout(); navigate("/login", { replace: true }); };
 
-  return <div className={`bd-container ${temaOscuro ? "bd-dark" : "bd-light"}`}>
+  const handleNavChange = (nav) => {
+    setNavActual(nav);
+    if (nav === "inventario") setVista("inventario");
+    else setVista("pedidos");
+  };
+
+  return <div className={`bd-container ${esOscuro ? "bd-dark" : "bd-light"}`}>
     {seleccionada && <DetalleOrden orden={seleccionada} onClose={() => setSeleccionada(null)}
       onAvanzar={avanzar} guardando={guardando} />}
-    <header className="bd-header">
+
+    {/* HEADER */}
+    <header className="bd-header" style={{ gridColumn: "1 / -1" }}>
       <div>
         <p className="bd-eyebrow">MesaSmart · operación en vivo</p>
         <h1 className="bd-title">🍹 <span>Bar</span></h1>
         <p className="bd-subtitle">{usuario?.nombre || "Bartender"} · turno activo · actualización cada 10 segundos</p>
       </div>
-      <div className="bd-header-actions"><button className="bd-theme" onClick={() => setTemaOscuro(actual => !actual)} title="Cambiar tema">
-        {temaOscuro ? "☀️ Claro" : "🌙 Oscuro"}</button><button className="btn-salir" onClick={salir}>Salir →</button></div>
+      <div className="bd-header-actions"><button className="bd-theme" onClick={toggleThema} title="Cambiar tema">
+        {esOscuro ? "☀️ Claro" : "🌙 Oscuro"}</button><button className="btn-salir" onClick={salir}>Salir →</button></div>
     </header>
 
-    {error && <div className="bd-error">⚠️ {error}<button onClick={() => cargar()}>Reintentar</button></div>}
-    {alertas.length > 0 && <div className="bd-stock-alert">⚠️ Inventario bajo: {alertas.map(item => item.nombre).join(", ")}</div>}
+    {error && <div className="bd-error" style={{ gridColumn: "1 / -1" }}>⚠️ {error}<button onClick={() => cargar()}>Reintentar</button></div>}
+    {alertas.length > 0 && <div className="bd-stock-alert" style={{ gridColumn: "1 / -1" }}>⚠️ Inventario bajo: {alertas.map(item => item.nombre).join(", ")}</div>}
 
-    <main className="bd-main">
-      <nav className="bd-view-tabs" aria-label="Vistas del bar"><button className={vista === "pedidos" ? "activo" : ""} onClick={() => setVista("pedidos")}>📋 Pedidos</button>
-        <button className={vista === "inventario" ? "activo" : ""} onClick={() => setVista("inventario")}>📦 Inventario</button></nav>
-      {vista === "inventario" ? <BarStock onActualizarResumen={cargar} /> : <>
-      <section className="bd-metrics" aria-label="Resumen del turno">
-        {[
-          ["activas", "Órdenes activas", resumen.activas || 0],
-          ["pendiente", "Pendientes", resumen.pendientes || 0],
-          ["en_preparacion", "Preparando", resumen.en_preparacion || 0],
-          ["historial", "Listas hoy", resumen.listas_hoy || 0],
-        ].map(([clave, etiqueta, valor]) => <button key={clave}
-          className={`metric-card ${filtro === clave ? "active" : ""}`} onClick={() => setFiltro(clave)}>
-          <span className="metric-label">{etiqueta}</span><strong className="metric-value">{valor}</strong>
-        </button>)}
-      </section>
-      <div className="bd-toolbar">
-        <div><h2 className="bd-section-title">{filtro === "historial" ? "Historial de hoy" : "Órdenes del bar"}</h2>
-          <p>{resumen.bebidas_hoy || 0} bebidas registradas hoy</p></div>
-        <button className="bd-refresh" onClick={() => cargar()} disabled={cargando}>↻ Actualizar</button>
-      </div>
-      {cargando ? <div className="bd-empty">Cargando órdenes...</div> : visibles.length === 0 ? <div className="bd-empty">🍹 No hay órdenes en esta vista.</div> :
-        <section className="bd-orders">{visibles.map(orden => <article key={orden.id} className="order-card"
-          onClick={() => setSeleccionada(orden)}>
-          <div className="order-num">{orden.mesa.replace(/^Mesa\s*/i, "M")}</div>
-          <div className="order-info"><div className="bd-card-top"><p className="order-mesa">{orden.mesa}</p><Estado estado={orden.estado} /></div>
-            <OrderItemsPreview items={orden.items} />
-            <p className="bd-card-time">{hora(orden.creado_en)} · hace {hace(orden.creado_en)}</p></div>
-          {ESTADOS[orden.estado]?.siguiente && <button className="btn-listo" disabled={guardando} onClick={event => {
-            event.stopPropagation(); avanzar(orden, ESTADOS[orden.estado].siguiente);
-          }}>{ESTADOS[orden.estado].accion}</button>}
-        </article>)}</section>}
-      </>}
-    </main>
+    {/* LAYOUT 3 COLUMNAS */}
+    <div className="bd-dashboard-wrapper">
+      {/* SIDEBAR NAVEGACIÓN */}
+      <SidebarNav
+        vistaPedidos={() => setVista("pedidos")}
+        vistaInventario={() => setVista("inventario")}
+        vistaHistorial={() => setFiltro("historial")}
+        onNavChange={handleNavChange}
+        vistaActual={navActual}
+      />
+
+      {/* CONTENIDO CENTRAL */}
+      <main className="bd-main-content">
+        <nav className="bd-view-tabs" aria-label="Vistas del bar">
+          <button className={vista === "pedidos" ? "activo" : ""} onClick={() => setVista("pedidos")}>📋 Pedidos</button>
+          <button className={vista === "inventario" ? "activo" : ""} onClick={() => setVista("inventario")}>📦 Inventario</button>
+        </nav>
+
+        {vista === "inventario" ? <BarStock onActualizarResumen={cargar} /> : <>
+          <section className="bd-metrics" aria-label="Resumen del turno">
+            {[
+              ["activas", "Órdenes activas", resumen.activas || 0],
+              ["pendiente", "Pendientes", resumen.pendientes || 0],
+              ["en_preparacion", "Preparando", resumen.en_preparacion || 0],
+              ["historial", "Listas hoy", resumen.listas_hoy || 0],
+            ].map(([clave, etiqueta, valor]) => <button key={clave}
+              className={`metric-card ${filtro === clave ? "active" : ""}`} onClick={() => setFiltro(clave)}>
+              <span className="metric-label">{etiqueta}</span><strong className="metric-value">{valor}</strong>
+            </button>)}
+          </section>
+
+          <div className="bd-toolbar">
+            <div>
+              <h2 className="bd-section-title">{filtro === "historial" ? "Historial de hoy" : "Órdenes del bar"}</h2>
+              <p>{resumen.bebidas_hoy || 0} bebidas registradas hoy</p>
+            </div>
+            <button className="bd-refresh" onClick={() => cargar()} disabled={cargando}>↻ Actualizar</button>
+          </div>
+
+          {cargando ? <div className="bd-empty">Cargando órdenes...</div> : visibles.length === 0 ? <div className="bd-empty">🍹 No hay órdenes en esta vista.</div> :
+            <section className="bd-orders">
+              {visibles.map(orden => <article key={orden.id} className="order-card"
+                onClick={() => setSeleccionada(orden)}>
+                <div className="order-num">{orden.mesa.replace(/^Mesa\s*/i, "M")}</div>
+                <div className="order-info">
+                  <div className="bd-card-top"><p className="order-mesa">{orden.mesa}</p><Estado estado={orden.estado} /></div>
+                  <OrderItemsPreview items={orden.items} />
+                  <p className="bd-card-time">{hora(orden.creado_en)} · hace {hace(orden.creado_en)}</p>
+                </div>
+                {ESTADOS[orden.estado]?.siguiente && <button className="btn-listo" disabled={guardando} onClick={event => {
+                  event.stopPropagation(); avanzar(orden, ESTADOS[orden.estado].siguiente);
+                }}>{ESTADOS[orden.estado].accion}</button>}
+              </article>)}
+            </section>}
+        </>}
+      </main>
+
+      {/* PANEL MÉTRICAS DERECHA */}
+      <MetricsPanel resumen={resumen} ordenes={ordenes}  alertas={alertas} />
+    </div>
   </div>;
 };
 

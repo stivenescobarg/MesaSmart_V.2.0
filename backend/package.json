@@ -1,4 +1,6 @@
+
 {
+
   "name": "backend",
   "version": "2.1.0",
   "description": "MesaSmart Backend — MySQL",
@@ -37,3 +39,4 @@
     "supertest": "^7.2.2"
   }
 }
+ 

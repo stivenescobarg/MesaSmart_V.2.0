@@ -1,21 +1,11 @@
 //backend/src/models/OrdenBar.js
 const { pool } = require("../config/db");
 
-const ESTADOS = ["pendiente", "en_preparacion", "listo", "cancelado"];
-const TRANSICIONES = {
-  pendiente: ["en_preparacion", "cancelado"],
-  en_preparacion: ["listo", "cancelado"],
-  listo: [],
-  cancelado: [],
-};
-
 const parseItems = (orden) => ({
   ...orden,
   items: typeof orden.items === "string" ? JSON.parse(orden.items) : orden.items,
 });
 
-// detalle de items no guarda producto_id, así que la imagen se recupera
-// uniendo por nombre contra la tabla productos (igual que en cocina)
 const enriquecerImagenes = async (ordenes) => {
   const nombres = [...new Set(
     ordenes.flatMap(orden => orden.items.map(item => item.nombre))
@@ -38,40 +28,32 @@ const enriquecerImagenes = async (ordenes) => {
 };
 
 const OrdenBar = {
-  estados: ESTADOS,
-
-  async crear({ mesa, items, observacion }) {
-    const [result] = await pool.execute(
-      `INSERT INTO ordenes_bar (mesa, items, observacion)
-       VALUES (?, ?, ?)`,
-      [mesa.trim(), JSON.stringify(items), observacion || null]
-    );
-    return result.insertId;
-  },
-
-  async activas() {
+  async activas(restaurante_id) {
     const [rows] = await pool.query(
       `SELECT id, mesa, items, observacion, estado, creado_en, iniciado_en, listo_en
        FROM ordenes_bar
-       WHERE estado IN ('pendiente', 'en_preparacion')
-       ORDER BY creado_en ASC`
+       WHERE restaurante_id = ? AND estado IN ('pendiente', 'en_preparacion')
+       ORDER BY creado_en ASC`,
+      [restaurante_id]
     );
     return enriquecerImagenes(rows.map(parseItems));
   },
 
-  async historialHoy() {
+  async historialHoy(restaurante_id) {
     const [rows] = await pool.query(
       `SELECT id, mesa, items, observacion, estado, creado_en, iniciado_en, listo_en
        FROM ordenes_bar
-       WHERE DATE(COALESCE(listo_en, creado_en)) = CURDATE()
+       WHERE restaurante_id = ?
+         AND DATE(COALESCE(listo_en, creado_en)) = CURDATE()
          AND estado IN ('listo', 'cancelado')
        ORDER BY COALESCE(listo_en, creado_en) DESC
-       LIMIT 50`
+       LIMIT 50`,
+      [restaurante_id]
     );
     return enriquecerImagenes(rows.map(parseItems));
   },
 
-  async resumenHoy() {
+  async resumenHoy(restaurante_id) {
     const [[resumen]] = await pool.query(
       `SELECT
         SUM(estado IN ('pendiente', 'en_preparacion')) AS activas,
@@ -79,11 +61,13 @@ const OrdenBar = {
         SUM(estado = 'en_preparacion') AS en_preparacion,
         SUM(estado = 'listo' AND DATE(listo_en) = CURDATE()) AS listas_hoy
        FROM ordenes_bar
-       WHERE DATE(creado_en) = CURDATE() OR DATE(listo_en) = CURDATE()`
+       WHERE restaurante_id = ? AND (DATE(creado_en) = CURDATE() OR DATE(listo_en) = CURDATE())`,
+      [restaurante_id]
     );
     const [ordenes] = await pool.query(
       `SELECT items FROM ordenes_bar
-       WHERE DATE(creado_en) = CURDATE() OR DATE(listo_en) = CURDATE()`
+       WHERE restaurante_id = ? AND (DATE(creado_en) = CURDATE() OR DATE(listo_en) = CURDATE())`,
+      [restaurante_id]
     );
     const bebidas_hoy = ordenes.reduce((total, orden) => {
       const items = typeof orden.items === "string" ? JSON.parse(orden.items) : orden.items;
@@ -92,32 +76,21 @@ const OrdenBar = {
     return { ...resumen, bebidas_hoy };
   },
 
-  async actualizarEstado(id, estado, usuarioId = null) {
-    if (!ESTADOS.includes(estado)) return { error: "Estado inválido." };
-    const conn = await pool.getConnection();
-    try {
-      await conn.beginTransaction();
-      const [[orden]] = await conn.execute(
-  "SELECT id, estado, items FROM ordenes_bar WHERE id = ? FOR UPDATE", [id]
-);
-      if (!orden) {
-        await conn.rollback();
-        return { error: "Orden no encontrada.", status: 404 };
-      }
-      if (!TRANSICIONES[orden.estado].includes(estado)) {
-        await conn.rollback();
-        return { error: `No se puede cambiar una orden ${orden.estado} a ${estado}.`, status: 409 };
-      }
-      const camposFecha = estado === "en_preparacion"
-        ? ", iniciado_en = COALESCE(iniciado_en, NOW())"
-        : estado === "listo" ? ", listo_en = NOW()" : "";
-      await conn.execute(`UPDATE ordenes_bar SET estado = ?${camposFecha} WHERE id = ?`, [estado, id]);
-      await conn.commit();
-      return { id: Number(id), estado };
-    } catch (error) {
-      await conn.rollback();
-      throw error;
-    } finally { conn.release(); }
+  // Órdenes creadas por intervalo de N minutos, dentro de la ventana de tiempo indicada.
+  // Devuelve filas { bucket, cantidad } donde bucket = 0 es el intervalo más reciente
+  // (los últimos `intervalo_minutos` minutos) y crece hacia el pasado.
+  async actividadReciente(restaurante_id, minutos = 60, intervalo_minutos = 5) {
+    const [rows] = await pool.query(
+      `SELECT
+         FLOOR(TIMESTAMPDIFF(MINUTE, creado_en, NOW()) / ?) AS bucket,
+         COUNT(*) AS cantidad
+       FROM ordenes_bar
+       WHERE restaurante_id = ?
+         AND creado_en >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+       GROUP BY bucket`,
+      [intervalo_minutos, restaurante_id, minutos]
+    );
+    return rows;
   },
 };
 
