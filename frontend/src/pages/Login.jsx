@@ -137,13 +137,7 @@ const Login = () => {
             {cargandoBtn ? "Verificando..." : "Iniciar sesión"}
           </button>
 
-          <button
-            type="button"
-            className="btn-menu"
-            onClick={() => navigate("/menu/1/1")}
-          >
-            Menú
-          </button>
+
 
         </form>
 

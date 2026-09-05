@@ -6,6 +6,7 @@
 // - Activar o pausar el servicio de pedidos.
 // - Cerrar caja y descargar automáticamente el reporte PDF.
 // - Visualizar las últimas ventas registradas.
+// - NUEVO: mostrar el desglose de servicio, propinas y descuentos del día.
 
 import { useState } from "react";
 
@@ -112,6 +113,16 @@ const Caja = ({
     (acc, v) => acc + (parseFloat(v.total) || 0),
     0
   );
+
+  // ── NUEVO: desglose de servicio / propinas / descuentos del día.
+  // Se calcula sumando los campos que debería devolver cada venta
+  // (v.servicio, v.propina, v.descuento). Si el backend todavía no los
+  // envía, simplemente suman 0 y las tarjetas muestran $0 — no rompe nada,
+  // pero para que muestren datos reales hace falta que `Caja.getVentas` en
+  // el backend incluya esas columnas (ver nota que te doy en el chat).
+  const totalServicio  = ventas.reduce((acc, v) => acc + (parseFloat(v.servicio)  || 0), 0);
+  const totalPropinas  = ventas.reduce((acc, v) => acc + (parseFloat(v.propina)   || 0), 0);
+  const totalDescuentos = ventas.reduce((acc, v) => acc + (parseFloat(v.descuento) || 0), 0);
 
   // Formatea la hora de apertura
   const horaApertura = caja?.apertura
@@ -233,6 +244,25 @@ const Caja = ({
           </div>
 
           {/* ============================ */}
+          {/* NUEVO: DESGLOSE SERVICIO / PROPINAS / DESCUENTOS */}
+          {/* ============================ */}
+
+          <div className="admin-card">
+            <p className="metrica-etiqueta">Servicio acumulado</p>
+            <p className="metrica-valor">{COP(totalServicio)}</p>
+          </div>
+
+          <div className="admin-card">
+            <p className="metrica-etiqueta">Propinas acumuladas</p>
+            <p className="metrica-valor">{COP(totalPropinas)}</p>
+          </div>
+
+          <div className="admin-card">
+            <p className="metrica-etiqueta">Descuentos aplicados</p>
+            <p className="metrica-valor">{COP(totalDescuentos)}</p>
+          </div>
+
+          {/* ============================ */}
           {/* CONTROL DEL SERVICIO */}
           {/* ============================ */}
 
@@ -341,6 +371,9 @@ const Caja = ({
                     <th>Mesa</th>
                     <th>Hora</th>
                     <th>Método</th>
+                    {/* NUEVO: columna servicio/propina para trazabilidad visual */}
+                    <th>Servicio</th>
+                    <th>Propina</th>
                     <th>Total</th>
                   </tr>
                 </thead>
@@ -355,8 +388,11 @@ const Caja = ({
 
                     <tr key={v.id ?? i}>
 
-                      {/* Nombre de mesa */}
-                      <td>{v.mesa_nombre ?? "—"}</td>
+                      {/* Nombre de mesa (o subcuenta, si aplica) */}
+                      <td>
+                        {v.mesa_nombre ?? "—"}
+                        {v.subcuenta_nombre ? ` · ${v.subcuenta_nombre}` : ""}
+                      </td>
 
                       {/* Hora */}
                       <td>{v.hora ?? "—"}</td>
@@ -371,6 +407,12 @@ const Caja = ({
                           {v.metodo_pago ?? "—"}
                         </span>
                       </td>
+
+                      {/* Servicio */}
+                      <td className="td-monto">{COP(v.servicio || 0)}</td>
+
+                      {/* Propina */}
+                      <td className="td-monto">{COP(v.propina || 0)}</td>
 
                       {/* Total de la venta */}
                       <td className="td-monto">

@@ -7,7 +7,9 @@
 // favoritos y el formulario de quejas/sugerencias.
 //
 // También permite a los administradores agregar y editar
-// productos directamente desde la interfaz del cliente.
+// productos directamente desde la interfaz del cliente — pero
+// SOLO si están logueados como admin del restaurante que están
+// viendo (ver `esAdmin` más abajo).
 // ============================================================
 
 import { useState, useEffect } from "react";
@@ -17,6 +19,7 @@ import FoodCard from "../components/FoodCard";
 import { imagenes } from "../data/imagenes";
 import { API_URL } from "../services/config";
 import { authService } from "../services/authService";
+import { useAuth } from "../context/AuthContext";
 
 // ── Íconos por categoría ─────────────────────────────────────
 const catIconos = {
@@ -62,10 +65,20 @@ const TERMINOS  = ["Poco hecho","Término medio","Bien hecho","Muy bien hecho"];
 // fmtCOP: función auxiliar para formatear números como precios en COP
 const fmtCOP    = n => `$${Number(n).toLocaleString("es-CO")}`;
 
+// ── Restaurante "demo" ───────────────────────────────────────
+// Único restaurante que, mientras no tenga productos propios en
+// la BD, cae al menú estático de ejemplo (comportamiento legacy).
+// Cualquier otro restaurante nuevo arranca con el menú realmente
+// vacío para que vea SU plantilla, no la comida de otro tenant.
+const RESTAURANTE_DEMO_ID = "1";
+
 
 // ============================================================
 // Componente: ProductModal
 // ============================================================
+// 👈 Nota: este modal es SOLO para el cliente final (ver detalle
+// del plato y agregarlo al carrito). No necesita saber nada de
+// admin/tenant, por eso NO lleva useAuth ni esAdmin aquí dentro.
 const ProductModal = ({ item, onClose, onAddToCart }) => {
   const [termino,     setTermino]     = useState(null);
   const [opcionesSel, setOpcionesSel] = useState([]);
@@ -178,6 +191,15 @@ const Menu = () => {
   // ── SaaS: restaurante y mesa vienen de la URL ─────────────
   const { restauranteId, mesaId } = useParams();
 
+  // ── Sesión actual (puede ser null si es un cliente sin login) ──
+  const { usuario } = useAuth();
+
+  // 👇 Solo es "admin editor" si está logueado como admin Y el
+  // restaurante del token coincide con el restaurante que está
+  // viendo. Esto evita que un admin del restaurante 1 vea botones
+  // de editar si entra a /menu/2/... del restaurante 2.
+  const esAdmin = usuario?.rol === "admin" && String(usuario?.restaurante_id) === String(restauranteId);
+
   // ── Estados de navegación ──────────────────────────────────
   const [categoria,    setCategoria]    = useState(null);
   const [subCategoria, setSubCategoria] = useState(null);
@@ -269,7 +291,7 @@ const Menu = () => {
   }, [cartOpen, mesaId, quejaMesa]);
 
 
-  // ── menuData: datos estáticos de respaldo ─────────────────
+  // ── menuData: datos estáticos de respaldo (SOLO restaurante demo) ──
   const menuData = {
     "Platos fuertes": [
       {
@@ -514,15 +536,18 @@ const Menu = () => {
     },
   };
 
-  // ── Productos destacados en la pantalla de inicio ─────────
-  const destacados = [
-    menuData["Platos fuertes"][0],
-    menuData["Cortes"][0],
-    menuData["Platos típicos"][1],
-  ];
-
   // ── Decisión: ¿qué datos usar? ────────────────────────────
-  const dataFinal = Object.keys(menuDB).length ? menuDB : menuData;
+  // Si el restaurante ya tiene productos en la BD, se usan esos.
+  // Si NO tiene productos todavía:
+  //   - El restaurante demo (RESTAURANTE_DEMO_ID) cae al menú
+  //     estático de ejemplo (comportamiento legacy).
+  //   - Cualquier otro restaurante nuevo arranca con el menú
+  //     realmente vacío ({}) para ver SU propia plantilla vacía,
+  //     no la comida de otro tenant.
+  const tieneProductosBD  = Object.keys(menuDB).length > 0;
+  const esRestauranteDemo = String(restauranteId) === RESTAURANTE_DEMO_ID;
+  const dataFinal = tieneProductosBD ? menuDB : (esRestauranteDemo ? menuData : {});
+  const menuVacio = Object.keys(dataFinal).length === 0;
 
   // ── firstImg / getCatImage: imagen representativa de una categoría ──
   const firstImg = list => (list || []).find(p => p?.img)?.img || null;
@@ -537,6 +562,18 @@ const Menu = () => {
     }
     return null;
   };
+
+  // ── Productos destacados en la pantalla de inicio ─────────
+  // Si es el restaurante demo y todavía no tiene datos propios en
+  // la BD, se usa la selección estática de siempre. Para cualquier
+  // otro restaurante, los destacados salen de sus propios productos
+  // reales (los primeros que encuentre) — y si aún no tiene ninguno,
+  // simplemente no hay nada que destacar.
+  const destacados = (esRestauranteDemo && !tieneProductosBD)
+    ? [menuData["Platos fuertes"]?.[0], menuData["Cortes"]?.[0], menuData["Platos típicos"]?.[1]].filter(Boolean)
+    : Object.values(dataFinal)
+        .flatMap(val => (typeof val === "object" && !Array.isArray(val)) ? Object.values(val).flat() : (Array.isArray(val) ? val : []))
+        .slice(0, 3);
 
   // ── addToCart: agregar producto al carrito ─────────────────
   const addToCart = item => {
@@ -617,7 +654,7 @@ const Menu = () => {
     // cambiar esto igual que arriba.
     if (bebidas.length > 0) {
       try {
-        await fetch(`${API_URL}/bar/orden`, {
+        await fetch(`${API_URL}/bar/ordenes`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -648,14 +685,16 @@ const Menu = () => {
   };
 
   // ── useEffect: cargar categorías para el modal de admin ───
+  // 👈 Solo corre si es admin — un cliente normal ni siquiera
+  // dispara este fetch (no puede abrir addModal de todos modos,
+  // pero así evitamos la llamada de red innecesaria).
   useEffect(() => {
-    if (addModal && categoriasBD.length === 0) {
-      fetch(`${API_URL}/api/menu/${restauranteId}/categorias`)
-        .then(r => r.json())
+    if (addModal && esAdmin && categoriasBD.length === 0) {
+    fetch(`${API_URL}/menu/${restauranteId}/categorias`)        .then(r => r.json())
         .then(setCategoriasBD)
         .catch(() => {});
     }
-  }, [addModal, restauranteId]);
+  }, [addModal, esAdmin, restauranteId]);
 
 
   // ── handleGuardarProducto: crear nuevo producto en la BD ──
@@ -663,7 +702,7 @@ const Menu = () => {
     if (!nuevoProducto.nombre || !nuevoProducto.precio || !nuevoProducto.categoria_id) return;
     setGuardando(true);
     try {
-      const res = await fetch(`${API_URL}/api/menu`, {
+      const res = await fetch(`${API_URL}/menu`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -677,7 +716,7 @@ const Menu = () => {
         setTimeout(() => {
           setGuardadoOk(false);
           setAddModal(false);
-          fetch(`${API_URL}/api/menu/${restauranteId}`)
+          fetch(`${API_URL}/menu/${restauranteId}`)
             .then(r => r.json())
             .then(data => {
               const organizado = {};
@@ -706,7 +745,7 @@ const Menu = () => {
     if (!editProducto?.id || !editProducto.nombre || !editProducto.precio) return;
     setEditando(true);
     try {
-      const res = await fetch(`${API_URL}/api/menu/${editProducto.id}`, {
+     const res = await fetch(`${API_URL}/menu/${editProducto.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -724,7 +763,7 @@ const Menu = () => {
         setTimeout(() => {
           setEditOk(false);
           setEditModal(false);
-          fetch(`${API_URL}/api/menu/${restauranteId}`)
+          fetch(`${API_URL}/menu/${restauranteId}`)
             .then(r => r.json())
             .then(data => {
               const organizado = {};
@@ -792,7 +831,7 @@ const Menu = () => {
           {isFav(item.nombre) ? "❤️" : "🤍"}
         </button>
 
-        {item.id && (
+        {esAdmin && item.id && (
           <button className="edit-btn"
             onClick={e => { e.stopPropagation(); setEditProducto({ ...item, imagen: Object.entries(imagenes).find(([,v]) => v === item.img)?.[0] || "" }); setEditModal(true); }}>
             ✏️
@@ -851,12 +890,34 @@ const Menu = () => {
     return catData[sub] || [];
   };
 
+  // ── EmptyMenuState: pantalla que ve un restaurante nuevo sin
+  // productos todavía. Para el admin, es la puerta de entrada
+  // para empezar a construir su carta. Para un cliente, un aviso
+  // de que el menú aún no está publicado.
+  const EmptyMenuState = ({ titulo, mensaje }) => (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center",
+      textAlign: "center", padding: "60px 24px 40px", gap: "14px",
+    }}>
+      <div style={{ fontSize: "56px", lineHeight: 1 }}>🍽️</div>
+      <h2 style={{ margin: 0, fontSize: "20px" }}>{titulo}</h2>
+      <p style={{ margin: 0, color: "rgba(255,255,255,0.6)", fontSize: "14px", maxWidth: "320px" }}>
+        {mensaje}
+      </p>
+      {esAdmin && (
+        <button className="modal-add-btn" style={{ marginTop: "10px", width: "auto", padding: "0 24px" }} onClick={() => setAddModal(true)}>
+          ➕ Agregar mi primer producto
+        </button>
+      )}
+    </div>
+  );
+
 
   // ── RENDER ────────────────────────────────────────────────
   return (
     <div className="menu-container">
 
-      {addModal && (
+      {esAdmin && addModal && (
         <div className="product-modal-overlay" onClick={() => setAddModal(false)}>
           <div className="product-modal" onClick={e => e.stopPropagation()} style={{ maxHeight: "90vh", overflowY: "auto" }}>
             <div className="modal-handle" />
@@ -895,27 +956,17 @@ const Menu = () => {
                   }}
                   style={{ cursor: "pointer" }}>
                   <option value="" style={{ color: "#000" }}>Selecciona una categoría</option>
-                  {categoriasBD.length > 0
-                    ? categoriasBD.map(c => (
-                        <option key={c.id} value={c.id} style={{ color: "#000" }}>
-                          {catIconos[c.nombre] || "🍴"} {c.nombre}
-                        </option>
-                      ))
-                    : (
-                      <>
-                        <option value="1" style={{ color: "#000" }}>🍽️ Platos fuertes</option>
-                        <option value="2" style={{ color: "#000" }}>🥗 Entradas</option>
-                        <option value="3" style={{ color: "#000" }}>🫕 Platos típicos</option>
-                        <option value="4" style={{ color: "#000" }}>🍝 Pastas</option>
-                        <option value="5" style={{ color: "#000" }}>🥩 Cortes</option>
-                        <option value="6" style={{ color: "#000" }}>🍣 Sushi</option>
-                        <option value="7" style={{ color: "#000" }}>🌱 Comida Vegana</option>
-                        <option value="8" style={{ color: "#000" }}>🧀 Quesos</option>
-                        <option value="9" style={{ color: "#000" }}>🍹 Bar</option>
-                      </>
-                    )
-                  }
+                  {categoriasBD.map(c => (
+                    <option key={c.id} value={c.id} style={{ color: "#000" }}>
+                      {catIconos[c.nombre] || "🍴"} {c.nombre}
+                    </option>
+                  ))}
                 </select>
+                {categoriasBD.length === 0 && (
+                  <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", marginTop: "6px" }}>
+                    Cargando categorías...
+                  </p>
+                )}
                 {nuevoProducto._catNombre === "Bar" && (
                   <select className="queja-mesa-input" style={{ cursor: "pointer", marginTop: "8px" }}
                     value={nuevoProducto.subcategoria || ""}
@@ -992,7 +1043,7 @@ const Menu = () => {
         </div>
       )}
 
-      {editModal && editProducto && (
+      {esAdmin && editModal && editProducto && (
         <div className="product-modal-overlay" onClick={() => setEditModal(false)}>
           <div className="product-modal" onClick={e => e.stopPropagation()} style={{ maxHeight: "90vh", overflowY: "auto" }}>
             <div className="modal-handle" />
@@ -1158,12 +1209,14 @@ const Menu = () => {
         </button>
       </div>
 
-      <div className="search-row">
-        <div className="search-box">
-          <span className="search-icon">🔍</span>
-          <input type="text" placeholder="Buscar platos..." value={searchText} onChange={e => setSearchText(e.target.value)}/>
+      {!menuVacio && (
+        <div className="search-row">
+          <div className="search-box">
+            <span className="search-icon">🔍</span>
+            <input type="text" placeholder="Buscar platos..." value={searchText} onChange={e => setSearchText(e.target.value)}/>
+          </div>
         </div>
-      </div>
+      )}
 
       {searchText.trim() && (
         <>
@@ -1178,141 +1231,167 @@ const Menu = () => {
       )}
 
       {activeTab==="home" && !searchText.trim() && (
-        <>
-          <div className="section-header">
-            <h2>Categorías</h2>
-            <div className="section-header-actions">
-              <button className="add-cat-btn" onClick={() => setAddModal(true)} aria-label="Agregar producto">+</button>
-              <button type="button" className="show-all" onClick={() => setActiveTab("menu")}>Ver todo ›</button>
+        menuVacio ? (
+          <EmptyMenuState
+            titulo={esAdmin ? "Aún no has agregado productos" : "Este menú todavía no tiene productos"}
+            mensaje={esAdmin
+              ? "Empieza a construir tu carta agregando tu primer plato, bebida o categoría."
+              : "Vuelve pronto, el restaurante está preparando su menú."}
+          />
+        ) : (
+          <>
+            <div className="section-header">
+              <h2>Categorías</h2>
+              <div className="section-header-actions">
+                {esAdmin && (
+                  <button className="add-cat-btn" onClick={() => setAddModal(true)} aria-label="Agregar producto">+</button>
+                )}
+                <button type="button" className="show-all" onClick={() => setActiveTab("menu")}>Ver todo ›</button>
+              </div>
             </div>
-          </div>
 
-          <div className="categories">
-            {Object.keys(dataFinal).map(cat => {
-              const bgImg = getCatImage(cat);
-              return (
-                <div key={cat} className={`category-card ${categoria===cat?"active":""} ${!bgImg?"category-card--noimg":""}`}
-                  style={bgImg ? { backgroundImage: `url(${bgImg})` } : { background: catGradientes[cat] || catGradienteDefault }}
-                  onClick={() => { setCategoria(cat); setSubCategoria(null); setActiveTab("menu"); }}>
-                  <span className="cat-icon-circle" style={{ background: catGradientes[cat] || catGradienteDefault }}>
-                    <span className="cat-icon">{catIconos[cat]||"🍴"}</span>
-                  </span>
-                  <span className="cat-label">{cat}</span>
-                </div>
-              );
-            })}
-          </div>
+            <div className="categories">
+              {Object.keys(dataFinal).map(cat => {
+                const bgImg = getCatImage(cat);
+                return (
+                  <div key={cat} className={`category-card ${categoria===cat?"active":""} ${!bgImg?"category-card--noimg":""}`}
+                    style={bgImg ? { backgroundImage: `url(${bgImg})` } : { background: catGradientes[cat] || catGradienteDefault }}
+                    onClick={() => { setCategoria(cat); setSubCategoria(null); setActiveTab("menu"); }}>
+                    <span className="cat-icon-circle" style={{ background: catGradientes[cat] || catGradienteDefault }}>
+                      <span className="cat-icon">{catIconos[cat]||"🍴"}</span>
+                    </span>
+                    <span className="cat-label">{cat}</span>
+                  </div>
+                );
+              })}
+            </div>
 
-          <p className="section-title">⭐ Recomendados</p>
-          <div className="cards">{destacados.map((item,i) => renderCard(item,i))}</div>
+            {destacados.length > 0 && (
+              <>
+                <p className="section-title">⭐ Recomendados</p>
+                <div className="cards">{destacados.map((item,i) => renderCard(item,i))}</div>
+              </>
+            )}
 
-          {favs.length>0 && (
-            <>
-              <p className="section-title">❤️ Tus favoritos</p>
-              <div className="cards">{favs.map((item,i) => renderCard(item,i))}</div>
-            </>
-          )}
-        </>
+            {favs.length>0 && (
+              <>
+                <p className="section-title">❤️ Tus favoritos</p>
+                <div className="cards">{favs.map((item,i) => renderCard(item,i))}</div>
+              </>
+            )}
+          </>
+        )
       )}
 
       {activeTab==="menu" && !searchText.trim() && (
-        <>
-          <div className="section-header">
-            <h2>Categorías</h2>
-            <div className="section-header-actions">
-              <button className="add-cat-btn" onClick={() => setAddModal(true)} aria-label="Agregar producto">+</button>
-              <button type="button" className="show-all" onClick={() => { setCategoria(null); setSubCategoria(null); }}>Ver todo ›</button>
-            </div>
-          </div>
-
-          <div className="categories">
-            {Object.keys(dataFinal).map(cat => {
-              const bgImg = getCatImage(cat);
-              return (
-                <div key={cat} className={`category-card ${categoria===cat?"active":""} ${!bgImg?"category-card--noimg":""}`}
-                  style={bgImg ? { backgroundImage: `url(${bgImg})` } : { background: catGradientes[cat] || catGradienteDefault }}
-                  onClick={() => { setCategoria(cat); setSubCategoria(null); }}>
-                  <span className="cat-icon-circle" style={{ background: catGradientes[cat] || catGradienteDefault }}>
-                    <span className="cat-icon">{catIconos[cat]||"🍴"}</span>
-                  </span>
-                  <span className="cat-label">{cat}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          {BAR_CATS.includes(categoria) && (
-            <div className="categories categories--sub">
-              {BAR_SUBS.map(sub => (
-                <div key={sub} className={`category-card category-card--sub ${subCategoria===sub?"active":""}`}
-                  onClick={() => setSubCategoria(sub)}>
-                  <span className="cat-icon-circle" style={{ background: catGradientes["Bar"] }}>
-                    <span className="cat-icon">{BAR_ICONS[sub]}</span>
-                  </span>
-                  <span className="cat-label">{sub}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {categoria && !BAR_CATS.includes(categoria) && (
-            <>
-              <p className="section-title">{catIconos[categoria]} {categoria}</p>
-              {renderSectionCards(dataFinal[categoria]||[], `cat-${categoria}`)}
-            </>
-          )}
-
-          {BAR_CATS.includes(categoria) && !subCategoria && BAR_SUBS.map(sub => (
-            getBarItems(categoria, sub).length > 0 && (
-              <div key={sub}>
-                <p className="section-title">{BAR_ICONS[sub]} {sub}</p>
-                {renderSectionCards(getBarItems(categoria, sub), `bar-${sub}`)}
+        menuVacio ? (
+          <EmptyMenuState
+            titulo={esAdmin ? "Tu carta está vacía" : "Este restaurante aún no publica su menú"}
+            mensaje={esAdmin
+              ? "Crea categorías y agrega tus primeros productos para que tus clientes puedan verlos y pedir."
+              : "Vuelve más tarde, pronto estará disponible."}
+          />
+        ) : (
+          <>
+            <div className="section-header">
+              <h2>Categorías</h2>
+              <div className="section-header-actions">
+                {esAdmin && (
+                  <button className="add-cat-btn" onClick={() => setAddModal(true)} aria-label="Agregar producto">+</button>
+                )}
+                <button type="button" className="show-all" onClick={() => { setCategoria(null); setSubCategoria(null); }}>Ver todo ›</button>
               </div>
-            )
-          ))}
+            </div>
 
-          {BAR_CATS.includes(categoria) && subCategoria && (
-            <>
-              <p className="section-title">{BAR_ICONS[subCategoria]} {subCategoria}</p>
-              {getBarItems(categoria, subCategoria).length > 0
-                ? renderSectionCards(getBarItems(categoria, subCategoria), `bar-${subCategoria}`)
-                : <p style={{color:"rgba(255,255,255,0.35)",padding:"0 0 20px",fontSize:"14px"}}>
-                    No hay productos en esta subcategoría aún.
-                  </p>
-              }
-            </>
-          )}
+            <div className="categories">
+              {Object.keys(dataFinal).map(cat => {
+                const bgImg = getCatImage(cat);
+                return (
+                  <div key={cat} className={`category-card ${categoria===cat?"active":""} ${!bgImg?"category-card--noimg":""}`}
+                    style={bgImg ? { backgroundImage: `url(${bgImg})` } : { background: catGradientes[cat] || catGradienteDefault }}
+                    onClick={() => { setCategoria(cat); setSubCategoria(null); }}>
+                    <span className="cat-icon-circle" style={{ background: catGradientes[cat] || catGradienteDefault }}>
+                      <span className="cat-icon">{catIconos[cat]||"🍴"}</span>
+                    </span>
+                    <span className="cat-label">{cat}</span>
+                  </div>
+                );
+              })}
+            </div>
 
-          {!categoria && (() => {
-            const todasLasCats  = Object.keys(dataFinal).filter(k => !BAR_CATS.includes(k));
-            const totalCatPages = Math.max(1, Math.ceil(todasLasCats.length / CATS_PAGE_SIZE));
-            const catPageActual = Math.min(catsPage, totalCatPages);
-            const catsAMostrar  = todasLasCats.slice((catPageActual-1)*CATS_PAGE_SIZE, catPageActual*CATS_PAGE_SIZE);
-
-            const irPaginaCats = p => {
-              setCatsPage(p);
-              document.getElementById("todas-categorias")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            };
-
-            return (
-              <div id="todas-categorias">
-                {catsAMostrar.map(cat => (
-                  <div key={cat}>
-                    <p className="section-title">{catIconos[cat]||"🍴"} {cat}</p>
-                    {renderSectionCards(dataFinal[cat]||[], `all-${cat}`)}
+            {BAR_CATS.includes(categoria) && (
+              <div className="categories categories--sub">
+                {BAR_SUBS.map(sub => (
+                  <div key={sub} className={`category-card category-card--sub ${subCategoria===sub?"active":""}`}
+                    onClick={() => setSubCategoria(sub)}>
+                    <span className="cat-icon-circle" style={{ background: catGradientes["Bar"] }}>
+                      <span className="cat-icon">{BAR_ICONS[sub]}</span>
+                    </span>
+                    <span className="cat-label">{sub}</span>
                   </div>
                 ))}
-                {totalCatPages > 1 && (
-                  <div className="pagination-row pagination-row--cats">
-                    <button className="page-nav-btn" disabled={catPageActual===1} onClick={() => irPaginaCats(catPageActual-1)} aria-label="Categorías anteriores">‹</button>
-                    <span className="page-indicator">Categorías — Página {catPageActual} de {totalCatPages}</span>
-                    <button className="page-nav-btn" disabled={catPageActual===totalCatPages} onClick={() => irPaginaCats(catPageActual+1)} aria-label="Más categorías">›</button>
-                  </div>
-                )}
               </div>
-            );
-          })()}
-        </>
+            )}
+
+            {categoria && !BAR_CATS.includes(categoria) && (
+              <>
+                <p className="section-title">{catIconos[categoria]} {categoria}</p>
+                {renderSectionCards(dataFinal[categoria]||[], `cat-${categoria}`)}
+              </>
+            )}
+
+            {BAR_CATS.includes(categoria) && !subCategoria && BAR_SUBS.map(sub => (
+              getBarItems(categoria, sub).length > 0 && (
+                <div key={sub}>
+                  <p className="section-title">{BAR_ICONS[sub]} {sub}</p>
+                  {renderSectionCards(getBarItems(categoria, sub), `bar-${sub}`)}
+                </div>
+              )
+            ))}
+
+            {BAR_CATS.includes(categoria) && subCategoria && (
+              <>
+                <p className="section-title">{BAR_ICONS[subCategoria]} {subCategoria}</p>
+                {getBarItems(categoria, subCategoria).length > 0
+                  ? renderSectionCards(getBarItems(categoria, subCategoria), `bar-${subCategoria}`)
+                  : <p style={{color:"rgba(255,255,255,0.35)",padding:"0 0 20px",fontSize:"14px"}}>
+                      No hay productos en esta subcategoría aún.
+                    </p>
+                }
+              </>
+            )}
+
+            {!categoria && (() => {
+              const todasLasCats  = Object.keys(dataFinal).filter(k => !BAR_CATS.includes(k));
+              const totalCatPages = Math.max(1, Math.ceil(todasLasCats.length / CATS_PAGE_SIZE));
+              const catPageActual = Math.min(catsPage, totalCatPages);
+              const catsAMostrar  = todasLasCats.slice((catPageActual-1)*CATS_PAGE_SIZE, catPageActual*CATS_PAGE_SIZE);
+
+              const irPaginaCats = p => {
+                setCatsPage(p);
+                document.getElementById("todas-categorias")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              };
+
+              return (
+                <div id="todas-categorias">
+                  {catsAMostrar.map(cat => (
+                    <div key={cat}>
+                      <p className="section-title">{catIconos[cat]||"🍴"} {cat}</p>
+                      {renderSectionCards(dataFinal[cat]||[], `all-${cat}`)}
+                    </div>
+                  ))}
+                  {totalCatPages > 1 && (
+                    <div className="pagination-row pagination-row--cats">
+                      <button className="page-nav-btn" disabled={catPageActual===1} onClick={() => irPaginaCats(catPageActual-1)} aria-label="Categorías anteriores">‹</button>
+                      <span className="page-indicator">Categorías — Página {catPageActual} de {totalCatPages}</span>
+                      <button className="page-nav-btn" disabled={catPageActual===totalCatPages} onClick={() => irPaginaCats(catPageActual+1)} aria-label="Más categorías">›</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </>
+        )
       )}
 
       {activeTab==="favs" && (

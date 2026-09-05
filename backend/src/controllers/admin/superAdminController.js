@@ -21,11 +21,11 @@ exports.listarRestaurantes = async (_req, res) => {
 exports.crearRestaurante = async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { nombre, slug, plan, admin_nombre, admin_correo, admin_password } = req.body;
+    const { nombre, slug, plan, admin_nombre, admin_correo, admin_correo_personal, admin_telefono, admin_password } = req.body;
 
     if (!nombre?.trim() || !slug?.trim())
       return res.status(400).json({ msg: "Nombre y slug son requeridos." });
-    if (!admin_nombre?.trim() || !admin_correo?.trim() || !admin_password?.trim())
+    if (!admin_nombre?.trim() || !admin_correo?.trim() || !admin_correo_personal?.trim() || !admin_telefono?.trim() || !admin_password?.trim())
       return res.status(400).json({ msg: "Datos del admin del restaurante son requeridos." });
 
     const planFinal = PLANES_VALIDOS.includes(plan) ? plan : "basico";
@@ -44,9 +44,9 @@ exports.crearRestaurante = async (req, res) => {
 
     const hash = await bcrypt.hash(admin_password, 10);
     await conn.execute(
-      `INSERT INTO usuarios (restaurante_id, nombre, correo, password, rol, numero)
-       VALUES (?, ?, ?, ?, 'admin', 1)`,
-      [restaurante_id, admin_nombre.trim(), admin_correo.trim(), hash]
+      `INSERT INTO usuarios (restaurante_id, nombre, correo, correo_personal, telefono, password, rol, numero)
+       VALUES (?, ?, ?, ?, ?, ?, 'admin', 1)`,
+      [restaurante_id, admin_nombre.trim(), admin_correo.trim(), admin_correo_personal.trim(), admin_telefono.trim(), hash]
     );
 
     await conn.commit();

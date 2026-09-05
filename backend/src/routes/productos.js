@@ -11,6 +11,7 @@ const express = require("express");
 const router  = express.Router();
 const { pool } = require("../config/db");
 const auth    = require("../middlewares/authMiddleware");
+const role = require("../middlewares/roleMiddleware");
 
 // ────────────────────────────────────────────────────────────
 // GET /api/menu/:restauranteId
@@ -89,7 +90,8 @@ router.get("/:restauranteId/categorias", async (req, res) => {
 // se toma del body — siempre del token, así nadie puede crear
 // productos para un restaurante que no es el suyo.
 // ────────────────────────────────────────────────────────────
-router.post("/", auth, async (req, res) => {
+
+router.post("/", auth, role("admin"), async (req, res) => { // 👈 + role("admin")
   try {
     const { nombre, descripcion, precio, categoria_id, imagen, tiene_termino, subcategoria, adiciones } = req.body;
     if (!nombre || !precio || !categoria_id) {
@@ -97,6 +99,14 @@ router.post("/", auth, async (req, res) => {
     }
 
     const restauranteId = req.usuario.restaurante_id;
+
+      const [[categoria]] = await pool.query(
+      `SELECT id FROM categorias WHERE id = ? AND restaurante_id = ?`,
+      [categoria_id, restauranteId]
+    );
+    if (!categoria) {
+      return res.status(400).json({ msg: "La categoría seleccionada no pertenece a tu restaurante." });
+    }
 
     const [result] = await pool.query(
       `INSERT INTO productos
@@ -132,7 +142,7 @@ router.post("/", auth, async (req, res) => {
 // pertenezca al restaurante del usuario logueado — si no, nadie
 // (ni con el ID adivinado) puede editar productos ajenos.
 // ────────────────────────────────────────────────────────────
-router.put("/:id", auth, async (req, res) => {
+router.put("/:id", auth, role("admin"), async (req, res) => {
   try {
     const { id } = req.params;
     const restauranteId = req.usuario.restaurante_id;

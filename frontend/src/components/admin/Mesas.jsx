@@ -1,5 +1,12 @@
 // frontend/src/components/admin/Mesas.jsx
 // Con toggle entre vista GRID y vista PLANO del restaurante
+//
+// ✅ CAMBIO: los wrappers de onPagoTotal / onPagoParcial ahora reciben y
+// reenvían un tercer/segundo argumento `resumen` (consumo, descuento,
+// servicio, propina, total) que viene desde DetalleMesa.jsx. Es aditivo:
+// si el `onPagoTotal`/`onPagoParcial` que te pasan como prop a este
+// componente todavía no lo espera, simplemente lo ignora y todo sigue
+// funcionando igual que antes.
 
 import { useState, useEffect } from "react";
 import DetalleMesa       from "./DetalleMesa";
@@ -49,18 +56,18 @@ const Mesas = ({
     return (
       <DetalleMesa
         mesa={mesaActual}
-        mesas={mesas}                          // ← NUEVO: para el modal de mover
+        mesas={mesas}                          // ← para el modal de mover
         cajaAbierta={cajaAbierta}
-        // ✅ FIX: ya no envuelve con (index, delta) — pasa directamente
         onModificarItem={onModificarItem}
-        onEliminarItem={onEliminarItem}        // ← NUEVO
-        onMoverItems={onMoverItems}            // ← NUEVO
-        onPagoTotal={async (metodo) => {
-          await onPagoTotal(mesaActual, metodo);
+        onEliminarItem={onEliminarItem}
+        onMoverItems={onMoverItems}
+        // ✅ CAMBIO: se agrega `resumen` como argumento adicional.
+        onPagoTotal={async (metodo, resumen) => {
+          await onPagoTotal(mesaActual, metodo, resumen);
           setMesaSeleccionada(null);
         }}
-        onPagoParcial={async (items, metodo) => {
-          await onPagoParcial(mesaActual, items, metodo);
+        onPagoParcial={async (items, metodo, resumen) => {
+          await onPagoParcial(mesaActual, items, metodo, resumen);
           const mesaPost = mesas.find(m => m.id === mesaActual.id);
           if (mesaPost && mesaPost.pedido.length === 0) setMesaSeleccionada(null);
         }}

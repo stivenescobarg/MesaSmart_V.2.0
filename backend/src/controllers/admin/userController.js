@@ -4,7 +4,7 @@ const Sesion = require("../../models/Sesion");
 
 exports.getAll = async (req, res) => {
   try {
-    res.json({ ok: true, usuarios: await User.findAll() });
+    res.json({ ok: true, usuarios: await User.findAll(req.restaurante_id) });
   } catch { res.status(500).json({ msg: "Error al obtener usuarios." }); }
 };
 
@@ -28,10 +28,11 @@ exports.create = async (req, res) => {
       return res.status(400).json({ msg: "La contraseña debe tener al menos 6 caracteres." });
 
     const hash   = await bcrypt.hash(password, 10);
-    const numero = (await User.countByRol(rol)) + 1;
+    // 👇 correlativo calculado solo dentro del tenant actual
+    const numero = (await User.countByRol(rol, req.restaurante_id)) + 1;
 
     const id = await User.create({
-      restaurante_id: req.usuario?.restaurante_id, // ajusta si tu middleware lo expone distinto
+      restaurante_id: req.restaurante_id, // 👈 mismo origen que en egresoController (middleware tenant)
       nombre: nombre.trim(),
       correo,
       correo_personal,
@@ -51,14 +52,21 @@ exports.create = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
-    await Sesion.cerrarTodas(req.params.id);
-    await User.delete(req.params.id);
+    const eliminado = await User.delete(req.params.id, req.restaurante_id);
+    if (!eliminado)
+      return res.status(404).json({ msg: "Usuario no encontrado." });
+
+    await Sesion.cerrarTodas(req.params.id, req.restaurante_id);
     res.json({ ok: true });
   } catch { res.status(500).json({ msg: "Error al eliminar usuario." }); }
 };
 
 exports.getSesiones = async (req, res) => {
   try {
-    res.json({ ok: true, activas: await Sesion.getActivas(), historial: await Sesion.getHistorial() });
+    res.json({
+      ok: true,
+      activas:   await Sesion.getActivas(req.restaurante_id),
+      historial: await Sesion.getHistorial(req.restaurante_id),
+    });
   } catch { res.status(500).json({ msg: "Error al obtener sesiones." }); }
 };

@@ -11,6 +11,14 @@
 // - Stock e inventario
 // - Quejas y reclamos
 // - Sesiones activas
+//
+// ✅ CAMBIO (servicio 10% / propina / descuento / subcuentas):
+// handlePagoTotal y handlePagoParcial ahora reciben un tercer argumento
+// `resumen` (que viene de DetalleMesa.jsx → Mesas.jsx) y lo reenvían a
+// cajaService.registrarPago junto con consumo/descuento/servicio/propina/
+// subcuenta_nombre. Es retrocompatible: si `resumen` viene undefined
+// (por ejemplo si alguna otra pantalla todavía llama a estas funciones
+// sin ese argumento), todo cae a los valores por defecto de antes.
 // ============================================================================
 
 import { useState, useEffect, useCallback } from "react";
@@ -290,6 +298,17 @@ const AdminDashboard = () => {
     cajaAbierta ? setModalSalida(true) : ejecutarLogout();
 
   // --------------------------------------------------------------------------
+// IR AL MENÚ EDITABLE
+// --------------------------------------------------------------------------
+// Menu.jsx es una página aparte (no una "sección" embebida), así que
+// navegamos a su ruta en vez de cambiar `seccion`. Usamos mesaId=1 como
+// valor fijo de "vista admin" — el admin no está sentado en ninguna mesa,
+// solo necesita entrar al componente con su propio restaurante_id.
+const irAlMenu = () => {
+  navigate(`/menu/${usuario.restaurante_id}/1`);
+};
+
+  // --------------------------------------------------------------------------
   // EJECUTAR LOGOUT
   // --------------------------------------------------------------------------
   const ejecutarLogout = async () => {
@@ -431,59 +450,86 @@ const AdminDashboard = () => {
   // --------------------------------------------------------------------------
   // PAGO TOTAL DE LA MESA
   // --------------------------------------------------------------------------
-  const handlePagoTotal = async (mesa, metodo) => {
+  // ✅ CAMBIO: recibe `resumen` (consumo, descuento, servicio, propina, total)
+  // que viene de DetalleMesa.jsx → Mesas.jsx, y lo reenvía a cajaService.
+  // Si `resumen` no llega (undefined), se cae a los valores de antes: el
+  // total sigue siendo mesa.total y consumo/descuento/servicio/propina van
+  // en 0 (compatibilidad hacia atrás).
+  const handlePagoTotal = async (mesa, metodo, resumen) => {
     // Validación: la caja debe estar abierta para registrar pagos
     if (!cajaAbierta) {
       toast.error("Abre la caja antes de registrar pagos.");
       return;
     }
 
+    // Si viene resumen, el total real a cobrar es resumen.total (ya incluye
+    // servicio y propina, y ya tiene el descuento restado). Si no viene
+    // (llamada vieja/sin configurar), se usa mesa.total como hasta ahora.
+    const totalFinal = resumen?.total ?? mesa.total;
+
     try {
       await cajaService.registrarPago({
         mesa_id: mesa.id,
         mesa_nombre: mesa.nombre,
         pedido_id: mesa.pedido[0]?.pedido_id || null, // ID del pedido (si existe)
-        total: mesa.total, // Monto total a pagar
+        total: totalFinal, // Monto total a pagar (con servicio/propina/descuento)
         metodo_pago: metodo, // "efectivo", "tarjeta", "transferencia", etc
         items: mesa.pedido.map((i) => ({
           nombre: i.nombre,
           cantidad: i.cantidad,
           precio: i.precio,
         })),
+        // ── Desglose para caja / reportes ──
+        consumo: resumen?.consumo ?? mesa.total,
+        descuento: resumen?.descuento ?? 0,
+        servicio: resumen?.servicio ?? 0,
+        propina: resumen?.propina ?? 0,
+        subcuenta_nombre: resumen?.subcuentaNombre ?? null,
+        pagos: resumen?.pagos ?? null, 
       });
       await cargarMesas(); // Limpia los productos de la mesa pagada
       await cargarCaja(); // Actualiza el monto en caja
-      toast.exito(`Pago: ${COP(mesa.total)} — ${metodo}`);
+      toast.exito(`Pago: ${COP(totalFinal)} — ${metodo}`);
     } catch (err) {
       toast.error(err.message);
     }
   };
 
   // --------------------------------------------------------------------------
-  // PAGO PARCIAL (Solo algunos productos)
+  // PAGO PARCIAL (Solo algunos productos, o el cobro de una subcuenta)
   // --------------------------------------------------------------------------
-  const handlePagoParcial = async (mesa, items, metodo) => {
+  // ✅ CAMBIO: recibe `resumen` igual que handlePagoTotal.
+  const handlePagoParcial = async (mesa, items, metodo, resumen) => {
     // Validación: la caja debe estar abierta
     if (!cajaAbierta) {
       toast.error("Abre la caja antes de registrar pagos.");
       return;
     }
 
-    try {
-      // Calcula el total de los productos seleccionados
-      const total = items.reduce((a, i) => a + i.precio * i.cantidad, 0);
+    // Si viene resumen, usamos su total (ya con servicio/propina/descuento).
+    // Si no, se calcula como antes: solo la suma de los items seleccionados.
+    const totalItems = items.reduce((a, i) => a + i.precio * i.cantidad, 0);
+    const totalFinal = resumen?.total ?? totalItems;
 
+    try {
       await cajaService.registrarPago({
         mesa_id: mesa.id,
         mesa_nombre: mesa.nombre,
         pedido_id: null, // Pago parcial no tiene pedido asociado
-        total: total,
+        total: totalFinal,
         metodo_pago: metodo,
         items: items.map((i) => ({
           nombre: i.nombre,
           cantidad: i.cantidad,
           precio: i.precio,
         })),
+        // ── Desglose para caja / reportes ──
+        consumo: resumen?.consumo ?? totalItems,
+        descuento: resumen?.descuento ?? 0,
+        servicio: resumen?.servicio ?? 0,
+        propina: resumen?.propina ?? 0,
+        subcuenta_nombre: resumen?.subcuentaNombre ?? null,
+        pagos: resumen?.pagos ?? null,
       });
 
       // Elimina los productos pagados del pedido (cantidad = 0)
@@ -493,7 +539,7 @@ const AdminDashboard = () => {
 
       await cargarMesas(); // Actualiza la mesa
       await cargarCaja(); // Actualiza la caja
-      toast.exito(`Pago parcial: ${COP(total)} — ${metodo}`);
+      toast.exito(`Pago parcial: ${COP(totalFinal)} — ${metodo}`);
     } catch (err) {
       toast.error(err.message);
     }
@@ -559,6 +605,7 @@ const AdminDashboard = () => {
         setSeccion={setSeccion}
         servicioActivo={servicioActivo}
         onSalir={manejarSalida}
+        onIrAlMenu={irAlMenu}
       />
 
       {/* =====================================================================
