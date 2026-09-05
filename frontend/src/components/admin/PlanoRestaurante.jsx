@@ -99,12 +99,13 @@ const PlanoRestaurante = ({ mesas, zonas, onMesaClick, onRecargar, toast }) => {
   const svgRef = useRef(null);
 
   // Sincronizar posiciones locales cuando llegan mesas nuevas
-  useEffect(() => {
-    const init = {};
-    mesas.forEach(m => { init[m.id] = { pos_x: m.pos_x || 0, pos_y: m.pos_y || 0 }; });
-    setPosiciones(init);
-    setCambiosPend(false);
-  }, [mesas]);
+useEffect(() => {
+  if (modoEdicion) return; // no pisar cambios sin guardar mientras se edita
+  const init = {};
+  mesas.forEach(m => { init[m.id] = { pos_x: m.pos_x || 0, pos_y: m.pos_y || 0 }; });
+  setPosiciones(init);
+  setCambiosPend(false);
+}, [mesas, modoEdicion]);
 
   // Mesas filtradas por zona activa
   const mesasFiltradas = zonaActiva
