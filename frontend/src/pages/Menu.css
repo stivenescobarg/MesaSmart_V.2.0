@@ -1232,3 +1232,49 @@ body {
 
 /* Emoji del tab */
 .bottom-nav .nav-icon { font-size: 22px; line-height: 1; }
+/* Producto agotado: se ve atenuado */
+.food-card-wrapper--agotado .card-media img,
+.food-card-wrapper--agotado .food-card img {
+  filter: grayscale(0.6) brightness(0.55);
+}
+.food-card-wrapper--agotado .card-title,
+.food-card-wrapper--agotado .card-price {
+  opacity: 0.5;
+}
+
+/* Badge "Agotado" sobre la foto */
+.agotado-badge {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(220, 32, 80, 0.92);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 50px;
+  z-index: 5;
+}
+
+/* Botón de activar/desactivar (junto al de editar) */
+.toggle-disp-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(13,13,13,0.6);
+  backdrop-filter: blur(6px);
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  z-index: 4;
+  transition: transform 0.18s, background 0.18s;
+}
+.toggle-disp-btn:hover { transform: scale(1.12); }
+.toggle-disp-btn.desactivar:hover { background: rgba(220,32,80,0.75); }
+.toggle-disp-btn.reactivar:hover { background: rgba(34,197,94,0.75); }

@@ -12,7 +12,7 @@
 // viendo (ver `esAdmin` más abajo).
 // ============================================================
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./Menu.css";
 import FoodCard from "../components/FoodCard";
@@ -231,6 +231,7 @@ const Menu = () => {
   // ── Estados de paginación ──────────────────────────────────
   const [sectionPage, setSectionPage] = useState({});
   const [catsPage, setCatsPage] = useState(1);
+  const productosRef = useRef(null);
 
   // ── Estados del formulario de quejas ──────────────────────
   const [quejaMsg,     setQuejaMsg]     = useState("");
@@ -270,9 +271,11 @@ const Menu = () => {
           const cat = prod.categoria || "Otros";
           if (!organizado[cat]) organizado[cat] = [];
           organizado[cat].push({
+            id:            prod.id,
             nombre:        prod.nombre,
             img:           resolveImg(prod.imagen),
             imagen:        prod.imagen,
+            disponible:    prod.disponible === undefined ? true : !!prod.disponible,
             descripcion:   prod.descripcion,
             precio:        prod.precio,
             tiene_termino: prod.tiene_termino,
@@ -297,6 +300,16 @@ const Menu = () => {
   useEffect(() => {
     if (cartOpen && !quejaMesa && mesaId) setQuejaMesa(String(mesaId));
   }, [cartOpen, mesaId, quejaMesa]);
+  
+  // ── Scroll automático: al elegir categoría, salta directo a sus productos ──
+  useEffect(() => {
+    if (categoria && activeTab === "menu") {
+      const t = setTimeout(() => {
+        productosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+      return () => clearTimeout(t);
+    }
+  }, [categoria, subCategoria, activeTab]);
 
 
   // ── menuData: datos estáticos de respaldo (SOLO restaurante demo) ──
@@ -732,8 +745,10 @@ const Menu = () => {
                 const cat = prod.categoria || "Otros";
                 if (!organizado[cat]) organizado[cat] = [];
                 organizado[cat].push({
+                  id: prod.id,
                   nombre: prod.nombre, img: resolveImg(prod.imagen),
                   imagen: prod.imagen,
+                  disponible: prod.disponible === undefined ? true : !!prod.disponible,
                   descripcion: prod.descripcion, precio: prod.precio,
                   tiene_termino: prod.tiene_termino, opciones: prod.opciones || [],
                   adiciones: prod.adiciones || [], subcategoria: prod.subcategoria || null,
@@ -783,6 +798,7 @@ const Menu = () => {
                   id: prod.id, nombre: prod.nombre,
                   img: resolveImg(prod.imagen),
                   imagen: prod.imagen,
+                  disponible: prod.disponible === undefined ? true : !!prod.disponible,
                   descripcion: prod.descripcion, precio: prod.precio,
                   tiene_termino: prod.tiene_termino, opciones: prod.opciones || [],
                   adiciones: prod.adiciones || [], subcategoria: prod.subcategoria || null,
@@ -797,6 +813,35 @@ const Menu = () => {
     setEditando(false);
   };
 
+  // ── handleToggleDisponible: activar/desactivar producto sin borrarlo ──
+const handleToggleDisponible = async (item) => {
+  if (!item.id) return;
+  const nuevoValor = !item.disponible;
+  try {
+    const res = await fetch(`${API_URL}/menu/${item.id}/disponibilidad`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authService.getToken()}`,
+      },
+      body: JSON.stringify({ disponible: nuevoValor }),
+    });
+    if (res.ok) {
+      // Actualiza el estado local sin tener que recargar todo el menú
+      setMenuDB(prev => {
+        const copia = { ...prev };
+        for (const cat of Object.keys(copia)) {
+          copia[cat] = copia[cat].map(p =>
+            p.id === item.id ? { ...p, disponible: nuevoValor } : p
+          );
+        }
+        return copia;
+      });
+    }
+  } catch (err) {
+    console.error("Error al cambiar disponibilidad:", err);
+  }
+};
 
   // ── toggleFav: agregar/quitar favorito ────────────────────
   const toggleFav = item =>
@@ -832,34 +877,47 @@ const Menu = () => {
 
   // ── renderCard: función para renderizar una tarjeta de producto
   const renderCard = (item, i) => (
-    <div key={i} className="food-card-wrapper">
-      <div className="card-media" onClick={() => setSelectedItem(item)}>
-        <FoodCard item={item} />
+  <div key={i} className={`food-card-wrapper ${item.disponible === false ? "food-card-wrapper--agotado" : ""}`}>
+    <div className="card-media" onClick={() => item.disponible !== false && setSelectedItem(item)}>
+      <FoodCard item={item} />
 
-        <button className={`fav-btn ${isFav(item.nombre)?"active":""}`}
-          onClick={e => { e.stopPropagation(); toggleFav(item); }}>
-          {isFav(item.nombre) ? "❤️" : "🤍"}
-        </button>
+      {item.disponible === false && (
+        <div className="agotado-badge">Agotado</div>
+      )}
 
-        {esAdmin && item.id && (
+      <button className={`fav-btn ${isFav(item.nombre)?"active":""}`}
+        onClick={e => { e.stopPropagation(); toggleFav(item); }}>
+        {isFav(item.nombre) ? "❤️" : "🤍"}
+      </button>
+
+      {esAdmin && item.id && (
+        <>
           <button className="edit-btn"
             onClick={e => { e.stopPropagation(); setEditProducto({ ...item, imagen: item.imagen || "" }); setEditModal(true); }}>
             ✏️
           </button>
+          <button className={`toggle-disp-btn ${item.disponible === false ? "reactivar" : "desactivar"}`}
+            onClick={e => { e.stopPropagation(); handleToggleDisponible(item); }}
+            title={item.disponible === false ? "Reactivar producto" : "Marcar como agotado"}>
+            {item.disponible === false ? "✅" : "🚫"}
+          </button>
+        </>
+      )}
+    </div>
+
+    <div className="card-body" onClick={() => item.disponible !== false && setSelectedItem(item)}>
+      <h3 className="card-title">{item.nombre}</h3>
+      {item.descripcion && <p className="card-desc">{item.descripcion}</p>}
+
+      <div className="card-footer">
+        <span className="card-price">{fmtCOP(item.precio)}</span>
+        {item.disponible !== false && (
+          <button className="add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>+</button>
         )}
       </div>
-
-      <div className="card-body" onClick={() => setSelectedItem(item)}>
-        <h3 className="card-title">{item.nombre}</h3>
-        {item.descripcion && <p className="card-desc">{item.descripcion}</p>}
-
-        <div className="card-footer">
-          <span className="card-price">{fmtCOP(item.precio)}</span>
-          <button className="add-btn" onClick={e => { e.stopPropagation(); setSelectedItem(item); }}>+</button>
-        </div>
-      </div>
     </div>
-  );
+  </div>
+);
 
   // ── renderSectionCards: pinta una cuadrícula de productos con paginación
   const renderSectionCards = (items, seccionKey) => {
@@ -1128,34 +1186,45 @@ const Menu = () => {
           <button className="sidebar-close-btn" onClick={() => setCartOpen(false)}>✕</button>
         </div>
 
-        {pagado ? (
+                {pagado ? (
           <div className="cart-paid">
             <div className="cart-paid-icon">✅</div>
             <h3>¡Pedido registrado!</h3>
-            <p>Dirígete a caja a pagar 🎉</p>
+            <p>
+              Dirígete a caja a pagar 🎉<br/>
+              {quejaMesa && <strong>Tu mesa es la {quejaMesa}</strong>}
+            </p>
           </div>
         ) : cart.length===0 ? (
           <p className="cart-empty">Aún no has agregado nada 🍽️</p>
         ) : (
           <>
-            <div style={{ padding: "14px 22px 0" }}>
+               <div style={{ padding: "14px 22px 0" }}>
               <input
                 type="text"
                 placeholder="¿Cuál es tu mesa? (ej: Mesa 3)"
                 value={quejaMesa}
                 onChange={e => setQuejaMesa(e.target.value)}
+                readOnly={!!mesaId}
+                disabled={!!mesaId}
                 style={{
                   width: "100%",
-                  background: "rgba(255,255,255,0.07)",
+                  background: mesaId ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.07)",
                   border: "1.5px solid rgba(255,255,255,0.15)",
                   borderRadius: "12px",
                   padding: "12px 16px",
-                  color: "#fff",
+                  color: mesaId ? "rgba(255,255,255,0.6)" : "#fff",
                   fontSize: "14px",
                   fontFamily: "Plus Jakarta Sans, sans-serif",
                   outline: "none",
+                  cursor: mesaId ? "not-allowed" : "text",
                 }}
               />
+              {mesaId && (
+                <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "6px", paddingLeft: "2px" }}>
+                  🔒 Mesa asignada automáticamente por tu código QR
+                </p>
+              )}
             </div>
 
             <ul className="cart-list">
@@ -1323,33 +1392,35 @@ const Menu = () => {
               </div>
             )}
 
-            {categoria && !BAR_CATS.includes(categoria) && (
-              <>
-                <p className="section-title">{catIconos[categoria]} {categoria}</p>
-                {renderSectionCards(dataFinal[categoria]||[], `cat-${categoria}`)}
-              </>
-            )}
+                        <div ref={productosRef}>
+              {categoria && !BAR_CATS.includes(categoria) && (
+                <>
+                  <p className="section-title">{catIconos[categoria]} {categoria}</p>
+                  {renderSectionCards(dataFinal[categoria]||[], `cat-${categoria}`)}
+                </>
+              )}
 
-            {BAR_CATS.includes(categoria) && !subCategoria && BAR_SUBS.map(sub => (
-              getBarItems(categoria, sub).length > 0 && (
-                <div key={sub}>
-                  <p className="section-title">{BAR_ICONS[sub]} {sub}</p>
-                  {renderSectionCards(getBarItems(categoria, sub), `bar-${sub}`)}
-                </div>
-              )
-            ))}
+              {BAR_CATS.includes(categoria) && !subCategoria && BAR_SUBS.map(sub => (
+                getBarItems(categoria, sub).length > 0 && (
+                  <div key={sub}>
+                    <p className="section-title">{BAR_ICONS[sub]} {sub}</p>
+                    {renderSectionCards(getBarItems(categoria, sub), `bar-${sub}`)}
+                  </div>
+                )
+              ))}
 
-            {BAR_CATS.includes(categoria) && subCategoria && (
-              <>
-                <p className="section-title">{BAR_ICONS[subCategoria]} {subCategoria}</p>
-                {getBarItems(categoria, subCategoria).length > 0
-                  ? renderSectionCards(getBarItems(categoria, subCategoria), `bar-${subCategoria}`)
-                  : <p style={{color:"rgba(255,255,255,0.35)",padding:"0 0 20px",fontSize:"14px"}}>
-                      No hay productos en esta subcategoría aún.
-                    </p>
-                }
-              </>
-            )}
+              {BAR_CATS.includes(categoria) && subCategoria && (
+                <>
+                  <p className="section-title">{BAR_ICONS[subCategoria]} {subCategoria}</p>
+                  {getBarItems(categoria, subCategoria).length > 0
+                    ? renderSectionCards(getBarItems(categoria, subCategoria), `bar-${subCategoria}`)
+                    : <p style={{color:"rgba(255,255,255,0.35)",padding:"0 0 20px",fontSize:"14px"}}>
+                        No hay productos en esta subcategoría aún.
+                      </p>
+                  }
+                </>
+              )}
+            </div>
 
             {!categoria && (() => {
               const todasLasCats  = Object.keys(dataFinal).filter(k => !BAR_CATS.includes(k));
@@ -1401,7 +1472,9 @@ const Menu = () => {
             <h3>¿Tienes alguna queja o sugerencia?</h3>
             <p>Tu mensaje llega directamente al administrador del restaurante.</p>
             <input className="queja-mesa-input" type="text" placeholder="Número de mesa (opcional)"
-              value={quejaMesa} onChange={e => setQuejaMesa(e.target.value)}/>
+              value={quejaMesa} onChange={e => setQuejaMesa(e.target.value)}
+              readOnly={!!mesaId} disabled={!!mesaId}
+              style={mesaId ? { opacity: 0.6, cursor: "not-allowed" } : undefined} />
             <textarea className="queja-input" placeholder="Escribe aquí tu queja, sugerencia o comentario..."
               value={quejaMsg} onChange={e => setQuejaMsg(e.target.value)}/>
             <button className="queja-send-btn" onClick={handleEnviarQueja} disabled={quejaLoading||!quejaMsg.trim()}>

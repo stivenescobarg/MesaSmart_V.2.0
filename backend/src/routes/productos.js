@@ -23,16 +23,16 @@ router.get("/:restauranteId", async (req, res) => {
   const { restauranteId } = req.params;
   try {
     const [productos] = await pool.query(
-      `SELECT
-         p.id, p.nombre, p.descripcion, p.precio, p.imagen,
-         p.tiene_termino, p.subcategoria,
-         c.nombre AS categoria
-       FROM productos p
-       JOIN categorias c ON c.id = p.categoria_id
-       WHERE p.restaurante_id = ?
-       ORDER BY c.nombre, p.nombre`,
-      [restauranteId]
-    );
+  `SELECT
+     p.id, p.nombre, p.descripcion, p.precio, p.imagen,
+     p.tiene_termino, p.subcategoria, p.disponible,
+     c.nombre AS categoria
+   FROM productos p
+   JOIN categorias c ON c.id = p.categoria_id
+   WHERE p.restaurante_id = ?
+   ORDER BY c.nombre, p.nombre`,
+  [restauranteId]
+);
 
     // Para cada producto, traemos sus opciones y adiciones directamente
     // desde la tabla "opciones" (que ya tiene su propio producto_id),
@@ -165,6 +165,38 @@ router.put("/:id", auth, role("admin"), async (req, res) => {
   } catch (err) {
     console.error("[PUT /api/menu/:id]", err);
     res.status(500).json({ msg: "Error al actualizar el producto." });
+  }
+});
+
+// ────────────────────────────────────────────────────────────
+// PATCH /api/menu/:id/disponibilidad
+// Ruta PROTEGIDA. Activa/desactiva un producto sin borrarlo.
+// El cliente sigue viéndolo en el menú, pero marcado "Agotado"
+// y sin poder agregarlo al carrito.
+// ────────────────────────────────────────────────────────────
+router.patch("/:id/disponibilidad", auth, role("admin"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { disponible } = req.body; // true/false o 1/0
+    const restauranteId = req.usuario.restaurante_id;
+
+    const [[producto]] = await pool.query(
+      `SELECT id FROM productos WHERE id = ? AND restaurante_id = ?`,
+      [id, restauranteId]
+    );
+    if (!producto) {
+      return res.status(404).json({ msg: "Producto no encontrado en tu restaurante." });
+    }
+
+    await pool.query(
+      `UPDATE productos SET disponible = ? WHERE id = ? AND restaurante_id = ?`,
+      [disponible ? 1 : 0, id, restauranteId]
+    );
+
+    res.json({ ok: true, disponible: !!disponible });
+  } catch (err) {
+    console.error("[PATCH /api/menu/:id/disponibilidad]", err);
+    res.status(500).json({ msg: "Error al actualizar disponibilidad." });
   }
 });
 
