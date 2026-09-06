@@ -20,6 +20,7 @@ import { imagenes } from "../data/imagenes";
 import { API_URL } from "../services/config";
 import { authService } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
+import ImageUploadField from "../components/ImageUploadField";
 
 // ── Íconos por categoría ─────────────────────────────────────
 const catIconos = {
@@ -64,6 +65,12 @@ const TERMINOS  = ["Poco hecho","Término medio","Bien hecho","Muy bien hecho"];
 
 // fmtCOP: función auxiliar para formatear números como precios en COP
 const fmtCOP    = n => `$${Number(n).toLocaleString("es-CO")}`;
+
+const resolveImg = (valorImagen) => {
+  if (!valorImagen) return null;
+  if (valorImagen.startsWith("http")) return valorImagen; // nuevo: URL de Cloudinary
+  return imagenes[valorImagen] || null; // legacy: viene del bundle estático
+};
 
 // ── Restaurante "demo" ───────────────────────────────────────
 // Único restaurante que, mientras no tenga productos propios en
@@ -264,7 +271,8 @@ const Menu = () => {
           if (!organizado[cat]) organizado[cat] = [];
           organizado[cat].push({
             nombre:        prod.nombre,
-            img:           imagenes[prod.imagen] || null,
+            img:           resolveImg(prod.imagen),
+            imagen:        prod.imagen,
             descripcion:   prod.descripcion,
             precio:        prod.precio,
             tiene_termino: prod.tiene_termino,
@@ -724,7 +732,8 @@ const Menu = () => {
                 const cat = prod.categoria || "Otros";
                 if (!organizado[cat]) organizado[cat] = [];
                 organizado[cat].push({
-                  nombre: prod.nombre, img: imagenes[prod.imagen] || null,
+                  nombre: prod.nombre, img: resolveImg(prod.imagen),
+                  imagen: prod.imagen,
                   descripcion: prod.descripcion, precio: prod.precio,
                   tiene_termino: prod.tiene_termino, opciones: prod.opciones || [],
                   adiciones: prod.adiciones || [], subcategoria: prod.subcategoria || null,
@@ -772,7 +781,8 @@ const Menu = () => {
                 if (!organizado[cat]) organizado[cat] = [];
                 organizado[cat].push({
                   id: prod.id, nombre: prod.nombre,
-                  img: imagenes[prod.imagen] || null,
+                  img: resolveImg(prod.imagen),
+                  imagen: prod.imagen,
                   descripcion: prod.descripcion, precio: prod.precio,
                   tiene_termino: prod.tiene_termino, opciones: prod.opciones || [],
                   adiciones: prod.adiciones || [], subcategoria: prod.subcategoria || null,
@@ -833,7 +843,7 @@ const Menu = () => {
 
         {esAdmin && item.id && (
           <button className="edit-btn"
-            onClick={e => { e.stopPropagation(); setEditProducto({ ...item, imagen: Object.entries(imagenes).find(([,v]) => v === item.img)?.[0] || "" }); setEditModal(true); }}>
+            onClick={e => { e.stopPropagation(); setEditProducto({ ...item, imagen: item.imagen || "" }); setEditModal(true); }}>
             ✏️
           </button>
         )}
@@ -977,25 +987,13 @@ const Menu = () => {
                 )}
               </div>
 
-              <div className="modal-section">
+                <div className="modal-section">
                 <p className="modal-section-title">Imagen</p>
-                <select className="queja-mesa-input"
+                <ImageUploadField
                   value={nuevoProducto.imagen}
-                  onChange={e => setNuevoProducto(p => ({ ...p, imagen: e.target.value }))}
-                  style={{ cursor: "pointer" }}>
-                  <option value="" style={{ color: "#000" }}>Sin imagen</option>
-                  {Object.keys(imagenes).map(k => (
-                    <option key={k} value={k} style={{ color: "#000" }}>{k}</option>
-                  ))}
-                </select>
-                {nuevoProducto.imagen && imagenes[nuevoProducto.imagen] && (
-                  <img
-                    src={imagenes[nuevoProducto.imagen]}
-                    alt={nuevoProducto.imagen}
-                    style={{ width: "100%", maxHeight: "140px", objectFit: "cover", borderRadius: "12px", marginTop: "10px" }}
-                  />
-                )}
-              </div>
+                  onChange={url => setNuevoProducto(p => ({ ...p, imagen: url }))}
+                />
+                </div>
 
               <div className="modal-section">
                 <p className="modal-section-title">Adiciones</p>
@@ -1070,20 +1068,12 @@ const Menu = () => {
               </div>
 
               <div className="modal-section">
-                <p className="modal-section-title">Imagen</p>
-                <select className="queja-mesa-input" value={editProducto.imagen || ""}
-                  onChange={e => setEditProducto(p => ({ ...p, imagen: e.target.value }))}
-                  style={{ cursor: "pointer" }}>
-                  <option value="" style={{ color: "#000" }}>Sin imagen</option>
-                  {Object.keys(imagenes).map(k => (
-                    <option key={k} value={k} style={{ color: "#000" }}>{k}</option>
-                  ))}
-                </select>
-                {editProducto.imagen && imagenes[editProducto.imagen] && (
-                  <img src={imagenes[editProducto.imagen]} alt={editProducto.imagen}
-                    style={{ width: "100%", maxHeight: "140px", objectFit: "cover", borderRadius: "12px", marginTop: "10px" }} />
-                )}
-              </div>
+              <p className="modal-section-title">Imagen</p>
+              <ImageUploadField
+                value={editProducto.imagen}
+                onChange={url => setEditProducto(p => ({ ...p, imagen: url }))}
+              />
+            </div>
 
               {editOk && <div className="queja-success">✅ ¡Producto actualizado!</div>}
 
