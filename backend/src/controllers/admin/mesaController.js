@@ -1,4 +1,5 @@
 const Mesa = require("../../models/Mesa");
+const { generarQRBase64, generarQRBuffer } = require("../../services/qrService");
 
 exports.getAll = async (req, res) => {
   try { res.json({ ok: true, mesas: await Mesa.findAll(req.restaurante_id) }); }
@@ -21,7 +22,15 @@ exports.create = async (req, res) => {
       restaurante_id: req.restaurante_id,
       nombre: nombre.trim(), zona_id, capacidad, pos_x, pos_y, forma,
     });
-    res.status(201).json({ ok: true, id });
+
+    // ── QR automático ──
+    // En cuanto la mesa existe, su QR ya es válido (la URL solo necesita
+    // restaurante_id + mesa_id, ambos ya definidos). Lo generamos aquí mismo
+    // y lo devolvemos junto con la respuesta, así el admin lo ve/descarga
+    // sin tener que hacer una segunda llamada.
+    const qr = await generarQRBase64(req.restaurante_id, id);
+
+    res.status(201).json({ ok: true, id, qr });
   } catch (err) {
     console.error("[mesas/crear]", err);
     res.status(500).json({ msg: "Error al crear mesa." });
@@ -74,4 +83,21 @@ exports.updateConfig = async (req, res) => {
     if (!ok) return res.status(404).json({ msg: "Mesa no encontrada." });
     res.json({ ok: true });
   } catch { res.status(500).json({ msg: "Error al actualizar mesa." }); }
+};
+
+// ── NUEVO: descargar/ver el QR de una mesa ya existente ──
+// Útil para reimprimir un QR perdido/dañado sin tener que recrear la mesa.
+exports.getQR = async (req, res) => {
+  try {
+    const m = await Mesa.findById(req.params.id, req.restaurante_id);
+    if (!m) return res.status(404).json({ msg: "Mesa no encontrada." });
+
+    const { buffer } = await generarQRBuffer(req.restaurante_id, req.params.id);
+    res.set("Content-Type", "image/png");
+    res.set("Content-Disposition", `inline; filename="mesa-${m.nombre}-qr.png"`);
+    res.send(buffer);
+  } catch (err) {
+    console.error("[mesas/qr]", err);
+    res.status(500).json({ msg: "Error al generar el QR." });
+  }
 };

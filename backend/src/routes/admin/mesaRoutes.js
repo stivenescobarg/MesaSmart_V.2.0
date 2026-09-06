@@ -204,6 +204,36 @@ r.patch("/:id/posicion",      auth, tenant, role("admin"), ctrl.updatePosicion);
  */
 r.patch("/:id/config",        auth, tenant, role("admin"), ctrl.updateConfig);
 
+// ── Agregar esto en backend/src/routes/admin/mesaRoutes.js ──
+// Puede ir justo después de r.patch("/:id/config", ...)
+
+/**
+ * @swagger
+ * /api/mesas/{id}/qr:
+ *   get:
+ *     summary: Obtener la imagen QR de una mesa (PNG)
+ *     tags: [Mesas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Imagen PNG del QR
+ *         content:
+ *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Mesa no encontrada
+ */
+r.get("/:id/qr", auth, tenant, ctrl.getQR);
+
 /**
  * @swagger
  * /api/mesas/batch/posiciones:

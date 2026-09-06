@@ -7,6 +7,8 @@ export const cajaService = {
   cerrar:        ()      => api.post("/caja/cerrar"),
   getHistorial:  ()      => api.get("/caja/historial"),
   registrarPago: (data)  => api.post("/caja/pago", data),
+  getVentaDetalle: (id)         => api.get(`/caja/venta/${id}`),
+editarVenta:     (id, cambios) => api.put(`/caja/venta/${id}`, cambios),
 };
 
 export const calcularTotalVendido = (caja) => {

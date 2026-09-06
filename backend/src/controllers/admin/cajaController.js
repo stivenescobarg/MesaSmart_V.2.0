@@ -68,6 +68,38 @@ exports.getHistorial = async (req, res) => {
   catch { res.status(500).json({ msg: "Error al obtener historial." }); }
 };
 
+// GET /api/caja/venta/:id — detalle completo para poder ver/editar
+exports.getVentaDetalle = async (req, res) => {
+  try {
+    const venta = await Venta.getDetalle(req.params.id, req.restaurante_id);
+    if (!venta) return res.status(404).json({ msg: "Venta no encontrada." });
+    res.json({ ok: true, venta });
+  } catch { res.status(500).json({ msg: "Error al obtener la venta." }); }
+};
+
+// PUT /api/caja/venta/:id — corrige una venta (requiere PIN + motivo)
+// controllers/admin/cajaController.js
+exports.editarVenta = async (req, res) => {
+  try {
+    const { pin, motivo, items, pagos, descuento, servicio, propina } = req.body;
+
+    if (!pin || pin !== process.env.PIN_EDITAR_VENTA) {
+      return res.status(403).json({ msg: "PIN incorrecto." });
+    }
+
+    const resultado = await Venta.editar({
+      venta_id: req.params.id,
+      restaurante_id: req.restaurante_id,
+      usuario_id: req.usuario.id,
+      motivo, items, pagos, descuento, servicio, propina,
+    });
+
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    res.status(err.status || 500).json({ msg: err.status ? err.message : "Error al editar la venta." });
+  }
+};
+
 exports.registrarPago = async (req, res) => {
   try {
     const {

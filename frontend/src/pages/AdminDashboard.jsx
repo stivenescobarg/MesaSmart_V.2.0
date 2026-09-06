@@ -153,6 +153,9 @@ const AdminDashboard = () => {
   // --------------------------------------------------------------------------
   // ESTADOS DE DATOS
   // --------------------------------------------------------------------------
+  const [qrMesa, setQrMesa] = useState(null);
+  
+  // { id, nombre, imagen, url } o null
   const [mesas, setMesas] = useState([]);
   // Array de mesas con sus pedidos
   // Estructura: [{ id, nombre, pedido: [{ item_id, nombre, cantidad, precio }], total }]
@@ -368,22 +371,27 @@ const irAlMenu = () => {
   // --------------------------------------------------------------------------
   // CREAR MESA
   // --------------------------------------------------------------------------
-  const handleCrearMesa = async (nombre, zona_id = null) => {
-    try {
-      await mesaService.crear({
-        nombre, // Nombre de la mesa (ej: "Mesa 1", "Barra 2")
-        zona_id, // ID de la zona (barra, terraza, interior, etc)
-        capacidad: 4, // Capacidad predeterminada
-        pos_x: 20, // Posición X en el plano visual
-        pos_y: 20, // Posición Y en el plano visual
-        forma: "cuadrada", // Forma visual de la mesa
-      });
-      await cargarMesas(); // Recarga la lista actualizada
-      toast.exito(`"${nombre}" creada`);
-    } catch (err) {
-      toast.error(err.message);
+const handleCrearMesa = async (nombre, zona_id = null) => {
+  try {
+    const res = await mesaService.crear({
+      nombre,
+      zona_id,
+      capacidad: 4,
+      pos_x: 20,
+      pos_y: 20,
+      forma: "cuadrada",
+    });
+    await cargarMesas();
+    toast.exito(`"${nombre}" creada`);
+
+    // El backend ya devuelve el QR listo (base64) apenas se crea la mesa
+    if (res?.qr) {
+      setQrMesa({ id: res.id, nombre, imagen: res.qr.imagen, url: res.qr.url });
     }
-  };
+  } catch (err) {
+    toast.error(err.message);
+  }
+};
 
   // --------------------------------------------------------------------------
   // ELIMINAR MESA
@@ -568,6 +576,12 @@ const irAlMenu = () => {
     return res; // Devuelve la respuesta por si se necesita
   };
 
+  const handleReactivarUsuario = async (id) => {
+  await usuarioService.reactivar(id);
+  await cargarUsuarios();
+  toast.exito("Usuario reactivado");
+};
+
   // ==========================================================================
   // RENDERIZADO
   // ==========================================================================
@@ -624,6 +638,7 @@ const irAlMenu = () => {
             onAbrirCaja={handleAbrirCaja}
             onCerrarCaja={handleCerrarCaja}
             onToggleServicio={handleToggleServicio}
+            onCajaActualizada={cargarCaja}
           />
         )}
 
@@ -656,7 +671,7 @@ const irAlMenu = () => {
         {seccion === "stock" && <Stock toast={toast} />}
 
         {/* SECCIÓN: HISTORIAL - Reportes de ventas pasadas */}
-        {seccion === "historial" && <Historial historial={historial} />}
+        {seccion === "historial" && <Historial historial={historial} onVentaCorregida={cargarHistorial} />}
 
         {/* SECCIÓN: QUEJAS - Gestión de reclamos de clientes */}
         {seccion === "quejas" && <Quejas toast={toast} />}
@@ -679,6 +694,7 @@ const irAlMenu = () => {
             usuarios={usuarios}
             onCrearUsuario={handleCrearUsuario}
             onEliminarUsuario={handleEliminarUsuario}
+            onReactivarUsuario={handleReactivarUsuario}
           />
         )}
 
@@ -692,7 +708,7 @@ const irAlMenu = () => {
       <Modal
         abierto={modalSalida}
         titulo="¿Seguro que deseas salir?"
-        variante="peligro" // Estilo rojo de advertencia
+        variante="peligro"
         labelConfirmar="Sí, cerrar sesión"
         labelCancelar="Quedarme"
         onConfirmar={ejecutarLogout}
@@ -703,6 +719,29 @@ const irAlMenu = () => {
             ? "⚠️ La caja está abierta. Tus datos están guardados en el servidor."
             : "Estás a punto de cerrar tu sesión."}
         </p>
+      </Modal>
+
+      <Modal
+        abierto={!!qrMesa}
+        titulo={`QR de "${qrMesa?.nombre}"`}
+        variante="info"
+        labelConfirmar="Descargar PNG"
+        labelCancelar="Cerrar"
+        onConfirmar={() => mesaService.descargarQR(qrMesa.id, qrMesa.nombre)}
+        onCancelar={() => setQrMesa(null)}
+      >
+        {qrMesa && (
+          <div style={{ textAlign: "center" }}>
+            <img
+              src={qrMesa.imagen}
+              alt={`QR mesa ${qrMesa.nombre}`}
+              style={{ width: 220, height: 220 }}
+            />
+            <p className="texto-secundario" style={{ marginTop: "0.5rem", wordBreak: "break-all" }}>
+              {qrMesa.url}
+            </p>
+          </div>
+        )}
       </Modal>
     </div>
   );
