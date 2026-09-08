@@ -137,10 +137,11 @@ const barOrderService = {
       }
 
       const transiciones = {
-        pendiente: ["en_preparacion", "cancelado"],
-        en_preparacion: ["listo", "cancelado"],
-        listo: [],
+        pendiente: ["en_preparacion", "cancelado", "pagado"],
+        en_preparacion: ["listo", "cancelado", "pagado"],
+        listo: ["pagado"],
         cancelado: [],
+        pagado: [],
       };
 
       if (!transiciones[orden.estado]?.includes(estado)) {

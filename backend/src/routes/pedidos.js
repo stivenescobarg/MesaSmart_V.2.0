@@ -160,4 +160,35 @@ console.log("🏠 RESTAURANTE DEL TOKEN:", restauranteId);
   } finally { conn.release(); }
 });
 
+// ────────────────────────────────────────────────────────────
+// GET /api/pedidos-cocina/mesa/:mesaId
+// Ruta PÚBLICA — el cliente la usa para ver qué ya se ha pedido
+// en su propia mesa (evita que pida duplicado por accidente).
+// Solo trae pedidos activos (no pagados ni cancelados).
+// ────────────────────────────────────────────────────────────
+router.get("/mesa/:mesaId", async (req, res) => {
+  try {
+    const { mesaId } = req.params;
+    const { restaurante_id } = req.query;
+    if (!restaurante_id) {
+      return res.status(400).json({ error: "restaurante_id requerido" });
+    }
+
+    const [items] = await pool.query(
+      `SELECT dp.nombre, dp.cantidad, dp.precio, dp.categoria, dp.observacion
+       FROM detalle_pedido dp
+       JOIN pedidos p ON p.id = dp.pedido_id
+       WHERE p.mesa_id = ? AND p.restaurante_id = ?
+         AND p.estado NOT IN ('pagado','cancelado')
+       ORDER BY dp.id ASC`,
+      [mesaId, restaurante_id]
+    );
+
+    res.json(items);
+  } catch (err) {
+    console.error("❌ Error GET /api/pedidos-cocina/mesa/:mesaId:", err);
+    res.status(500).json({ error: "Error al obtener pedidos de la mesa" });
+  }
+});
+
 module.exports = router;

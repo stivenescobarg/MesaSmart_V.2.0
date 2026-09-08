@@ -57,6 +57,7 @@ import { pedidoService } from "../services/pedidoService";
 //   - moverItems(): Mover productos entre mesas
 
 import { cajaService } from "../services/cajaService";
+import { barService } from "../services/barService";
 // cajaService: Servicio API para operaciones de caja
 //   - getEstado(): Obtener estado actual de la caja
 //   - abrir(): Abrir nueva caja
@@ -409,7 +410,11 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
   // --------------------------------------------------------------------------
   // MODIFICAR CANTIDAD DE UN PRODUCTO
   // --------------------------------------------------------------------------
-  const handleModificarItem = async (mesa, item_id, delta) => {
+    const handleModificarItem = async (mesa, item_id, delta) => {
+    if (String(item_id).startsWith("bar-")) {
+      toast.info("Las bebidas se gestionan desde el panel de Bar.");
+      return;
+    }
     // Busca el item en el pedido de la mesa
     const item = mesa.pedido.find((i) => i.item_id === item_id);
     if (!item) return; // Si no existe, no hace nada
@@ -429,6 +434,10 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
   // ELIMINAR PRODUCTO DEL PEDIDO
   // --------------------------------------------------------------------------
   const handleEliminarItem = async (mesa, item_id) => {
+    if (String(item_id).startsWith("bar-")) {
+      toast.info("Las bebidas se gestionan desde el panel de Bar.");
+      return;
+    }
     try {
       await pedidoService.deleteItem(item_id); // Elimina el item por su ID
       await cargarMesas(); // Recarga la lista actualizada
@@ -495,6 +504,16 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
         subcuenta_nombre: resumen?.subcuentaNombre ?? null,
         pagos: resumen?.pagos ?? null, 
       });
+            // Las bebidas de bar no viven en la tabla `pedidos`, así que se
+      // cierran aparte marcando cada orden de bar involucrada como "pagado".
+      const idsBarAPagar = [...new Set(
+        (mesa.pedido || []).filter(i => i.__origenBar).map(i => i.__ordenBarId)
+      )];
+      for (const idBar of idsBarAPagar) {
+        try { await barService.actualizarEstado(idBar, "pagado"); }
+        catch (e) { console.error("Error marcando orden de bar como pagada:", e); }
+      }
+
       await cargarMesas(); // Limpia los productos de la mesa pagada
       await cargarCaja(); // Actualiza el monto en caja
       toast.exito(`Pago: ${COP(totalFinal)} — ${metodo}`);
@@ -541,8 +560,20 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
       });
 
       // Elimina los productos pagados del pedido (cantidad = 0)
+      // Elimina los productos pagados del pedido (cantidad = 0) — los de
+      // bar no viven en detalle_pedido, así que se saltan aquí.
       for (const item of items) {
+        if (item.__origenBar) continue;
         await pedidoService.updateItem(item.item_id, 0);
+      }
+
+      // Cierra las órdenes de bar incluidas en este pago parcial
+      const idsBarAPagar = [...new Set(
+        items.filter(i => i.__origenBar).map(i => i.__ordenBarId)
+      )];
+      for (const idBar of idsBarAPagar) {
+        try { await barService.actualizarEstado(idBar, "pagado"); }
+        catch (e) { console.error("Error marcando orden de bar como pagada:", e); }
       }
 
       await cargarMesas(); // Actualiza la mesa

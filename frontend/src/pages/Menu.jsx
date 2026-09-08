@@ -232,6 +232,7 @@ const Menu = () => {
   const [sectionPage, setSectionPage] = useState({});
   const [catsPage, setCatsPage] = useState(1);
   const productosRef = useRef(null);
+    const [pedidosMesa, setPedidosMesa] = useState([]); // lo ya pedido en esta mesa (no pagado aún)
 
   // ── Estados del formulario de quejas ──────────────────────
   const [quejaMsg,     setQuejaMsg]     = useState("");
@@ -311,6 +312,20 @@ const Menu = () => {
     }
   }, [categoria, subCategoria, activeTab]);
 
+  
+  // ── fetchPedidosMesa: trae lo que ya se ha pedido en esta mesa ───
+  const fetchPedidosMesa = () => {
+    if (!mesaId || !restauranteId) return;
+    fetch(`${API_URL}/pedidos-cocina/mesa/${mesaId}?restaurante_id=${restauranteId}`)
+      .then(res => res.json())
+      .then(data => setPedidosMesa(Array.isArray(data) ? data : []))
+      .catch(err => console.error("Error al cargar pedidos de la mesa:", err));
+  };
+
+  // Carga inicial al entrar al menú (y si cambia la mesa/restaurante)
+  useEffect(() => {
+    fetchPedidosMesa();
+  }, [mesaId, restauranteId]);
 
   // ── menuData: datos estáticos de respaldo (SOLO restaurante demo) ──
   const menuData = {
@@ -681,9 +696,10 @@ const Menu = () => {
           body: JSON.stringify({
             restaurante_id: restauranteId,
             mesa: quejaMesa,
-            items: bebidas.map(b => ({
+              items: bebidas.map(b => ({
               nombre:    b.nombre,
               cantidad:  b.qty,
+              precio:    b.precio,
               imgKey:    b.imgKey || null,
               adiciones: b.adiciones || [],
               opcion:    b.opcion || [],
@@ -697,12 +713,14 @@ const Menu = () => {
 
     setPagado(true);
     setEnviandoPedido(false);
-    setTimeout(() => {
-      setPagado(false);
-      setCart([]);
-      setCartOpen(false);
-      setQuejaMesa(mesaId ? String(mesaId) : "");
-    }, 4000);
+    setCart([]); // el pedido ya se envió, se limpia el carrito de "nuevos" items
+    fetchPedidosMesa(); // refresca el historial con lo que se acaba de pedir
+  };
+
+  // ── cerrarConfirmacionPagado: el cliente decide cuándo seguir pidiendo ──
+  const cerrarConfirmacionPagado = () => {
+    setPagado(false);
+    setCartOpen(false);
   };
 
   // ── useEffect: cargar categorías para el modal de admin ───
@@ -1186,7 +1204,7 @@ const handleToggleDisponible = async (item) => {
           <button className="sidebar-close-btn" onClick={() => setCartOpen(false)}>✕</button>
         </div>
 
-                {pagado ? (
+         {pagado ? (
           <div className="cart-paid">
             <div className="cart-paid-icon">✅</div>
             <h3>¡Pedido registrado!</h3>
@@ -1194,10 +1212,49 @@ const handleToggleDisponible = async (item) => {
               Dirígete a caja a pagar 🎉<br/>
               {quejaMesa && <strong>Tu mesa es la {quejaMesa}</strong>}
             </p>
+            <button className="modal-add-btn" style={{ marginTop: "18px", width: "auto", padding: "0 28px" }}
+              onClick={cerrarConfirmacionPagado}>
+              Seguir pidiendo
+            </button>
           </div>
-        ) : cart.length===0 ? (
-          <p className="cart-empty">Aún no has agregado nada 🍽️</p>
         ) : (
+          <>
+             {pedidosMesa.length > 0 && (
+              <div style={{ padding: "14px 22px 0" }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "10px" }}>
+                  🍽️ Ya pedido en tu mesa
+                </p>
+                <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: "12px", padding: "6px 14px", marginBottom: "6px" }}>
+                  {pedidosMesa.map((p, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 0", borderBottom: i < pedidosMesa.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
+                        <span style={{
+                          background: "rgba(245,158,11,0.15)",
+                          color: "#f59e0b",
+                          fontSize: "13px",
+                          fontWeight: 800,
+                          borderRadius: "8px",
+                          padding: "3px 9px",
+                          flexShrink: 0,
+                        }}>
+                          {p.cantidad}x
+                        </span>
+                        <span style={{ fontSize: "15px", color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>
+                          {p.nombre}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)", fontWeight: 600, flexShrink: 0 }}>
+                        {fmtCOP(p.precio * p.cantidad)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {cart.length===0 ? (
+              <p className="cart-empty">Aún no has agregado nada nuevo 🍽️</p>
+            ) : (
           <>
                <div style={{ padding: "14px 22px 0" }}>
               <input
@@ -1256,6 +1313,8 @@ const handleToggleDisponible = async (item) => {
             <button className="cart-pay-btn" onClick={handlePagar} disabled={enviandoPedido}>
               {enviandoPedido ? "Enviando..." : `Pagar ${fmtCOP(totalPrecio)}`}
             </button>
+              </>
+            )}
           </>
         )}
       </div>

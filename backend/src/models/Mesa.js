@@ -21,9 +21,44 @@ const Mesa = {
          ORDER BY p.creado_en`,
         [m.id]
       );
-      m.pedido    = items;
-      m.ocupada   = items.length > 0;
-      m.total     = items.reduce((a, i) => a + (parseFloat(i.precio) || 0) * i.cantidad, 0);
+
+      // ── Órdenes de bar: se guardan con la mesa como texto (el ID numérico
+      // del QR, no el nombre), así que el cruce es por String(m.id). ──
+      const [ordenesBar] = await pool.execute(
+  `SELECT id, items, estado
+   FROM ordenes_bar
+   WHERE restaurante_id = ? AND mesa = ? AND estado NOT IN ('cancelado','pagado')`,
+  [restaurante_id, String(m.id)]
+);
+
+      const itemsBar = [];
+      ordenesBar.forEach(orden => {
+        let parsedItems = [];
+                try {
+          parsedItems = typeof orden.items === "string"
+            ? JSON.parse(orden.items)
+            : (orden.items || []);
+        } catch { parsedItems = []; }
+        parsedItems.forEach((item, idx) => {
+          itemsBar.push({
+            item_id:      `bar-${orden.id}-${idx}`,
+            nombre:       item.nombre,
+            cantidad:     item.cantidad,
+            precio:       Number(item.precio) || 0,
+            categoria:    "bebida",
+            observacion:  [item.opcion, ...(item.adiciones || [])].filter(Boolean).join(", ") || null,
+            pedido_id:    null,
+            estado:       orden.estado,
+            __origenBar:  true,
+            __ordenBarId: orden.id,
+          });
+        });
+      });
+      
+      const pedidoCompleto = [...items, ...itemsBar];
+      m.pedido    = pedidoCompleto;
+      m.ocupada   = pedidoCompleto.length > 0;
+      m.total     = pedidoCompleto.reduce((a, i) => a + (parseFloat(i.precio) || 0) * i.cantidad, 0);
       m.pos_x     = parseInt(m.pos_x)     || 0;
       m.pos_y     = parseInt(m.pos_y)     || 0;
       m.capacidad = parseInt(m.capacidad) || 4;
