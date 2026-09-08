@@ -17,6 +17,7 @@ router.get("/inventario", auth, tenant, role(["admin", "bartender"]), controller
 router.get("/actividad", auth, tenant, role(["admin", "bartender"]), controller.actividad);
 
 router.patch("/ordenes/:id/estado", auth, tenant, role(["admin", "bartender"]), controller.actualizarEstado);
+router.patch("/ordenes/:id/pagar-parcial", auth, tenant, role(["admin", "bartender"]), controller.pagarParcial);
 
 // Consumo manual (requiere PIN)
 router.post(

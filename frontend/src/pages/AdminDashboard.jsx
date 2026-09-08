@@ -504,14 +504,26 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
         subcuenta_nombre: resumen?.subcuentaNombre ?? null,
         pagos: resumen?.pagos ?? null, 
       });
-            // Las bebidas de bar no viven en la tabla `pedidos`, así que se
-      // cierran aparte marcando cada orden de bar involucrada como "pagado".
-      const idsBarAPagar = [...new Set(
-        (mesa.pedido || []).filter(i => i.__origenBar).map(i => i.__ordenBarId)
-      )];
-      for (const idBar of idsBarAPagar) {
-        try { await barService.actualizarEstado(idBar, "pagado"); }
-        catch (e) { console.error("Error marcando orden de bar como pagada:", e); }
+
+      // Las bebidas de bar no viven en la tabla `pedidos`, así que se
+      // liquidan aparte. Como aquí se paga la mesa COMPLETA, la cantidad
+      // pagada de cada item de bar es toda la cantidad que aparece en
+      // mesa.pedido (que ya viene de Mesa.js con la cantidad real de la
+      // orden). Se agrupa por orden y se calcula el índice real de cada
+      // item dentro del JSON de esa orden desde su item_id
+      // ("bar-{ordenId}-{index}"), para no depender de matchear por nombre.
+      const pagosPorOrden = new Map(); // ordenId -> [{ index, cantidad }]
+      for (const item of mesa.pedido || []) {
+        if (!item.__origenBar) continue;
+        const partes = String(item.item_id).split("-"); // ["bar", ordenId, index]
+        const index = Number(partes[2]);
+        if (Number.isNaN(index)) continue;
+        if (!pagosPorOrden.has(item.__ordenBarId)) pagosPorOrden.set(item.__ordenBarId, []);
+        pagosPorOrden.get(item.__ordenBarId).push({ index, cantidad: item.cantidad });
+      }
+      for (const [idBar, pagos] of pagosPorOrden) {
+        try { await barService.pagarParcial(idBar, pagos); }
+        catch (e) { console.error("Error registrando pago de orden de bar:", e); }
       }
 
       await cargarMesas(); // Limpia los productos de la mesa pagada
@@ -559,7 +571,6 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
         pagos: resumen?.pagos ?? null,
       });
 
-      // Elimina los productos pagados del pedido (cantidad = 0)
       // Elimina los productos pagados del pedido (cantidad = 0) — los de
       // bar no viven en detalle_pedido, así que se saltan aquí.
       for (const item of items) {
@@ -567,13 +578,22 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
         await pedidoService.updateItem(item.item_id, 0);
       }
 
-      // Cierra las órdenes de bar incluidas en este pago parcial
-      const idsBarAPagar = [...new Set(
-        items.filter(i => i.__origenBar).map(i => i.__ordenBarId)
-      )];
-      for (const idBar of idsBarAPagar) {
-        try { await barService.actualizarEstado(idBar, "pagado"); }
-        catch (e) { console.error("Error marcando orden de bar como pagada:", e); }
+      // Liquida SOLO la cantidad realmente pagada de cada item de bar
+      // dentro de su orden (soporta pago parcial de subcuentas: si en la
+      // mesa había 3 Aguardientes y aquí solo llegan 1, solo se resta 1
+      // dentro del JSON de esa orden, dejando el resto activo).
+      const pagosPorOrden = new Map(); // ordenId -> [{ index, cantidad }]
+      for (const item of items) {
+        if (!item.__origenBar) continue;
+        const partes = String(item.item_id).split("-"); // ["bar", ordenId, index]
+        const index = Number(partes[2]);
+        if (Number.isNaN(index)) continue;
+        if (!pagosPorOrden.has(item.__ordenBarId)) pagosPorOrden.set(item.__ordenBarId, []);
+        pagosPorOrden.get(item.__ordenBarId).push({ index, cantidad: item.cantidad });
+      }
+      for (const [idBar, pagos] of pagosPorOrden) {
+        try { await barService.pagarParcial(idBar, pagos); }
+        catch (e) { console.error("Error registrando pago parcial de bar:", e); }
       }
 
       await cargarMesas(); // Actualiza la mesa
