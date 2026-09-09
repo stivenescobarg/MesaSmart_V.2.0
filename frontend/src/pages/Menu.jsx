@@ -12,7 +12,7 @@
 // viendo (ver `esAdmin` más abajo).
 // ============================================================
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./Menu.css";
 import FoodCard from "../components/FoodCard";
@@ -21,6 +21,7 @@ import { API_URL } from "../services/config";
 import { authService } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import ImageUploadField from "../components/ImageUploadField";
+import { useBlockBack } from "../hooks/useBeforeUnload";
 
 // ── Íconos por categoría ─────────────────────────────────────
 const catIconos = {
@@ -232,7 +233,8 @@ const Menu = () => {
   const [sectionPage, setSectionPage] = useState({});
   const [catsPage, setCatsPage] = useState(1);
   const productosRef = useRef(null);
-    const [pedidosMesa, setPedidosMesa] = useState([]); // lo ya pedido en esta mesa (no pagado aún)
+    const [pedidosMesa, setPedidosMesa] = useState([]); // lo ya pedido en esta mesa (cocina, no pagado aún)
+    const [pedidosBarMesa, setPedidosBarMesa] = useState([]); // lo ya pedido en esta mesa (bar, no pagado aún)
 
   // ── Estados del formulario de quejas ──────────────────────
   const [quejaMsg,     setQuejaMsg]     = useState("");
@@ -253,6 +255,18 @@ const Menu = () => {
   const [nuevaAdicion, setNuevaAdicion] = useState({ nombre: "", precio: "" });
   const [guardando,    setGuardando]    = useState(false);
   const [guardadoOk,   setGuardadoOk]  = useState(false);
+
+  // ── Subcategorías dinámicas (según la categoría elegida en el modal) ──
+  const [subcategoriasBD, setSubcategoriasBD] = useState([]);
+  const [cargandoSubcats, setCargandoSubcats] = useState(false);
+
+  // ── Mini-formularios inline: crear categoría / subcategoría al vuelo ──
+  const [creandoCategoria,    setCreandoCategoria]    = useState(false);
+   const [nuevaCategoria,      setNuevaCategoria]      = useState({ nombre: "", imagen: "", destino: "cocina" });
+  const [guardandoCategoria,  setGuardandoCategoria]  = useState(false);
+  const [creandoSubcategoria, setCreandoSubcategoria] = useState(false);
+  const [nuevaSubcategoria,   setNuevaSubcategoria]   = useState({ nombre: "", imagen: "" });
+  const [guardandoSubcategoria, setGuardandoSubcategoria] = useState(false);
 
   // ── Estados del modal "Editar producto" (admin) ───────────
   const [editModal,    setEditModal]    = useState(false);
@@ -284,6 +298,7 @@ const Menu = () => {
             adiciones:     prod.adiciones || [],
             subcategoria:  prod.subcategoria || null,
             categoria:     prod.categoria,
+            destino:       prod.destino || "cocina",
           });
         });
         setMenuDB(organizado);
@@ -319,8 +334,48 @@ const Menu = () => {
     fetch(`${API_URL}/pedidos-cocina/mesa/${mesaId}?restaurante_id=${restauranteId}`)
       .then(res => res.json())
       .then(data => setPedidosMesa(Array.isArray(data) ? data : []))
-      .catch(err => console.error("Error al cargar pedidos de la mesa:", err));
+      .catch(err => console.error("Error al cargar pedidos de cocina:", err));
+
+    fetch(`${API_URL}/bar/ordenes/mesa/${mesaId}?restaurante_id=${restauranteId}`)
+      .then(res => res.json())
+      .then(data => setPedidosBarMesa(Array.isArray(data) ? data : []))
+      .catch(err => console.error("Error al cargar pedidos de bar:", err));
   };
+    // ── Bloquear el gesto/botón "atrás" para no perder el carrito ────
+  // En vez de mostrar un modal de confirmación (como en el admin), acá
+  // el "atrás" se comporta como en una app nativa: cierra lo que esté
+  // abierto (modal de producto, carrito, sidebar) en orden de prioridad;
+  // si no hay nada abierto, simplemente no deja salir del menú.
+  const manejarGestoAtras = useCallback(() => {
+    if (selectedItem)      { setSelectedItem(null); return; }
+    if (addModal)          { setAddModal(false);    return; }
+    if (editModal)         { setEditModal(false);   return; }
+    if (cartOpen)          { setCartOpen(false);     return; }
+    if (menuOpen)          { setMenuOpen(false);     return; }
+    // No hay nada abierto: no hacemos nada más, el hook ya se encargó
+    // de "absorber" el evento y quedarnos en la misma página.
+  }, [selectedItem, addModal, editModal, cartOpen, menuOpen]);
+
+  useBlockBack(true, manejarGestoAtras);
+
+    // ── Evitar que Safari/Chrome empiecen a animar el gesto de swipe-atrás
+  // en primer lugar (en vez de solo bloquear la navegación después de que
+  // ya arrancó, que es lo que causaba el freeze/glitch visual). Se activa
+  // solo mientras el componente Menu está montado, y se revierte al salir.
+  useEffect(() => {
+    const htmlEl = document.documentElement;
+    const bodyEl = document.body;
+    const prevHtml = htmlEl.style.overscrollBehaviorX;
+    const prevBody = bodyEl.style.overscrollBehaviorX;
+
+    htmlEl.style.overscrollBehaviorX = "none";
+    bodyEl.style.overscrollBehaviorX = "none";
+
+    return () => {
+      htmlEl.style.overscrollBehaviorX = prevHtml;
+      bodyEl.style.overscrollBehaviorX = prevBody;
+    };
+  }, []);
 
   // Carga inicial al entrar al menú (y si cambia la mesa/restaurante)
   useEffect(() => {
@@ -582,7 +637,9 @@ const Menu = () => {
   //     no la comida de otro tenant.
   const tieneProductosBD  = Object.keys(menuDB).length > 0;
   const esRestauranteDemo = String(restauranteId) === RESTAURANTE_DEMO_ID;
-  const dataFinal = tieneProductosBD ? menuDB : (esRestauranteDemo ? menuData : {});
+  const dataFinal = tieneProductosBD
+    ? (esRestauranteDemo ? { ...menuData, ...menuDB } : menuDB)
+    : (esRestauranteDemo ? menuData : {});
   const menuVacio = Object.keys(dataFinal).length === 0;
 
   // ── firstImg / getCatImage: imagen representativa de una categoría ──
@@ -654,18 +711,24 @@ const Menu = () => {
 
     setEnviandoPedido(true);
 
-    const comidas = cart.filter(c => !BAR_CATS.includes(c.categoria));
-    const bebidas = cart.filter(c =>  BAR_CATS.includes(c.categoria));
+    // El destino real viene de la categoría en BD. BAR_CATS queda solo
+    // como fallback para los productos estáticos de demo, que no tienen
+    // `destino` propio todavía.
+    const esBebida = c => c.destino ? c.destino === "bar" : BAR_CATS.includes(c.categoria);
+
+    const comidas = cart.filter(c => !esBebida(c));
+    const bebidas = cart.filter(c =>  esBebida(c));
+    const errores = [];
 
     // 1. Enviar comidas a cocina
     if (comidas.length > 0) {
       try {
-        await fetch(`${API_URL}/pedidos-cocina`, {
+        const res = await fetch(`${API_URL}/pedidos-cocina`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             restaurante_id: restauranteId,
-            mesa_id: mesaId, // 👈 antes: mesa_nombre: quejaMesa
+            mesa_id: mesaId,
             observacion: null,
             items: comidas.map(c => ({
               nombre:      c.nombre,
@@ -679,18 +742,20 @@ const Menu = () => {
             })),
           }),
         });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          errores.push(data.error || "No se pudo enviar la comida a cocina.");
+        }
       } catch (err) {
         console.error("❌ Error enviando a cocina:", err);
+        errores.push("No se pudo conectar con cocina.");
       }
     }
 
     // 2. Enviar bebidas al bar
-    // ⚠️ Pendiente: confirmar con el backend de /bar/orden si esa ruta
-    // ya soporta mesa_id o todavía espera "mesa" como texto, antes de
-    // cambiar esto igual que arriba.
     if (bebidas.length > 0) {
       try {
-        await fetch(`${API_URL}/bar/ordenes`, {
+        const res = await fetch(`${API_URL}/bar/ordenes`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -706,15 +771,26 @@ const Menu = () => {
             })),
           }),
         });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          errores.push(data.msg || "No se pudo enviar la bebida al bar.");
+        }
       } catch (err) {
         console.error("❌ Error enviando al bar:", err);
+        errores.push("No se pudo conectar con el bar.");
       }
     }
 
-    setPagado(true);
     setEnviandoPedido(false);
-    setCart([]); // el pedido ya se envió, se limpia el carrito de "nuevos" items
-    fetchPedidosMesa(); // refresca el historial con lo que se acaba de pedir
+
+    if (errores.length > 0) {
+      alert(`Hubo un problema con tu pedido:\n\n${errores.join("\n")}\n\nRevisa el carrito e inténtalo de nuevo.`);
+      return;
+    }
+
+    setPagado(true);
+    setCart([]);
+    fetchPedidosMesa();
   };
 
   // ── cerrarConfirmacionPagado: el cliente decide cuándo seguir pidiendo ──
@@ -735,6 +811,78 @@ const Menu = () => {
     }
   }, [addModal, esAdmin, restauranteId]);
 
+  // ── useEffect: cargar subcategorías cada vez que cambia la categoría
+  // elegida en el modal de "Nuevo producto". Ya no depende de que la
+  // categoría se llame "Bar" — funciona para cualquier categoría nueva.
+  useEffect(() => {
+    if (!addModal || !nuevoProducto.categoria_id) {
+      setSubcategoriasBD([]);
+      return;
+    }
+    setCargandoSubcats(true);
+    fetch(`${API_URL}/menu/categorias/${nuevoProducto.categoria_id}/subcategorias`)
+      .then(r => r.json())
+      .then(data => setSubcategoriasBD(Array.isArray(data) ? data : []))
+      .catch(() => setSubcategoriasBD([]))
+      .finally(() => setCargandoSubcats(false));
+  }, [addModal, nuevoProducto.categoria_id]);
+
+
+   // ── handleCrearCategoria: crea una categoría desde el mini-formulario
+  // inline del modal y la selecciona automáticamente en el producto.
+  const handleCrearCategoria = async () => {
+    if (!nuevaCategoria.nombre.trim()) return;
+    setGuardandoCategoria(true);
+    try {
+      const res = await fetch(`${API_URL}/menu/categorias`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authService.getToken()}`,
+        },
+        body: JSON.stringify({ nombre: nuevaCategoria.nombre.trim(), imagen: nuevaCategoria.imagen || null, destino: nuevaCategoria.destino }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const creada = { id: data.id, nombre: data.nombre, imagen: data.imagen, destino: data.destino };
+        setCategoriasBD(prev => [...prev, creada]);
+        setNuevoProducto(p => ({ ...p, categoria_id: String(creada.id), _catNombre: creada.nombre, subcategoria: "" }));
+        setNuevaCategoria({ nombre: "", imagen: "", destino: "cocina" });
+        setCreandoCategoria(false);
+      }
+    } catch (err) { console.error(err); }
+    setGuardandoCategoria(false);
+  };
+
+  // ── handleCrearSubcategoria: igual que arriba, pero para subcategorías,
+  // siempre ligada a la categoría que esté elegida en ese momento.
+  const handleCrearSubcategoria = async () => {
+    if (!nuevaSubcategoria.nombre.trim() || !nuevoProducto.categoria_id) return;
+    setGuardandoSubcategoria(true);
+    try {
+      const res = await fetch(`${API_URL}/menu/subcategorias`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authService.getToken()}`,
+        },
+        body: JSON.stringify({
+          nombre: nuevaSubcategoria.nombre.trim(),
+          categoria_id: nuevoProducto.categoria_id,
+          imagen: nuevaSubcategoria.imagen || null,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const creada = { id: data.id, nombre: data.nombre, imagen: data.imagen };
+        setSubcategoriasBD(prev => [...prev, creada]);
+        setNuevoProducto(p => ({ ...p, subcategoria: creada.nombre }));
+        setNuevaSubcategoria({ nombre: "", imagen: "" });
+        setCreandoSubcategoria(false);
+      }
+    } catch (err) { console.error(err); }
+    setGuardandoSubcategoria(false);
+  };
 
   // ── handleGuardarProducto: crear nuevo producto en la BD ──
   const handleGuardarProducto = async () => {
@@ -771,6 +919,7 @@ const Menu = () => {
                   tiene_termino: prod.tiene_termino, opciones: prod.opciones || [],
                   adiciones: prod.adiciones || [], subcategoria: prod.subcategoria || null,
                   categoria: prod.categoria,
+                  destino: prod.destino || "cocina",
                 });
               });
               setMenuDB(organizado);
@@ -1034,32 +1183,115 @@ const handleToggleDisponible = async (item) => {
 
               <div className="modal-section">
                 <p className="modal-section-title">Categoría</p>
-                <select className="queja-mesa-input"
-                  value={nuevoProducto.categoria_id}
-                  onChange={e => {
-                    const sel = categoriasBD.find(c => c.id === Number(e.target.value));
-                    setNuevoProducto(p => ({ ...p, categoria_id: e.target.value, _catNombre: sel?.nombre || "", subcategoria: "" }));
-                  }}
-                  style={{ cursor: "pointer" }}>
-                  <option value="" style={{ color: "#000" }}>Selecciona una categoría</option>
+
+                <div className="picker-grid">
                   {categoriasBD.map(c => (
-                    <option key={c.id} value={c.id} style={{ color: "#000" }}>
-                      {catIconos[c.nombre] || "🍴"} {c.nombre}
-                    </option>
+                    <button type="button" key={c.id}
+                      className={`picker-chip ${String(nuevoProducto.categoria_id) === String(c.id) ? "selected" : ""}`}
+                      onClick={() => setNuevoProducto(p => ({ ...p, categoria_id: String(c.id), _catNombre: c.nombre, subcategoria: "" }))}>
+                      {c.imagen
+                        ? <img src={c.imagen} alt="" className="picker-chip-thumb" />
+                        : <span>{catIconos[c.nombre] || "🍴"}</span>}
+                      {c.nombre}
+                    </button>
                   ))}
-                </select>
+                  <button type="button" className="picker-chip picker-chip--add"
+                    onClick={() => setCreandoCategoria(v => !v)}>
+                    ➕ Crear categoría nueva
+                  </button>
+                </div>
+
                 {categoriasBD.length === 0 && (
                   <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", marginTop: "6px" }}>
                     Cargando categorías...
                   </p>
                 )}
-                {nuevoProducto._catNombre === "Bar" && (
-                  <select className="queja-mesa-input" style={{ cursor: "pointer", marginTop: "8px" }}
-                    value={nuevoProducto.subcategoria || ""}
-                    onChange={e => setNuevoProducto(p => ({ ...p, subcategoria: e.target.value }))}>
-                    <option value="" style={{ color: "#000" }}>Selecciona subcategoría del Bar</option>
-                    {BAR_SUBS.map(s => <option key={s} value={s} style={{ color: "#000" }}>{BAR_ICONS[s]} {s}</option>)}
-                  </select>
+
+                {creandoCategoria && (
+                  <div className="inline-create-panel">
+                    <p className="inline-create-panel-title">Nueva categoría</p>
+                    <input className="queja-mesa-input" placeholder="Ej: Postres"
+                      value={nuevaCategoria.nombre}
+                      onChange={e => setNuevaCategoria(c => ({ ...c, nombre: e.target.value }))} />
+                    <ImageUploadField
+                      value={nuevaCategoria.imagen}
+                      onChange={url => setNuevaCategoria(c => ({ ...c, imagen: url }))} />
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button type="button"
+                        className={`picker-chip ${nuevaCategoria.destino === "cocina" ? "selected" : ""}`}
+                        onClick={() => setNuevaCategoria(c => ({ ...c, destino: "cocina" }))}>
+                        🍳 Va a cocina
+                      </button>
+                      <button type="button"
+                        className={`picker-chip ${nuevaCategoria.destino === "bar" ? "selected" : ""}`}
+                        onClick={() => setNuevaCategoria(c => ({ ...c, destino: "bar" }))}>
+                        🍹 Va a barra
+                      </button>
+                    </div>
+                    <div className="inline-create-actions">
+                      <button type="button" className="inline-create-cancel-btn"
+                        onClick={() => { setCreandoCategoria(false); setNuevaCategoria({ nombre: "", imagen: "" }); }}>
+                        Cancelar
+                      </button>
+                      <button type="button" className="inline-create-save-btn"
+                        onClick={handleCrearCategoria}
+                        disabled={guardandoCategoria || !nuevaCategoria.nombre.trim()}>
+                        {guardandoCategoria ? "Creando..." : "Crear y seleccionar"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {nuevoProducto.categoria_id && (
+                  <div style={{ marginTop: "16px" }}>
+                    <p className="modal-section-title" style={{ marginBottom: "10px" }}>Subcategoría (opcional)</p>
+
+                    <div className="picker-grid">
+                      {subcategoriasBD.map(s => (
+                        <button type="button" key={s.id}
+                          className={`picker-chip ${nuevoProducto.subcategoria === s.nombre ? "selected" : ""}`}
+                          onClick={() => setNuevoProducto(p => ({ ...p, subcategoria: p.subcategoria === s.nombre ? "" : s.nombre }))}>
+                          {s.imagen
+                            ? <img src={s.imagen} alt="" className="picker-chip-thumb" />
+                            : <span>{BAR_ICONS[s.nombre] || "🏷️"}</span>}
+                          {s.nombre}
+                        </button>
+                      ))}
+                      <button type="button" className="picker-chip picker-chip--add"
+                        onClick={() => setCreandoSubcategoria(v => !v)}>
+                        ➕ Crear subcategoría nueva
+                      </button>
+                    </div>
+
+                    {cargandoSubcats && (
+                      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", marginTop: "6px" }}>
+                        Cargando subcategorías...
+                      </p>
+                    )}
+
+                    {creandoSubcategoria && (
+                      <div className="inline-create-panel">
+                        <p className="inline-create-panel-title">Nueva subcategoría</p>
+                        <input className="queja-mesa-input" placeholder="Ej: Helados"
+                          value={nuevaSubcategoria.nombre}
+                          onChange={e => setNuevaSubcategoria(s => ({ ...s, nombre: e.target.value }))} />
+                        <ImageUploadField
+                          value={nuevaSubcategoria.imagen}
+                          onChange={url => setNuevaSubcategoria(s => ({ ...s, imagen: url }))} />
+                        <div className="inline-create-actions">
+                          <button type="button" className="inline-create-cancel-btn"
+                            onClick={() => { setCreandoSubcategoria(false); setNuevaSubcategoria({ nombre: "", imagen: "" }); }}>
+                            Cancelar
+                          </button>
+                          <button type="button" className="inline-create-save-btn"
+                            onClick={handleCrearSubcategoria}
+                            disabled={guardandoSubcategoria || !nuevaSubcategoria.nombre.trim()}>
+                            {guardandoSubcategoria ? "Creando..." : "Crear y seleccionar"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1219,14 +1451,14 @@ const handleToggleDisponible = async (item) => {
           </div>
         ) : (
           <>
-             {pedidosMesa.length > 0 && (
+             {(pedidosMesa.length > 0 || pedidosBarMesa.length > 0) && (
               <div style={{ padding: "14px 22px 0" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "10px" }}>
                   🍽️ Ya pedido en tu mesa
                 </p>
                 <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: "12px", padding: "6px 14px", marginBottom: "6px" }}>
-                  {pedidosMesa.map((p, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 0", borderBottom: i < pedidosMesa.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                  {[...pedidosMesa, ...pedidosBarMesa].map((p, i, arr) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 0", borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
                         <span style={{
                           background: "rgba(245,158,11,0.15)",
@@ -1326,6 +1558,15 @@ const handleToggleDisponible = async (item) => {
           🛒 {totalItems>0 && <span className="cart-badge">{totalItems}</span>}
         </button>
       </div>
+
+      {totalItems > 0 && !cartOpen && (
+        <button className="cart-fab" onClick={() => setCartOpen(true)}>
+          <span className="cart-fab-icon">🛒</span>
+          <span className="cart-fab-text">Ver pedido</span>
+          <span className="cart-fab-badge">{totalItems}</span>
+          <span className="cart-fab-total">{fmtCOP(totalPrecio)}</span>
+        </button>
+      )}
 
       {!menuVacio && (
         <div className="search-row">

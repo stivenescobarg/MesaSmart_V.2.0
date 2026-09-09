@@ -1,3 +1,4 @@
+//backend/src/routes/pedidos.js
 const express  = require("express");
 const router   = express.Router();
 const { pool } = require("../config/db");
@@ -130,9 +131,6 @@ router.post("/", async (req, res) => {
 router.patch("/:id/estado", auth, async (req, res) => {
   try {
     const restauranteId = req.usuario.restaurante_id;
-
-console.log("🍳 USUARIO COCINA:", req.usuario);
-console.log("🏠 RESTAURANTE DEL TOKEN:", restauranteId);
     const { estado } = req.body;
     const validos = ["pendiente", "en_preparacion", "listo", "pagado", "cancelado"];
     if (!validos.includes(estado))
@@ -146,18 +144,16 @@ console.log("🏠 RESTAURANTE DEL TOKEN:", restauranteId);
       return res.status(404).json({ error: "Pedido no encontrado en tu restaurante." });
     }
 
-    await pool.execute(
+    const [result] = await pool.execute(
       "UPDATE pedidos SET estado = ? WHERE id = ? AND restaurante_id = ?",
       [estado, req.params.id, restauranteId]
     );
-    await conn.commit();
-    if (r.affectedRows === 0) return res.status(404).json({ error: "Pedido no encontrado" });
+    if (result.affectedRows === 0) return res.status(404).json({ error: "Pedido no encontrado" });
     res.json({ ok: true });
   } catch (err) {
-    await conn.rollback();
     console.error("❌ Error PATCH /api/pedidos-cocina/:id/estado:", err);
     res.status(500).json({ error: "Error al actualizar estado" });
-  } finally { conn.release(); }
+  }
 });
 
 // ────────────────────────────────────────────────────────────

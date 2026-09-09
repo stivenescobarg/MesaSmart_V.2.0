@@ -90,6 +90,7 @@ body {
   font-family: "Plus Jakarta Sans", sans-serif;
   background: #09080a;
   min-height: 100vh;
+  overscroll-behavior-x: none;
 }
 
 /* ── CONTENEDOR PRINCIPAL ────────────────────────────────────── */
@@ -1278,3 +1279,152 @@ body {
 .toggle-disp-btn:hover { transform: scale(1.12); }
 .toggle-disp-btn.desactivar:hover { background: rgba(220,32,80,0.75); }
 .toggle-disp-btn.reactivar:hover { background: rgba(34,197,94,0.75); }
+
+.cart-fab {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 76px; /* justo encima del bottom-nav */
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  color: #1a1206;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+  cursor: pointer;
+  animation: cartFabIn 0.25s ease-out;
+}
+
+.cart-fab-icon { font-size: 18px; }
+.cart-fab-text { flex: 1; text-align: left; }
+.cart-fab-badge {
+  background: rgba(0,0,0,0.2);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 13px;
+}
+.cart-fab-total { font-size: 15px; }
+
+@keyframes cartFabIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ── PICKER DE CATEGORÍA/SUBCATEGORÍA (modal admin) ──────────────
+   Chips seleccionables en vez de <select> — usa la misma paleta
+   ámbar/carbón del resto del menú, con miniatura si la categoría
+   tiene imagen propia. */
+.picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.picker-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: 50px;
+  border: 1.5px solid var(--mc-border);
+  background: var(--mc-bg-input);
+  color: var(--mc-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, color 0.18s, transform 0.15s;
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+.picker-chip:hover {
+  border-color: var(--mc-orange-border);
+  color: var(--mc-orange);
+  background: var(--mc-orange-bg);
+}
+
+.picker-chip.selected {
+  background: linear-gradient(135deg, var(--mc-orange), var(--mc-orange-hover));
+  border-color: var(--mc-orange);
+  color: #1a1206;
+  box-shadow: 0 4px 14px rgba(245,158,11,0.35);
+}
+
+.picker-chip-thumb {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.25);
+}
+
+.picker-chip--add {
+  border-style: dashed;
+  color: var(--mc-orange);
+  background: transparent;
+}
+
+.picker-chip--add:hover { background: var(--mc-orange-bg); }
+
+/* Panel del mini-formulario "Crear categoría/subcategoría nueva" */
+.inline-create-panel {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1.5px dashed var(--mc-orange-border);
+  background: var(--mc-orange-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inline-create-panel-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--mc-orange);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.inline-create-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.inline-create-save-btn {
+  flex: 1;
+  padding: 11px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--mc-orange), var(--mc-orange-hover));
+  color: #1a1206;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  transition: transform 0.14s;
+}
+.inline-create-save-btn:hover { transform: scale(1.02); }
+.inline-create-save-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.inline-create-cancel-btn {
+  padding: 11px 16px;
+  border: 1.5px solid var(--mc-border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--mc-text-secondary);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  transition: border-color 0.15s, color 0.15s;
+}
+.inline-create-cancel-btn:hover { border-color: var(--mc-border-light); color: var(--mc-text-primary); }
