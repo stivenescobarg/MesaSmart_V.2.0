@@ -1,44 +1,80 @@
 // frontend/src/components/admin/DetalleMesa.jsx
-// ✅ Total y tabla se actualizan en tiempo real con optimistic update
-// ✅ Servicio 10%, propina, descuentos, subcuentas y división por cantidades
-// ✅ Pago mixto — se puede dividir el cobro entre varios métodos
-//    de pago (ej. $40.000 en efectivo + $160.000 en transferencia) en
-//    una misma transacción. Ver ModalConfigurarCobro más abajo.
 //
-// 🎨 CAMBIO DE ESTILO (este pase): SOLO se tocó marcado/clases para poder
-// reordenar visualmente el modal de cobro en grupos con "detalle-mesa.css".
-// Ningún estado, handler ni cálculo fue modificado. El layout de la mesa
-// y de subcuentas se mantiene igual al que ya tenías; el import de CSS
-// se agregó al final de este bloque de comentarios.
+// ══════════════════════════════════════════════════════════════════
+// REDISEÑO — sigue sin depender de ningún CSS propio ("detalle-mesa.css"
+// no existe más). Todo el estilo sale de las clases ya existentes en
+// Admin.css (las mismas que usan Egresos.jsx, Usuarios, Caja, Dashboard):
+//   modal-overlay / modal-box / modal-header / modal-body / modal-footer
+//   tab-selector / tab-btn, campo-grupo / campo-label / campo-input
+//   chip / chip-verde / chip-amber / chip-rojo / chip-neutro / chip-metodo
+//   tabla / tabla-wrapper / th-* / td-*
+//   btn-primario / btn-secundario / btn-ghost / btn-peligro / btn-ancho
+//   admin-card, division-panel, detalle-total, estado-vacio, alerta-*
+//   dashboard-grid / metrica-card / metrica-etiqueta / metrica-valor / metrica-sub
+// No se agregó ninguna clase nueva a Admin.css. Admin.css NO se toca.
 //
-// import "./detalle-mesa.css";
+// PASE 2 — PULIDO VISUAL (solo dentro de este archivo, vía `style`
+// inline con las variables/tokens que ya existen en Admin.css; cero
+// cambios de lógica de negocio, cero clases nuevas, cero archivo CSS
+// nuevo):
 //
-// ⚠️ IMPORTANTE — LEER ANTES DE INTEGRAR:
-// Este archivo AMPLÍA el componente original, no lo reemplaza conceptualmente.
-// Se mantuvieron TODAS las funciones, estados y comportamientos previos
-// (optimistic update de cantidades, eliminación con PIN, mover productos entre
-// mesas, pago total, pago parcial por selección, validación de caja).
+// 1. Botones que antes se veían "solo como texto" (btn-ghost y
+//    btn-secundario en este archivo específicamente: "Mover productos",
+//    "Dividir cuenta", "Cancelar división", "Cancelar" de los modales,
+//    "➕ Nueva subcuenta", "→ Mover", "← Quitar 1") ahora llevan un
+//    fondo/borde permanente (no solo en :hover) usando los mismos
+//    tokens de color que ya usa "Cobrar" (var(--amber-dim),
+//    var(--bg-hover), etc.). Se centralizó en dos constantes de estilo
+//    (ESTILO_BTN_GHOST / ESTILO_BTN_SECUNDARIO) para que quede
+//    consistente en todo el componente.
+// 2. Tira de MÉTRICAS: cada tarjeta ahora tiene un acento de color
+//    distinto en el borde superior (ámbar / azul / morado / verde —
+//    todos tokens que ya existían) para diferenciarlas de un vistazo,
+//    en vez de verse todas idénticas.
+// 3. Los paneles de división (selección simple y subcuentas) ahora
+//    tienen sombra (var(--shadow), ya definida en Admin.css) para dar
+//    más profundidad, en vez de verse planos.
+// 4. La tarjeta de subcuenta activa ahora anima el glow/borde con una
+//    transición suave en vez de "saltar" al seleccionarse.
 //
-// Se agregaron llamadas a `onPagoTotal` y `onPagoParcial` con un ARGUMENTO
-// ADICIONAL (`resumen`) al final, de forma retrocompatible:
+// 2. FIX DE BUG (pase anterior) — los modales (cobrar, PIN, mover,
+//    subcuentas) se renderizan con un PORTAL (`createPortal` hacia
+//    `document.body`) en vez de quedar anidados dentro del árbol de
+//    la página. Esto es lo que causaba que el modal se viera
+//    "pegado"/recortado arriba: si algún contenedor padre (p. ej. la
+//    transición entre pestañas del admin) tiene `transform`, rompe el
+//    `position: fixed` de cualquier hijo no-portal y lo desalinea del
+//    viewport real. Con el portal, el modal siempre cubre la pantalla
+//    completa sin importar dónde esté anidado en el árbol de
+//    componentes.
+// 3. El modal tiene `max-height` con scroll interno propio, así que
+//    aunque el contenido sea alto (el de cobrar, por ejemplo) nunca se
+//    corta ni se sale del viewport — el cuadro siempre se ve completo.
+// 4. Tira de MÉTRICAS arriba del detalle (reutiliza dashboard-grid /
+//    metrica-card, igual que Egresos): Total mesa, Ítems, Ticket
+//    promedio, y — solo cuando aplica — Subcuentas activas.
+// 5. Las líneas de método de pago muestran un chip de color
+//    (chip-metodo, ya definido en Admin.css para efectivo/tarjeta/
+//    transferencia) para identificar cada método de un vistazo.
 //
-//   onPagoTotal(metodoPago, resumen)
-//   onPagoParcial(items, metodoPago, resumen)
+// La LÓGICA es exactamente la misma que ya tenías: optimistic update
+// de cantidades, eliminar con PIN, mover productos entre mesas, pago
+// total, pago parcial por selección, subcuentas, pago mixto (varias
+// líneas de método+monto), descuento/servicio/propina y validación
+// de caja.
 //
-// `resumen` ahora también incluye `resumen.pagos`: un arreglo con el
-// desglose real del cobro, ej:
-//   [{ metodo: "Efectivo", monto: 40000 }, { metodo: "Transferencia", monto: 160000 }]
-// `metodoPago` (el primer argumento, como antes) sigue siendo un solo
-// string: si el cobro fue en un único método, es ese método; si fue
-// dividido entre varios, es el método con mayor monto (solo referencial,
-// para no romper nada que hoy solo lea ese primer argumento). El desglose
-// real y confiable para guardar en base de datos es siempre `resumen.pagos`.
+// onPagoTotal(metodoPago, resumen) y onPagoParcial(items, metodoPago, resumen)
+// siguen recibiendo `resumen` con:
+//   { consumo, descuentoTipo, descuento, subtotal, servicio, propina, total, pagos }
+// `resumen.pagos` es el desglose real: [{ metodo_pago, monto }, ...]
+// ══════════════════════════════════════════════════════════════════
 
 import { useState, useEffect } from "react";
-import "./detalle-mesa.css";
+import { createPortal } from "react-dom";
 
 const METODOS_PAGO = ["Efectivo", "Tarjeta", "Transferencia"];
 const ICONO_METODO = { Efectivo: "💵", Tarjeta: "💳", Transferencia: "📲" };
+const CLASE_METODO = { Efectivo: "chip-efectivo", Tarjeta: "chip-tarjeta", Transferencia: "chip-transferencia" };
 
 const PIN_ELIMINAR = "1234";
 
@@ -52,7 +88,28 @@ const money = (v) => `$${Math.round(num(v)).toLocaleString("es-CO")}`;
 const TOLERANCIA_CUADRE = 1;
 
 // ══════════════════════════════════════════════════════════════════
-// LÓGICA CENTRALIZADA DE CÁLCULO (punto 8 y 15 del prompt)
+// ESTILOS INLINE REUTILIZABLES (pase 2 — solo estética, no lógica)
+// Se centralizan acá para no repetir el mismo objeto en cada botón y
+// para que sea fácil de ajustar en un solo lugar. Usan únicamente
+// variables/tokens que YA existen en Admin.css — no se inventa ningún
+// color nuevo.
+// ══════════════════════════════════════════════════════════════════
+const ESTILO_BTN_GHOST = {
+  background: "var(--bg-hover)",
+  borderColor: "var(--border-light)",
+  color: "var(--text-1)",
+};
+
+const ESTILO_BTN_SECUNDARIO = {
+  background: "var(--amber-dim)",
+};
+
+const ESTILO_PANEL_ELEVADO = {
+  boxShadow: "var(--shadow)",
+};
+
+// ══════════════════════════════════════════════════════════════════
+// LÓGICA CENTRALIZADA DE CÁLCULO
 // Consumo → Descuento → Subtotal → Servicio 10% → Propina → Total
 // ══════════════════════════════════════════════════════════════════
 const calcularResumenCuenta = (items, opciones = {}) => {
@@ -92,21 +149,41 @@ const calcularResumenCuenta = (items, opciones = {}) => {
   };
 };
 
-// ── Mini-modal ────────────────────────────────────────────────────
-const MiniModal = ({ titulo, children, onCerrar, ancho, className }) => (
-  <div className="mini-modal-overlay" onClick={onCerrar}>
-    <div className={`mini-modal ${className || ""}`} style={ancho ? { maxWidth: ancho } : undefined}
-      onClick={(e) => e.stopPropagation()}>
-      <div className="mini-modal-header">
-        <h4 className="mini-modal-titulo">{titulo}</h4>
-        <button className="btn-ghost mini-modal-close" onClick={onCerrar}>✕</button>
+// ══════════════════════════════════════════════════════════════════
+// Modal genérico — renderizado con un PORTAL hacia document.body para
+// que SIEMPRE cubra el viewport completo sin importar en qué parte
+// del árbol de componentes esté montado (ver nota del encabezado).
+// Incluye scroll interno propio para que el contenido nunca se corte.
+// ══════════════════════════════════════════════════════════════════
+const Modal = ({ titulo, peligro, ancho, footer, children, onCerrar }) => {
+  const contenido = (
+    <div className="modal-overlay" onClick={onCerrar}>
+      <div
+        className="modal-box"
+        style={{
+          maxWidth: ancho || "420px",
+          maxHeight: "88vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={`modal-header ${peligro ? "modal-header-peligro" : "modal-header-normal"}`}>
+          <h4 className="modal-titulo">{titulo}</h4>
+          <button className="modal-cerrar" onClick={onCerrar}>✕</button>
+        </div>
+        <div className="modal-body" style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+          {children}
+        </div>
+        {footer && <div className="modal-footer">{footer}</div>}
       </div>
-      {children}
     </div>
-  </div>
-);
+  );
 
-// ── Modal PIN eliminar (sin cambios) ─────────────────────────────
+  return createPortal(contenido, document.body);
+};
+
+// ── Modal PIN eliminar ────────────────────────────────────────────
 const ModalPin = ({ item, onConfirmar, onCerrar }) => {
   const [pin, setPin]     = useState("");
   const [error, setError] = useState("");
@@ -121,34 +198,41 @@ const ModalPin = ({ item, onConfirmar, onCerrar }) => {
   };
 
   return (
-    <MiniModal titulo="🔐 Eliminar producto" onCerrar={onCerrar}>
+    <Modal
+      titulo="🔐 Eliminar producto"
+      peligro
+      onCerrar={onCerrar}
+      footer={
+        <>
+          <button className="btn-ghost" style={ESTILO_BTN_GHOST} onClick={onCerrar}>Cancelar</button>
+          <button className="btn-peligro" onClick={handleConfirmar} disabled={!pin}>
+            Eliminar
+          </button>
+        </>
+      }
+    >
       <p className="texto-secundario" style={{ marginBottom: "0.75rem" }}>
         Estás por eliminar <strong>{item?.nombre}</strong>.
         Ingresa el PIN de administrador para confirmar.
       </p>
       <input
-        className="input-pin"
+        className="campo-input"
         type="password"
         inputMode="numeric"
         maxLength={6}
         placeholder="●●●●"
         value={pin}
         autoFocus
+        style={{ textAlign: "center", letterSpacing: "0.5em", fontFamily: "'DM Mono', monospace" }}
         onChange={(e) => { setPin(e.target.value); setError(""); }}
         onKeyDown={(e) => e.key === "Enter" && handleConfirmar()}
       />
-      {error && <p className="error-pin">{error}</p>}
-      <div className="mini-modal-botones">
-        <button className="btn-ghost" onClick={onCerrar}>Cancelar</button>
-        <button className="btn-peligro" onClick={handleConfirmar} disabled={!pin}>
-          Eliminar
-        </button>
-      </div>
-    </MiniModal>
+      {error && <p className="alerta-error" style={{ marginTop: "0.75rem" }}>{error}</p>}
+    </Modal>
   );
 };
 
-// ── Modal mover items entre MESAS (sin cambios) ──────────────────
+// ── Modal mover items entre MESAS ────────────────────────────────
 const ModalMoverItems = ({ pedido, mesas, mesaActual, onMover, onCerrar }) => {
   const [indicesSeleccionados, setIndicesSeleccionados] = useState([]);
   const [mesaDestinoId, setMesaDestinoId]               = useState("");
@@ -178,59 +262,91 @@ const ModalMoverItems = ({ pedido, mesas, mesaActual, onMover, onCerrar }) => {
   };
 
   return (
-    <MiniModal titulo="🔀 Mover productos a otra mesa" onCerrar={onCerrar}>
-      <p className="texto-secundario" style={{ marginBottom: "0.6rem", fontSize: "0.82rem" }}>
+    <Modal
+      titulo="🔀 Mover productos a otra mesa"
+      ancho="480px"
+      onCerrar={onCerrar}
+      footer={
+        <>
+          <button className="btn-ghost" style={ESTILO_BTN_GHOST} onClick={onCerrar}>Cancelar</button>
+          <button
+            className="btn-primario"
+            onClick={handleMover}
+            disabled={!itemsSeleccionados.length || !mesaDestinoId || procesando}
+          >
+            {procesando ? "Moviendo..." : `Mover (${itemsSeleccionados.length})`}
+          </button>
+        </>
+      }
+    >
+      <p className="texto-secundario" style={{ marginBottom: "0.6rem" }}>
         Selecciona los productos que deseas mover:
       </p>
-      <div className="mover-items-lista">
-        <label className="mover-item-row mover-item-todos" onClick={toggleTodos}>
-          <input type="checkbox"
-            checked={indicesSeleccionados.length === pedido.length && pedido.length > 0}
-            onChange={toggleTodos} onClick={(e) => e.stopPropagation()} />
-          <span style={{ fontWeight: 600 }}>Seleccionar todos</span>
-        </label>
-        {pedido.map((item, idx) => (
-          <label key={idx}
-            className={`mover-item-row ${indicesSeleccionados.includes(idx) ? "mover-item-seleccionado" : ""}`}
-            onClick={() => toggleItem(idx)}>
-            <input type="checkbox" checked={indicesSeleccionados.includes(idx)}
-              onChange={() => toggleItem(idx)} onClick={(e) => e.stopPropagation()} />
-            <span className="mover-item-nombre">{item.nombre}</span>
-            <span className="mover-item-cant">×{num(item.cantidad)}</span>
-          </label>
-        ))}
+
+      <div className="tabla-wrapper">
+        <table className="tabla">
+          <thead>
+            <tr>
+              <th className="th-check">
+                <input
+                  type="checkbox"
+                  checked={indicesSeleccionados.length === pedido.length && pedido.length > 0}
+                  onChange={toggleTodos}
+                />
+              </th>
+              <th>Producto</th>
+              <th className="th-num">Cant.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pedido.map((item, idx) => (
+              <tr
+                key={idx}
+                className={indicesSeleccionados.includes(idx) ? "fila-seleccionada" : ""}
+                style={{ cursor: "pointer" }}
+                onClick={() => toggleItem(idx)}
+              >
+                <td className="td-center">
+                  <input
+                    type="checkbox"
+                    checked={indicesSeleccionados.includes(idx)}
+                    onChange={() => toggleItem(idx)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </td>
+                <td className="td-nombre">{item.nombre}</td>
+                <td className="td-num">×{num(item.cantidad)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      <p className="texto-secundario" style={{ margin: "0.85rem 0 0.4rem", fontSize: "0.82rem" }}>
-        Mesa de destino:
-      </p>
-      <select className="select-mesa-destino" value={mesaDestinoId}
-        onChange={(e) => setMesaDestinoId(e.target.value)}>
-        <option value="">— Selecciona una mesa —</option>
-        {mesasDestino.length > 0 && (
-          <optgroup label="Con pedido activo">
-            {mesasDestino.map((m) => (
-              <option key={m.id} value={m.id}>{m.nombre || `Mesa ${m.id}`}</option>
-            ))}
-          </optgroup>
-        )}
-        {mesasLibres.length > 0 && (
-          <optgroup label="Mesas libres">
-            {mesasLibres.map((m) => (
-              <option key={m.id} value={m.id}>{m.nombre || `Mesa ${m.id}`}</option>
-            ))}
-          </optgroup>
-        )}
-      </select>
-
-      <div className="mini-modal-botones" style={{ marginTop: "1rem" }}>
-        <button className="btn-ghost" onClick={onCerrar}>Cancelar</button>
-        <button className="btn-primario" onClick={handleMover}
-          disabled={!itemsSeleccionados.length || !mesaDestinoId || procesando}>
-          {procesando ? "Moviendo..." : `Mover (${itemsSeleccionados.length})`}
-        </button>
+      <div className="campo-grupo" style={{ marginTop: "1rem" }}>
+        <label className="campo-label">Mesa de destino</label>
+        <select
+          className="campo-input"
+          value={mesaDestinoId}
+          onChange={(e) => setMesaDestinoId(e.target.value)}
+        >
+          <option value="">— Selecciona una mesa —</option>
+          {mesasDestino.length > 0 && (
+            <optgroup label="Con pedido activo">
+              {mesasDestino.map((m) => (
+                <option key={m.id} value={m.id}>{m.nombre || `Mesa ${m.id}`}</option>
+              ))}
+            </optgroup>
+          )}
+          {mesasLibres.length > 0 && (
+            <optgroup label="Mesas libres">
+              {mesasLibres.map((m) => (
+                <option key={m.id} value={m.id}>{m.nombre || `Mesa ${m.id}`}</option>
+              ))}
+            </optgroup>
+          )}
+        </select>
       </div>
-    </MiniModal>
+    </Modal>
   );
 };
 
@@ -245,28 +361,32 @@ const ModalNuevaSubcuenta = ({ onCrear, onCerrar }) => {
   };
 
   return (
-    <MiniModal titulo="➕ Nueva subcuenta" onCerrar={onCerrar}>
-      <p className="texto-secundario" style={{ marginBottom: "0.6rem" }}>
-        Ponle un nombre o identificador (ej. "Juan", "Puesto 2").
-      </p>
-      <input
-        className="input-pin"
-        style={{ letterSpacing: "normal", fontSize: "0.95rem", textAlign: "left" }}
-        type="text"
-        maxLength={30}
-        placeholder="Nombre de la subcuenta"
-        value={nombre}
-        autoFocus
-        onChange={(e) => setNombre(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && confirmar()}
-      />
-      <div className="mini-modal-botones">
-        <button className="btn-ghost" onClick={onCerrar}>Cancelar</button>
-        <button className="btn-primario" onClick={confirmar} disabled={!nombre.trim()}>
-          Crear
-        </button>
+    <Modal
+      titulo="➕ Nueva subcuenta"
+      onCerrar={onCerrar}
+      footer={
+        <>
+          <button className="btn-ghost" style={ESTILO_BTN_GHOST} onClick={onCerrar}>Cancelar</button>
+          <button className="btn-primario" onClick={confirmar} disabled={!nombre.trim()}>
+            Crear
+          </button>
+        </>
+      }
+    >
+      <div className="campo-grupo" style={{ marginBottom: 0 }}>
+        <label className="campo-label">Nombre de la subcuenta</label>
+        <input
+          className="campo-input"
+          type="text"
+          maxLength={30}
+          placeholder='Ej: "Juan", "Puesto 2"'
+          value={nombre}
+          autoFocus
+          onChange={(e) => setNombre(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && confirmar()}
+        />
       </div>
-    </MiniModal>
+    </Modal>
   );
 };
 
@@ -279,48 +399,48 @@ const ModalCantidadSubcuenta = ({ item, disponible, subcuentaNombre, onConfirmar
   const confirmar = () => onConfirmar(clamp(cantidad));
 
   return (
-    <MiniModal titulo="🔢 ¿Cuántas unidades mover?" onCerrar={onCerrar}>
+    <Modal
+      titulo="🔢 ¿Cuántas unidades mover?"
+      onCerrar={onCerrar}
+      footer={
+        <>
+          <button className="btn-ghost" style={ESTILO_BTN_GHOST} onClick={onCerrar}>Cancelar</button>
+          <button className="btn-primario" onClick={confirmar}>Mover</button>
+        </>
+      }
+    >
       <p className="texto-secundario" style={{ marginBottom: "0.5rem" }}>
-        <strong>{item.nombre}</strong> — cantidad disponible en cuenta principal: <strong>{disponible}</strong>
+        <strong>{item.nombre}</strong> — disponible en cuenta principal: <strong>{disponible}</strong>
       </p>
       <p className="texto-secundario" style={{ marginBottom: "0.75rem", fontSize: "0.8rem" }}>
         Se moverán a la subcuenta "{subcuentaNombre}"
       </p>
-      <div className="controles-cantidad" style={{ justifyContent: "center", marginBottom: "0.5rem" }}>
+      <div className="controles-cantidad" style={{ justifyContent: "center" }}>
         <button className="btn-cantidad" onClick={() => setCantidad((c) => clamp(c - 1))}>−</button>
         <input
+          className="campo-input"
           type="number"
           min={1}
           max={disponible}
           value={cantidad}
           onChange={(e) => setCantidad(clamp(e.target.value))}
-          style={{ width: "3.5rem", textAlign: "center" }}
+          style={{ width: "3.75rem", textAlign: "center", padding: "0.35rem" }}
         />
         <button className="btn-cantidad" onClick={() => setCantidad((c) => clamp(c + 1))}>+</button>
       </div>
-      <div className="mini-modal-botones">
-        <button className="btn-ghost" onClick={onCerrar}>Cancelar</button>
-        <button className="btn-primario" onClick={confirmar}>Mover</button>
-      </div>
-    </MiniModal>
+    </Modal>
   );
 };
 
 // ══════════════════════════════════════════════════════════════════
 // Modal de configuración de cobro (descuento/servicio/propina/
-// PAGO MIXTO). Se usa tanto para el cobro total de la mesa, como para
-// pago parcial (selección simple) y para el cobro de una subcuenta.
+// PAGO MIXTO). Se usa para el cobro total de la mesa, para pago
+// parcial (selección simple) y para el cobro de una subcuenta.
 //
 // El pago se arma como una LISTA de líneas { id, metodo, monto }.
-// Por defecto arranca con una sola línea = el total completo (el caso
-// más común: un solo método). El usuario puede agregar más líneas para
-// dividir el cobro. No se deja confirmar mientras la suma de las líneas
-// no cuadre exactamente con el total.
-//
-// 🎨 Este modal se reorganizó en grupos ("cobro-grupo") para que cada
-// sección (descuento, servicio, propina, métodos de pago, resumen) se
-// lea como un bloque separado en vez de todo apilado sin jerarquía.
-// La lógica de estado es idéntica a la versión anterior.
+// Por defecto arranca con una sola línea = el total completo. El
+// usuario puede agregar más líneas para dividir el cobro. No se deja
+// confirmar mientras la suma de las líneas no cuadre con el total.
 // ══════════════════════════════════════════════════════════════════
 const ModalConfigurarCobro = ({ titulo, items, onConfirmar, onCerrar }) => {
   const [descuentoTipo, setDescuentoTipo]     = useState(null);
@@ -377,8 +497,8 @@ const ModalConfigurarCobro = ({ titulo, items, onConfirmar, onCerrar }) => {
     setProcesando(true);
 
     const desglose = pagos
-  .map((p) => ({ metodo_pago: p.metodo, monto: num(p.monto) }))
-  .filter((p) => p.monto > 0);
+      .map((p) => ({ metodo_pago: p.metodo, monto: num(p.monto) }))
+      .filter((p) => p.monto > 0);
 
     // Método "principal" (solo referencial, para el primer argumento que
     // ya recibían onPagoTotal/onPagoParcial): el de mayor monto.
@@ -391,75 +511,104 @@ const ModalConfigurarCobro = ({ titulo, items, onConfirmar, onCerrar }) => {
   };
 
   return (
-    <MiniModal titulo={titulo || "💳 Configurar cobro"} onCerrar={onCerrar} ancho="420px" className="mini-modal-cobro">
-
+    <Modal
+      titulo={titulo || "💳 Configurar cobro"}
+      ancho="460px"
+      onCerrar={onCerrar}
+      footer={
+        <>
+          <button className="btn-ghost" style={ESTILO_BTN_GHOST} onClick={onCerrar}>Cancelar</button>
+          <button className="btn-primario" onClick={handleConfirmar} disabled={procesando || !cuadra}>
+            {procesando ? "Procesando..." : `Confirmar pago ${money(resumen.total)}`}
+          </button>
+        </>
+      }
+    >
       {/* Descuento */}
-      <div className="cobro-grupo">
-        <p className="sidebar-seccion-titulo">Descuento</p>
-        <div className="sidebar-metodos">
+      <div className="campo-grupo">
+        <label className="campo-label">Descuento</label>
+        <div className="metodo-selector">
           <button
-            className={`sidebar-metodo-btn ${descuentoTipo === null ? "activo" : ""}`}
-            onClick={() => { setDescuentoTipo(null); setDescuentoMonto(""); }}>
+            className={`btn-metodo ${descuentoTipo === null ? "activo" : ""}`}
+            onClick={() => { setDescuentoTipo(null); setDescuentoMonto(""); }}
+          >
             Sin descuento
           </button>
           {DESCUENTOS_PRESET.map((p) => (
-            <button key={p}
-              className={`sidebar-metodo-btn ${descuentoTipo === String(p) ? "activo" : ""}`}
-              onClick={() => setDescuentoTipo(String(p))}>
+            <button
+              key={p}
+              className={`btn-metodo ${descuentoTipo === String(p) ? "activo" : ""}`}
+              onClick={() => setDescuentoTipo(String(p))}
+            >
               {p}%
             </button>
           ))}
           <button
-            className={`sidebar-metodo-btn ${descuentoTipo === "personalizado" ? "activo" : ""}`}
-            onClick={() => setDescuentoTipo("personalizado")}>
+            className={`btn-metodo ${descuentoTipo === "personalizado" ? "activo" : ""}`}
+            onClick={() => setDescuentoTipo("personalizado")}
+          >
             Monto
           </button>
         </div>
         {descuentoTipo === "personalizado" && (
           <input
+            className="campo-input"
             type="number"
             min={0}
             max={resumen.consumo}
             placeholder="Valor del descuento"
-            className="cobro-input-monto"
+            style={{ marginTop: "0.6rem" }}
             value={descuentoMonto}
             onChange={(e) => setDescuentoMonto(Math.max(0, num(e.target.value)))}
           />
         )}
       </div>
 
+      <hr />
+
       {/* Servicio 10% */}
-      <div className="cobro-grupo">
-        <p className="sidebar-seccion-titulo">Servicio del 10% (opcional)</p>
-        <label className="toggle-row" onClick={() => setServicioActivo((s) => !s)}>
-          <span>El cliente acepta el servicio del 10%</span>
-          <input type="checkbox" className="toggle-switch" checked={servicioActivo}
+      <div className="campo-grupo">
+        <label className="campo-label">Servicio del 10% (opcional)</label>
+        <label
+          className="texto-secundario"
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}
+        >
+          <input
+            type="checkbox"
+            checked={servicioActivo}
             onChange={() => setServicioActivo((s) => !s)}
-            onClick={(e) => e.stopPropagation()} />
+            style={{ accentColor: "var(--amber)", width: "1rem", height: "1rem" }}
+          />
+          El cliente acepta el servicio del 10%
         </label>
       </div>
 
       {/* Propina */}
-      <div className="cobro-grupo">
-        <p className="sidebar-seccion-titulo">Propina (voluntaria)</p>
+      <div className="campo-grupo">
+        <label className="campo-label">Propina (voluntaria)</label>
         <input
+          className="campo-input"
           type="number"
           min={0}
           placeholder="$ 0"
-          className="cobro-input-monto"
-          style={{ marginTop: 0 }}
           value={propina}
           onChange={(e) => setPropina(Math.max(0, num(e.target.value)))}
         />
       </div>
 
+      <hr />
+
       {/* Métodos de pago — una o varias líneas */}
-      <div className="cobro-grupo">
-        <p className="sidebar-seccion-titulo">Métodos de pago</p>
+      <div className="campo-grupo">
+        <label className="campo-label">Métodos de pago</label>
         {pagos.map((p) => (
-          <div key={p.id} className="cobro-metodo-fila">
+          <div key={p.id} style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.5rem" }}>
+            <span className={`chip chip-metodo ${CLASE_METODO[p.metodo]}`} style={{ flexShrink: 0 }}>
+              {ICONO_METODO[p.metodo]}
+            </span>
             <select
-              className="select-mesa-destino"
+              className="campo-input"
+              style={{ maxWidth: "150px" }}
               value={p.metodo}
               onChange={(e) => actualizarPago(p.id, "metodo", e.target.value)}
             >
@@ -468,26 +617,34 @@ const ModalConfigurarCobro = ({ titulo, items, onConfirmar, onCerrar }) => {
               ))}
             </select>
             <input
+              className="campo-input"
               type="number"
               min={0}
               placeholder="$ 0"
-              className="cobro-input-monto"
               value={p.monto}
               onChange={(e) => actualizarPago(p.id, "monto", e.target.value)}
             />
             {pagos.length > 1 && (
-              <button className="cobro-metodo-quitar" onClick={() => quitarLineaPago(p.id)}>
+              <button
+                className="btn-ghost"
+                style={{ ...ESTILO_BTN_GHOST, padding: "0 0.6rem" }}
+                onClick={() => quitarLineaPago(p.id)}
+              >
                 ✕
               </button>
             )}
           </div>
         ))}
-        <button className="btn-link-add" onClick={agregarLineaPago}>
+        <button
+          className="btn-ghost"
+          style={{ ...ESTILO_BTN_GHOST, fontSize: "0.8rem" }}
+          onClick={agregarLineaPago}
+        >
           + Dividir entre otro método
         </button>
 
         {!cuadra && (
-          <p className="cobro-aviso">
+          <p className="alerta-error" style={{ marginTop: "0.6rem" }}>
             {diferencia > 0
               ? `Falta asignar ${money(diferencia)} para completar el total.`
               : `Los montos suman ${money(Math.abs(diferencia))} de más.`}
@@ -496,32 +653,27 @@ const ModalConfigurarCobro = ({ titulo, items, onConfirmar, onCerrar }) => {
       </div>
 
       {/* Resumen en tiempo real */}
-      <div className="cobro-resumen-box">
-        <table>
+      <div className="admin-card" style={{ padding: "0.9rem 1rem", borderTop: "2px solid var(--amber)" }}>
+        <table className="tabla" style={{ fontSize: "0.85rem" }}>
           <tbody>
-            <tr><td>Consumo</td><td style={{ textAlign: "right" }}>{money(resumen.consumo)}</td></tr>
+            <tr><td>Consumo</td><td className="td-num">{money(resumen.consumo)}</td></tr>
             {resumen.descuento > 0 && (
-              <tr className="cobro-fila-descuento">
-                <td>Descuento</td><td style={{ textAlign: "right" }}>-{money(resumen.descuento)}</td>
+              <tr>
+                <td style={{ color: "var(--red)" }}>Descuento</td>
+                <td className="td-num" style={{ color: "var(--red)" }}>-{money(resumen.descuento)}</td>
               </tr>
             )}
-            <tr><td>Subtotal</td><td style={{ textAlign: "right" }}>{money(resumen.subtotal)}</td></tr>
-            <tr><td>Servicio 10%</td><td style={{ textAlign: "right" }}>{money(resumen.servicio)}</td></tr>
-            <tr><td>Propina</td><td style={{ textAlign: "right" }}>{money(resumen.propina)}</td></tr>
-            <tr className="cobro-fila-total">
-              <td>Total</td><td style={{ textAlign: "right" }}>{money(resumen.total)}</td>
+            <tr><td>Subtotal</td><td className="td-num">{money(resumen.subtotal)}</td></tr>
+            <tr><td>Servicio 10%</td><td className="td-num">{money(resumen.servicio)}</td></tr>
+            <tr><td>Propina</td><td className="td-num">{money(resumen.propina)}</td></tr>
+            <tr>
+              <td style={{ fontWeight: 700 }}>Total</td>
+              <td className="td-num td-monto" style={{ fontWeight: 700, fontSize: "1rem" }}>{money(resumen.total)}</td>
             </tr>
           </tbody>
         </table>
       </div>
-
-      <div className="mini-modal-botones" style={{ marginTop: "0.9rem" }}>
-        <button className="btn-ghost" onClick={onCerrar}>Cancelar</button>
-        <button className="btn-primario" onClick={handleConfirmar} disabled={procesando || !cuadra}>
-          {procesando ? "Procesando..." : `Confirmar pago ${money(resumen.total)}`}
-        </button>
-      </div>
-    </MiniModal>
+    </Modal>
   );
 };
 
@@ -554,8 +706,7 @@ const DetalleMesa = ({
     setPedidoLocal(mesa.pedido || []);
   }, [mesa.pedido]);
 
-  // ── modo de división ("simple" = selección + pago parcial como ya
-  // existía; "subcuentas" = nuevo sistema de subcuentas)
+  // ── modo de división ("simple" = selección + pago parcial; "subcuentas")
   const [divisionTipo, setDivisionTipo] = useState("simple");
 
   // ── subcuentas ──────────────────────────────────────────────────
@@ -569,10 +720,13 @@ const DetalleMesa = ({
   // tipo: "total" | "parcial" | "subcuenta"
   const [modalCobro, setModalCobro] = useState(null); // { tipo, items, subcuentaId? }
 
-  // Total siempre calculado desde pedidoLocal → se ve al instante
+  // ── Métricas — se calculan de datos que YA tenemos, sin fetch extra ──
   const totalMesa = pedidoLocal.reduce(
     (acc, i) => acc + num(i.precio) * num(i.cantidad), 0
   );
+  const totalItems = pedidoLocal.reduce((acc, i) => acc + num(i.cantidad), 0);
+  const ticketPromedio = totalItems > 0 ? totalMesa / totalItems : 0;
+  const subcuentasActivas = subcuentas.length;
 
   const itemsSeleccionados = indicesSeleccionados
     .map((idx) => pedidoLocal[idx])
@@ -669,7 +823,7 @@ const DetalleMesa = ({
     const disponible = cantidadDisponible(item);
     if (disponible <= 0 || !subcuentaActivaId) return;
     if (disponible === 1) {
-      moverASubcuenta(item, 1); // solo hay 1 unidad: se mueve directo (punto 6)
+      moverASubcuenta(item, 1); // solo hay 1 unidad: se mueve directo
     } else {
       setModalCantidadSubcuenta({ item, disponible }); // pregunta cuántas mover
     }
@@ -692,8 +846,6 @@ const DetalleMesa = ({
   const itemsCuentaPrincipal = pedidoLocal
     .map(item => ({ ...item, cantidad: cantidadDisponible(item) }))
     .filter(item => item.cantidad > 0);
-
-  const hayAsignacionesActivas = subcuentas.some(s => s.items.length > 0);
 
   // ── Confirmación final de cobro (usa ModalConfigurarCobro) ──────
   const handleConfirmarCobro = async (metodoPago, resumen) => {
@@ -725,9 +877,9 @@ const DetalleMesa = ({
   };
 
   return (
-    <div className="detalle-layout">
+    <div className="seccion-container">
 
-      {/* ── Modales ── */}
+      {/* ── Modales (renderizados con portal, ver Modal arriba) ── */}
       {modalPin && (
         <ModalPin item={modalPin.item} onConfirmar={handleConfirmarEliminar}
           onCerrar={() => setModalPin(null)} />
@@ -737,15 +889,16 @@ const DetalleMesa = ({
           onMover={onMoverItems} onCerrar={() => setModalMover(false)} />
       )}
       {avisoMin && (
-        <MiniModal titulo="⚠️ Cantidad mínima" onCerrar={() => setAvisoMin(null)}>
-          <p className="texto-secundario" style={{ marginBottom: "1rem" }}>
+        <Modal
+          titulo="⚠️ Cantidad mínima"
+          onCerrar={() => setAvisoMin(null)}
+          footer={<button className="btn-primario" onClick={() => setAvisoMin(null)}>Entendido</button>}
+        >
+          <p className="texto-secundario">
             <strong>{avisoMin}</strong> no puede quedar en 0.
             Usa el botón <strong>🗑</strong> si deseas quitarlo del pedido.
           </p>
-          <div className="mini-modal-botones">
-            <button className="btn-primario" onClick={() => setAvisoMin(null)}>Entendido</button>
-          </div>
-        </MiniModal>
+        </Modal>
       )}
       {modalNuevaSubcuenta && (
         <ModalNuevaSubcuenta onCrear={crearSubcuenta} onCerrar={() => setModalNuevaSubcuenta(false)} />
@@ -772,317 +925,403 @@ const DetalleMesa = ({
         />
       )}
 
-      {/* ════ SIDEBAR IZQUIERDO ════ */}
-      <aside className="detalle-sidebar">
-
-        <button className="btn-ghost btn-back" onClick={onVolver}>← Volver</button>
-
-        <div className="sidebar-mesa-info">
-          <h3 className="sidebar-mesa-nombre">{mesa.nombre || `Mesa ${mesa.id}`}</h3>
+      {/* ════ ENCABEZADO ════ */}
+      <div className="seccion-header">
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <button className="btn-ghost btn-back" style={ESTILO_BTN_GHOST} onClick={onVolver}>← Volver</button>
+          <h2 className="seccion-titulo">{mesa.nombre || `Mesa ${mesa.id}`}</h2>
           <span className={`chip ${mesa.ocupada ? "chip-amber" : "chip-verde"}`}>
             {mesa.ocupada ? "Ocupada" : "Libre"}
           </span>
         </div>
+      </div>
 
-        {pedidoLocal.length > 0 && (
-          <>
-            {/* Total — se actualiza en tiempo real */}
-            <div className="sidebar-total-box">
-              <p className="sidebar-total-label">Total mesa</p>
-              <p className="sidebar-total-valor">{money(totalMesa)}</p>
-            </div>
-
-            {/* Acciones */}
-            <div className="sidebar-seccion">
-              <p className="sidebar-seccion-titulo">Acciones</p>
-              <button className="sidebar-accion-btn" onClick={() => setModalMover(true)}>
-                🔀 Mover productos
-              </button>
-            </div>
-
-            {/* Cobro normal */}
-            {cajaAbierta && !modoDivision && (
-              <div className="sidebar-seccion">
-                <button className="btn-primario sidebar-btn-full"
-                  onClick={() => setModalCobro({ tipo: "total", items: pedidoLocal })}
-                  disabled={procesando}>
-                  💳 Cobrar {money(totalMesa)}
-                </button>
-                <button className="btn-secundario sidebar-btn-full"
-                  style={{ marginTop: "0.5rem" }}
-                  onClick={() => { setModoDivision(true); setIndicesSeleccionados([]); }}>
-                  ➗ Dividir cuenta
-                </button>
-              </div>
-            )}
-
-            {/* Modo división */}
-            {cajaAbierta && modoDivision && (
-              <div className="sidebar-seccion">
-                <p className="sidebar-seccion-titulo">División de cuenta</p>
-
-                {/* Selector simple / subcuentas */}
-                <div className="sidebar-metodos" style={{ marginBottom: "0.6rem" }}>
-                  <button
-                    className={`sidebar-metodo-btn ${divisionTipo === "simple" ? "activo" : ""}`}
-                    onClick={() => setDivisionTipo("simple")}>
-                    Selección simple
-                  </button>
-                  <button
-                    className={`sidebar-metodo-btn ${divisionTipo === "subcuentas" ? "activo" : ""}`}
-                    onClick={() => setDivisionTipo("subcuentas")}>
-                    Subcuentas
-                  </button>
-                </div>
-
-                {divisionTipo === "simple" ? (
-                  <>
-                    <p className="texto-secundario" style={{ fontSize: "0.78rem", marginBottom: "0.6rem" }}>
-                      Selecciona ítems en la tabla →
-                    </p>
-                    {itemsSeleccionados.length > 0 && (
-                      <div className="sidebar-division-resumen">
-                        <span>{itemsSeleccionados.length} ítem(s)</span>
-                        <strong>{money(totalSeleccionado)}</strong>
-                      </div>
-                    )}
-                    <button className="btn-primario sidebar-btn-full"
-                      onClick={() => setModalCobro({ tipo: "parcial", items: itemsSeleccionados })}
-                      disabled={!itemsSeleccionados.length || procesando}>
-                      Registrar pago parcial
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button className="sidebar-accion-btn" onClick={() => setModalNuevaSubcuenta(true)}>
-                      ➕ Nueva subcuenta
-                    </button>
-
-                    {subcuentas.length === 0 && (
-                      <p className="texto-secundario" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
-                        Crea una subcuenta para empezar a asignar productos.
-                      </p>
-                    )}
-
-                    {subcuentas.map((s) => {
-                      const totalSub = s.items.reduce(
-                        (acc, i) => acc + num(i.precio) * num(i.cantidad), 0
-                      );
-                      const activa = s.id === subcuentaActivaId;
-                      return (
-                        <div key={s.id}
-                          className={`sidebar-division-resumen ${activa ? "fila-seleccionada" : ""}`}
-                          style={{ flexDirection: "column", alignItems: "stretch", gap: "0.35rem", cursor: "pointer", marginTop: "0.5rem" }}
-                          onClick={() => setSubcuentaActivaId(s.id)}>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <strong>{s.nombre}{activa ? " (activa)" : ""}</strong>
-                            <button className="btn-ghost" style={{ padding: "0 0.3rem" }}
-                              onClick={(e) => { e.stopPropagation(); eliminarSubcuenta(s.id); }}>✕</button>
-                          </div>
-                          <span style={{ fontSize: "0.8rem" }}>{s.items.length} ítem(s) — {money(totalSub)}</span>
-                          <button className="btn-primario"
-                            style={{ fontSize: "0.8rem", padding: "0.35rem" }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setModalCobro({ tipo: "subcuenta", items: s.items, subcuentaId: s.id });
-                            }}
-                            disabled={!s.items.length || procesando}>
-                            Cobrar subcuenta
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
-
-                <button className="btn-ghost sidebar-btn-full"
-                  style={{ marginTop: "0.75rem" }}
-                  onClick={() => {
-                    setModoDivision(false);
-                    setIndicesSeleccionados([]);
-                    setSubcuentas([]);
-                    setSubcuentaActivaId(null);
-                  }}>
-                  Cancelar división
-                </button>
-              </div>
-            )}
-
-            {!cajaAbierta && (
-              <p className="advertencia-caja">⚠️ Abre la caja para registrar pagos.</p>
-            )}
-          </>
-        )}
-      </aside>
-
-      {/* ════ PANEL DERECHO ════ */}
-      <div className="detalle-panel-derecho">
-        {pedidoLocal.length === 0 ? (
-          <div className="detalle-vacio">
+      {pedidoLocal.length === 0 ? (
+        <div className="admin-card">
+          <div className="estado-vacio">
             <p className="texto-secundario">Esta mesa no tiene pedidos activos.</p>
           </div>
-        ) : modoDivision && divisionTipo === "subcuentas" ? (
-          // ── Vista de asignación a subcuentas ──────────────────
-          <div>
-            {!subcuentaActiva ? (
-              <div className="tabla-wrapper">
-                <p className="texto-secundario" style={{ padding: "1.1rem" }}>
-                  Selecciona o crea una subcuenta en el panel izquierdo para empezar a asignar productos.
-                </p>
+        </div>
+      ) : (
+        <>
+          {/* ════ TIRA DE MÉTRICAS ════ */}
+          {/* Cada tarjeta lleva un acento de color distinto en el borde
+              superior (mismos tokens que ya existen en Admin.css) para
+              diferenciarlas de un vistazo en vez de verse todas iguales. */}
+          <div className="dashboard-grid">
+            <div className="admin-card metrica-card" style={{ borderTop: "3px solid var(--amber)" }}>
+              <p className="metrica-etiqueta">Total mesa</p>
+              <p className="metrica-valor" style={{ color: "var(--amber)" }}>{money(totalMesa)}</p>
+            </div>
+            <div className="admin-card metrica-card" style={{ borderTop: "3px solid var(--blue)" }}>
+              <p className="metrica-etiqueta">Ítems</p>
+              <p className="metrica-valor">{totalItems}</p>
+              <p className="metrica-sub">{pedidoLocal.length} producto(s) distintos</p>
+            </div>
+            <div className="admin-card metrica-card" style={{ borderTop: "3px solid var(--morado)" }}>
+              <p className="metrica-etiqueta">Ticket promedio</p>
+              <p className="metrica-valor">{money(ticketPromedio)}</p>
+              <p className="metrica-sub">por ítem</p>
+            </div>
+            {modoDivision && divisionTipo === "subcuentas" && (
+              <div className="admin-card metrica-card" style={{ borderTop: "3px solid var(--green)" }}>
+                <p className="metrica-etiqueta">Subcuentas activas</p>
+                <p className="metrica-valor" style={{ color: "var(--green)" }}>{subcuentasActivas}</p>
               </div>
-            ) : (
-              <>
-                <div className="panel-header">
-                  <span className="texto-secundario">
-                    Asignando productos a: <strong>{subcuentaActiva.nombre}</strong>
-                  </span>
-                </div>
-                <div className="tabla-wrapper">
-                  <table className="tabla">
-                    <thead>
-                      <tr>
-                        <th>Producto</th>
-                        <th className="th-num">Disponible</th>
-                        <th className="th-num">Precio</th>
-                        <th className="th-center">Asignar</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {itemsCuentaPrincipal.map((item) => (
-                        <tr key={item.item_id}>
-                          <td className="td-nombre">{item.nombre}</td>
-                          <td className="td-num">{item.cantidad}</td>
-                          <td className="td-num">{money(item.precio)}</td>
-                          <td className="td-center">
-                            <button className="btn-secundario" onClick={() => iniciarMoverASubcuenta(item)}>
-                              → Mover
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {itemsCuentaPrincipal.length === 0 && (
-                        <tr><td colSpan={4} className="texto-secundario" style={{ textAlign: "center" }}>
-                          No quedan productos sin asignar en la cuenta principal.
-                        </td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+            )}
+          </div>
 
-                {subcuentaActiva.items.length > 0 && (
+          <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+
+            {/* ════ SIDEBAR IZQUIERDO ════ */}
+            <aside
+              className="admin-card"
+              style={{ flex: "1 1 300px", maxWidth: "340px", borderTop: "3px solid var(--amber)" }}
+            >
+              {/* Acciones */}
+              <div className="campo-grupo">
+                <label className="campo-label">Acciones</label>
+                <button
+                  className="btn-ghost btn-ancho"
+                  style={ESTILO_BTN_GHOST}
+                  onClick={() => setModalMover(true)}
+                >
+                  🔀 Mover productos
+                </button>
+              </div>
+
+              {/* Cobro normal */}
+              {cajaAbierta && !modoDivision && (
+                <>
+                  <hr />
+                  <div className="campo-grupo" style={{ marginBottom: 0 }}>
+                    <button
+                      className="btn-primario btn-ancho"
+                      onClick={() => setModalCobro({ tipo: "total", items: pedidoLocal })}
+                      disabled={procesando}
+                    >
+                      💳 Cobrar {money(totalMesa)}
+                    </button>
+                    <button
+                      className="btn-secundario btn-ancho"
+                      style={{ ...ESTILO_BTN_SECUNDARIO, marginTop: "0.5rem" }}
+                      onClick={() => { setModoDivision(true); setIndicesSeleccionados([]); }}
+                    >
+                      ➗ Dividir cuenta
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Modo división */}
+              {cajaAbierta && modoDivision && (
+                <>
+                  <hr />
+                  <div className="campo-grupo" style={{ marginBottom: 0 }}>
+                    <label className="campo-label">División de cuenta</label>
+
+                    {/* Selector simple / subcuentas */}
+                    <div className="tab-selector" style={{ marginBottom: "0.75rem", width: "100%" }}>
+                      <button
+                        className={`tab-btn ${divisionTipo === "simple" ? "activo" : ""}`}
+                        style={{ flex: 1 }}
+                        onClick={() => setDivisionTipo("simple")}
+                      >
+                        Selección simple
+                      </button>
+                      <button
+                        className={`tab-btn ${divisionTipo === "subcuentas" ? "activo" : ""}`}
+                        style={{ flex: 1 }}
+                        onClick={() => setDivisionTipo("subcuentas")}
+                      >
+                        Subcuentas
+                      </button>
+                    </div>
+
+                    {divisionTipo === "simple" ? (
+                      <div className="division-panel" style={ESTILO_PANEL_ELEVADO}>
+                        <p className="division-instruccion">
+                          Selecciona ítems en la tabla de la derecha →
+                        </p>
+                        {itemsSeleccionados.length > 0 && (
+                          <div className="division-resumen">
+                            <span>{itemsSeleccionados.length} ítem(s)</span>
+                            <strong>{money(totalSeleccionado)}</strong>
+                          </div>
+                        )}
+                        <button
+                          className="btn-primario btn-ancho"
+                          onClick={() => setModalCobro({ tipo: "parcial", items: itemsSeleccionados })}
+                          disabled={!itemsSeleccionados.length || procesando}
+                        >
+                          Registrar pago parcial
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="division-panel" style={ESTILO_PANEL_ELEVADO}>
+                        <button
+                          className="btn-secundario btn-ancho"
+                          style={ESTILO_BTN_SECUNDARIO}
+                          onClick={() => setModalNuevaSubcuenta(true)}
+                        >
+                          ➕ Nueva subcuenta
+                        </button>
+
+                        {subcuentas.length === 0 && (
+                          <p className="texto-secundario" style={{ fontSize: "0.8rem", marginTop: "0.6rem" }}>
+                            Crea una subcuenta para empezar a asignar productos.
+                          </p>
+                        )}
+
+                        {subcuentas.map((s) => {
+                          const totalSub = s.items.reduce(
+                            (acc, i) => acc + num(i.precio) * num(i.cantidad), 0
+                          );
+                          const activa = s.id === subcuentaActivaId;
+                          return (
+                            <div
+                              key={s.id}
+                              className="admin-card"
+                              style={{
+                                marginTop: "0.6rem",
+                                padding: "0.75rem",
+                                cursor: "pointer",
+                                borderColor: activa ? "var(--amber-border)" : undefined,
+                                boxShadow: activa ? "var(--amber-glow)" : undefined,
+                                transition: "box-shadow 0.2s ease, border-color 0.2s ease",
+                              }}
+                              onClick={() => setSubcuentaActivaId(s.id)}
+                            >
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <strong style={{ fontSize: "0.85rem" }}>
+                                  {s.nombre}{activa ? " (activa)" : ""}
+                                </strong>
+                                <button
+                                  className="btn-ghost"
+                                  style={{ ...ESTILO_BTN_GHOST, padding: "0 0.4rem" }}
+                                  onClick={(e) => { e.stopPropagation(); eliminarSubcuenta(s.id); }}
+                                >✕</button>
+                              </div>
+                              <p className="texto-secundario" style={{ fontSize: "0.78rem", margin: "0.3rem 0 0.5rem" }}>
+                                {s.items.length} ítem(s) — <span className="td-monto">{money(totalSub)}</span>
+                              </p>
+                              <button
+                                className="btn-primario btn-ancho"
+                                style={{ fontSize: "0.8rem", padding: "0.4rem" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setModalCobro({ tipo: "subcuenta", items: s.items, subcuentaId: s.id });
+                                }}
+                                disabled={!s.items.length || procesando}
+                              >
+                                Cobrar subcuenta
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <button
+                      className="btn-ghost btn-ancho"
+                      style={{ ...ESTILO_BTN_GHOST, marginTop: "0.75rem" }}
+                      onClick={() => {
+                        setModoDivision(false);
+                        setIndicesSeleccionados([]);
+                        setSubcuentas([]);
+                        setSubcuentaActivaId(null);
+                      }}
+                    >
+                      Cancelar división
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {!cajaAbierta && (
+                <>
+                  <hr />
+                  <p className="advertencia-caja" style={{ padding: 0, borderTop: "none" }}>
+                    ⚠️ Abre la caja para registrar pagos.
+                  </p>
+                </>
+              )}
+            </aside>
+
+            {/* ════ PANEL DERECHO ════ */}
+            <div style={{ flex: "3 1 480px", minWidth: 0 }}>
+              {modoDivision && divisionTipo === "subcuentas" ? (
+                // ── Vista de asignación a subcuentas ──────────────────
+                !subcuentaActiva ? (
+                  <div className="admin-card">
+                    <p className="texto-secundario">
+                      Selecciona o crea una subcuenta en el panel izquierdo para empezar a asignar productos.
+                    </p>
+                  </div>
+                ) : (
                   <>
-                    <p className="panel-subtitulo">
-                      Productos en "{subcuentaActiva.nombre}"
+                    <p className="subtitulo">
+                      Asignando productos a: {subcuentaActiva.nombre}
                     </p>
                     <div className="tabla-wrapper">
                       <table className="tabla">
                         <thead>
                           <tr>
                             <th>Producto</th>
-                            <th className="th-num">Cant.</th>
-                            <th className="th-num">Subtotal</th>
-                            <th className="th-center">Quitar</th>
+                            <th className="th-num">Disponible</th>
+                            <th className="th-num">Precio</th>
+                            <th className="th-center">Asignar</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {subcuentaActiva.items.map((item) => (
+                          {itemsCuentaPrincipal.map((item) => (
                             <tr key={item.item_id}>
                               <td className="td-nombre">{item.nombre}</td>
                               <td className="td-num">{item.cantidad}</td>
-                              <td className="td-num td-monto">{money(num(item.precio) * num(item.cantidad))}</td>
+                              <td className="td-num">{money(item.precio)}</td>
                               <td className="td-center">
-                                <button className="btn-ghost"
-                                  onClick={() => devolverASubcuenta(subcuentaActiva.id, item.item_id, 1)}>
-                                  ← Quitar 1
+                                <button
+                                  className="btn-secundario"
+                                  style={ESTILO_BTN_SECUNDARIO}
+                                  onClick={() => iniciarMoverASubcuenta(item)}
+                                >
+                                  → Mover
                                 </button>
                               </td>
                             </tr>
                           ))}
+                          {itemsCuentaPrincipal.length === 0 && (
+                            <tr>
+                              <td colSpan={4} className="texto-secundario" style={{ textAlign: "center" }}>
+                                No quedan productos sin asignar en la cuenta principal.
+                              </td>
+                            </tr>
+                          )}
                         </tbody>
                       </table>
                     </div>
+
+                    {subcuentaActiva.items.length > 0 && (
+                      <>
+                        <p className="subtitulo" style={{ marginTop: "1.25rem" }}>
+                          Productos en "{subcuentaActiva.nombre}"
+                        </p>
+                        <div className="tabla-wrapper">
+                          <table className="tabla">
+                            <thead>
+                              <tr>
+                                <th>Producto</th>
+                                <th className="th-num">Cant.</th>
+                                <th className="th-num">Subtotal</th>
+                                <th className="th-center">Quitar</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {subcuentaActiva.items.map((item) => (
+                                <tr key={item.item_id}>
+                                  <td className="td-nombre">{item.nombre}</td>
+                                  <td className="td-num">{item.cantidad}</td>
+                                  <td className="td-num td-monto">{money(num(item.precio) * num(item.cantidad))}</td>
+                                  <td className="td-center">
+                                    <button
+                                      className="btn-ghost"
+                                      style={ESTILO_BTN_GHOST}
+                                      onClick={() => devolverASubcuenta(subcuentaActiva.id, item.item_id, 1)}
+                                    >
+                                      ← Quitar 1
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
                   </>
-                )}
-              </>
-            )}
+                )
+              ) : (
+                // ── Tabla normal (cobro / división simple) ──
+                <div className="tabla-wrapper">
+                  <table className="tabla">
+                    <thead>
+                      <tr>
+                        {modoDivision && divisionTipo === "simple" && <th className="th-check">✓</th>}
+                        <th>Producto</th>
+                        <th>Obs.</th>
+                        <th className="th-num">Cant.</th>
+                        <th className="th-num">Precio</th>
+                        <th className="th-num">Subtotal</th>
+                        {!modoDivision && <th className="th-center">Modificar</th>}
+                        {!modoDivision && <th className="th-center">Eliminar</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pedidoLocal.map((item, idx) => {
+                        const seleccionado = indicesSeleccionados.includes(idx);
+                        const precio       = num(item.precio);
+                        const cantidad     = num(item.cantidad);
+                        const enModoSimple = modoDivision && divisionTipo === "simple";
+
+                        return (
+                          <tr
+                            key={item.item_id ?? idx}
+                            className={enModoSimple && seleccionado ? "fila-seleccionada" : ""}
+                            onClick={enModoSimple ? () => toggleSeleccion(idx) : undefined}
+                            style={enModoSimple ? { cursor: "pointer" } : {}}
+                          >
+                            {enModoSimple && (
+                              <td className="td-center">
+                                <input
+                                  type="checkbox"
+                                  checked={seleccionado}
+                                  onChange={() => toggleSeleccion(idx)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </td>
+                            )}
+                            <td className="td-nombre">{item.nombre}</td>
+                            <td className="td-obs">
+                              {item.observacion
+                                ? <span className="badge-obs" title={item.observacion}>📝</span>
+                                : <span className="texto-muted">—</span>}
+                            </td>
+                            <td className="td-num">{cantidad}</td>
+                            <td className="td-num">{money(precio)}</td>
+                            <td className="td-num td-monto">{money(precio * cantidad)}</td>
+
+                            {!modoDivision && (
+                              <td className="td-center">
+                                <div className="controles-cantidad">
+                                  <button className="btn-cantidad" onClick={() => handleModificar(item, -1)}>−</button>
+                                  <span className="cantidad-valor">{cantidad}</span>
+                                  <button className="btn-cantidad" onClick={() => handleModificar(item, 1)}>+</button>
+                                </div>
+                              </td>
+                            )}
+
+                            {!modoDivision && (
+                              <td className="td-center">
+                                <button
+                                  className="btn-eliminar"
+                                  title="Eliminar (requiere PIN)"
+                                  onClick={() => setModalPin({ item })}
+                                >
+                                  🗑
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
-        ) : (
-          // ── Tabla normal (cobro / división simple) — SIN CAMBIOS ──
-          <div className="tabla-wrapper">
-            <table className="tabla">
-              <thead>
-                <tr>
-                  {modoDivision && divisionTipo === "simple" && <th className="th-check">✓</th>}
-                  <th>Producto</th>
-                  <th>Obs.</th>
-                  <th className="th-num">Cant.</th>
-                  <th className="th-num">Precio</th>
-                  <th className="th-num">Subtotal</th>
-                  {!modoDivision && <th className="th-center">Modificar</th>}
-                  {!modoDivision && <th className="th-center">Eliminar</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {pedidoLocal.map((item, idx) => {
-                  const seleccionado = indicesSeleccionados.includes(idx);
-                  const precio       = num(item.precio);
-                  const cantidad     = num(item.cantidad);
-                  const enModoSimple = modoDivision && divisionTipo === "simple";
-
-                  return (
-                    <tr key={item.item_id ?? idx}
-                      className={enModoSimple && seleccionado ? "fila-seleccionada" : ""}
-                      onClick={enModoSimple ? () => toggleSeleccion(idx) : undefined}
-                      style={enModoSimple ? { cursor: "pointer" } : {}}>
-
-                      {enModoSimple && (
-                        <td>
-                          <input type="checkbox" checked={seleccionado}
-                            onChange={() => toggleSeleccion(idx)}
-                            onClick={(e) => e.stopPropagation()} />
-                        </td>
-                      )}
-                      <td className="td-nombre">{item.nombre}</td>
-                      <td className="td-obs">
-                        {item.observacion
-                          ? <span className="badge-obs" title={item.observacion}>📝</span>
-                          : <span className="texto-muted">—</span>}
-                      </td>
-                      <td className="td-num">{cantidad}</td>
-                      <td className="td-num">{money(precio)}</td>
-                      <td className="td-num td-monto">
-                        {money(precio * cantidad)}
-                      </td>
-
-                      {!modoDivision && (
-                        <td className="td-center">
-                          <div className="controles-cantidad">
-                            <button className="btn-cantidad"
-                              onClick={() => handleModificar(item, -1)}>−</button>
-                            <span className="cantidad-valor">{cantidad}</span>
-                            <button className="btn-cantidad"
-                              onClick={() => handleModificar(item, 1)}>+</button>
-                          </div>
-                        </td>
-                      )}
-
-                      {!modoDivision && (
-                        <td className="td-center">
-                          <button className="btn-eliminar-item"
-                            title="Eliminar (requiere PIN)"
-                            onClick={() => setModalPin({ item })}>
-                            🗑
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 };
@@ -1095,15 +1334,12 @@ export default DetalleMesa;
 // 1. onPagoTotal(metodoPago, resumen) y onPagoParcial(items, metodoPago, resumen)
 //    reciben `resumen` con:
 //    { consumo, descuentoTipo, descuento, subtotal, servicio, propina, total, pagos }
-//    `pagos` es el desglose real: [{ metodo, monto }, ...]. Mesas.jsx ya lo
-//    reenvía sin cambios (solo pasa el objeto), así que llega intacto hasta
-//    donde se arma el body del fetch/axios hacia /api/caja/pago — ahí hay
-//    que asegurarse de mandar `pagos` en el body (ver ejemplo abajo).
+//    `pagos` es el desglose real: [{ metodo_pago, monto }, ...]. Asegúrate de
+//    mandar `pagos` en el body de POST /api/caja/pago:
 //
-//    Ejemplo del body que debe viajar a POST /api/caja/pago:
 //    {
 //      mesa_id, mesa_nombre, pedido_id, total: resumen.total,
-//      metodo_pago: metodoPago,          // ya existía, sigue igual
+//      metodo_pago: metodoPago,          // sigue igual
 //      items, consumo: resumen.consumo, descuento: resumen.descuento,
 //      servicio: resumen.servicio, propina: resumen.propina,
 //      pagos: resumen.pagos,             // 👈 desglose real
@@ -1112,8 +1348,19 @@ export default DetalleMesa;
 // 2. Subcuentas: siguen viviendo SOLO en memoria del frontend (se pierden
 //    si se recarga la página antes de cobrar).
 //
-// 3. Caja del día (servicio/propina/descuentos/pagos mixtos acumulados):
-//    ya viene calculado desde el backend (Caja.cerrar / Caja.getHistorial),
-//    pero la vista que lo muestra en pantalla
+// 3. Modales: usan `createPortal(document.body)`, así que siempre cubren
+//    el viewport completo sin importar dónde esté montado el componente
+//    en el árbol (evita el bug de "modal pegado arriba" por `transform`
+//    en algún contenedor padre).
 //
+// 4. PASE 2 (este archivo): los ajustes de color de botones/tarjetas se
+//    hicieron con `style` inline usando variables ya definidas en
+//    Admin.css (var(--amber), var(--amber-dim), var(--bg-hover), etc.).
+//    Admin.css NO fue modificado. Si más adelante prefieren mover estos
+//    estilos a clases reales en Admin.css para reutilizarlos en otros
+//    componentes, las constantes ESTILO_BTN_GHOST / ESTILO_BTN_SECUNDARIO
+//    / ESTILO_PANEL_ELEVADO de arriba son el punto de partida directo.
+//
+// 5. Este archivo sigue sin importar ningún CSS propio — reutiliza por
+//    completo las clases de Admin.css (igual que Egresos.jsx).
 // ══════════════════════════════════════════════════════════════════
