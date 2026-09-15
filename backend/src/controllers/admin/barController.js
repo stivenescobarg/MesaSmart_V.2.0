@@ -33,6 +33,7 @@ exports.crear = async (req, res) => {
       items: items.map((item) => ({
         nombre: item.nombre.trim(),
         cantidad: Number(item.cantidad),
+        precio: Number(item.precio) || 0,
         imgKey: item.imgKey || null,
         adiciones: Array.isArray(item.adiciones) ? item.adiciones : [],
         opcion: item.opcion || null,
@@ -103,6 +104,28 @@ exports.actualizarEstado = async (req, res) => {
   } catch (err) {
     console.error("[bar/actualizarEstado]", err);
     res.status(500).json({ msg: "No fue posible actualizar la orden." });
+  }
+};
+
+exports.pagarParcial = async (req, res) => {
+  try {
+    const { pagos } = req.body; // [{ index, cantidad }]
+    const resultado = await barOrderService.pagarParcial(
+      req.params.id,
+      req.restaurante_id,
+      pagos,
+      req.usuario?.id || null,
+      req.ip || req.connection.remoteAddress || null
+    );
+
+    if (!resultado.ok) {
+      return res.status(resultado.status || 400).json({ msg: resultado.error });
+    }
+
+    res.json({ ok: true, orden: resultado });
+  } catch (err) {
+    console.error("[bar/pagarParcial]", err);
+    res.status(500).json({ msg: "No fue posible registrar el pago parcial." });
   }
 };
 

@@ -24,6 +24,7 @@ const Modal = ({
   labelConfirmar = "Confirmar",
   labelCancelar  = "Cancelar",
   variante       = "normal",
+  ancho,
 }) => {
   if (!abierto) return null;
 
@@ -31,6 +32,12 @@ const Modal = ({
     <div className="modal-overlay" onClick={onCancelar}>
       <div
         className="modal-box"
+        style={{
+          ...(ancho ? { maxWidth: ancho } : null),
+          maxHeight: "88vh",       // ← NUEVO: nunca más alto que el 88% de la pantalla
+          display: "flex",         // ← NUEVO
+          flexDirection: "column", // ← NUEVO
+        }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -42,7 +49,7 @@ const Modal = ({
           )}
         </div>
 
-        <div className="modal-body">{children}</div>
+        <div className="modal-body" style={{ overflowY: "auto" }}>{children}</div>
 
         {(onConfirmar || onCancelar) && (
           <div className="modal-footer">

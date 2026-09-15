@@ -305,5 +305,7 @@ r.get("/historial", auth, tenant, role("admin"), ctrl.getHistorial);
  *         description: Error interno
  */
 r.post("/pago", auth, tenant, ctrl.registrarPago);
+r.get("/venta/:id", auth, tenant, role("admin"), ctrl.getVentaDetalle);
+r.put("/venta/:id", auth, tenant, role("admin"), ctrl.editarVenta);
 
 module.exports = r;

@@ -137,10 +137,11 @@ const barOrderService = {
       }
 
       const transiciones = {
-        pendiente: ["en_preparacion", "cancelado"],
-        en_preparacion: ["listo", "cancelado"],
-        listo: [],
+        pendiente: ["en_preparacion", "cancelado", "pagado"],
+        en_preparacion: ["listo", "cancelado", "pagado"],
+        listo: ["pagado"],
         cancelado: [],
+        pagado: [],
       };
 
       if (!transiciones[orden.estado]?.includes(estado)) {
@@ -191,6 +192,96 @@ const barOrderService = {
       conn.release();
     }
   },
+
+    // pagarParcial: reduce cantidades específicas dentro del JSON de items
+  // de una orden de bar, sin tocar el resto. Si después de restar todas
+  // las cantidades pagadas no queda ningún item con cantidad > 0, la
+  // orden completa pasa a 'pagado'. Si queda algo, la orden sigue activa
+  // con el JSON actualizado (menos items o cantidades menores).
+  //
+  // pagos: [{ index: <posición dentro del array items>, cantidad: <cuánto se pagó> }]
+  async pagarParcial(id, restaurante_id, pagos, usuario_id, ip_address) {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      if (!restaurante_id) {
+        await conn.rollback();
+        return { ok: false, error: "No se pudo determinar el restaurante.", status: 400 };
+      }
+      if (!Array.isArray(pagos) || pagos.length === 0) {
+        await conn.rollback();
+        return { ok: false, error: "Debe indicar al menos un item a pagar.", status: 400 };
+      }
+
+      const [[orden]] = await conn.execute(
+        `SELECT id, items, estado FROM ordenes_bar WHERE id = ? AND restaurante_id = ? FOR UPDATE`,
+        [id, restaurante_id]
+      );
+
+      if (!orden) {
+        await conn.rollback();
+        return { ok: false, error: "Orden no encontrada", status: 404 };
+      }
+
+      if (["cancelado", "pagado"].includes(orden.estado)) {
+        await conn.rollback();
+        return { ok: false, error: `La orden ya está en estado '${orden.estado}'.`, status: 409 };
+      }
+
+      let items;
+      try {
+        items = typeof orden.items === "string" ? JSON.parse(orden.items) : (orden.items || []);
+      } catch {
+        items = [];
+      }
+
+      // Aplica cada pago restando cantidad al índice indicado
+      for (const { index, cantidad } of pagos) {
+        const item = items[index];
+        if (!item) continue; // índice inválido: se ignora en vez de romper todo
+        const cantidadPagar = Number(cantidad) || 0;
+        item.cantidad = Math.max(Number(item.cantidad || 0) - cantidadPagar, 0);
+      }
+
+      // Se descartan los items que quedaron en 0
+      const itemsRestantes = items.filter(i => Number(i.cantidad) > 0);
+
+      const nuevoEstado = itemsRestantes.length === 0 ? "pagado" : orden.estado;
+
+      await conn.execute(
+        `UPDATE ordenes_bar SET items = ?, estado = ? WHERE id = ? AND restaurante_id = ?`,
+        [JSON.stringify(itemsRestantes), nuevoEstado, id, restaurante_id]
+      );
+
+      await BarAuditLog.crear({
+        restaurante_id,
+        accion: "pago_parcial",
+        orden_id: id,
+        usuario_id,
+        descripcion: `Orden #${id}: pago parcial aplicado. Estado final: ${nuevoEstado}`,
+        ip_address,
+      }, conn);
+
+      await conn.commit();
+
+      return {
+        ok: true,
+        id: Number(id),
+        estado: nuevoEstado,
+        items_restantes: itemsRestantes.length,
+        mensaje: nuevoEstado === "pagado"
+          ? `Orden #${id} completamente pagada.`
+          : `Pago parcial aplicado a la orden #${id}.`,
+      };
+    } catch (error) {
+      await conn.rollback();
+      return { ok: false, error: error.message || "Error al procesar el pago parcial." };
+    } finally {
+      conn.release();
+    }
+  },
+  
 };
 
 module.exports = barOrderService;

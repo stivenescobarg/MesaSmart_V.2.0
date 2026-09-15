@@ -1,3 +1,4 @@
+//backend/src/routes/pedidos.js
 const express  = require("express");
 const router   = express.Router();
 const { pool } = require("../config/db");
@@ -130,9 +131,6 @@ router.post("/", async (req, res) => {
 router.patch("/:id/estado", auth, async (req, res) => {
   try {
     const restauranteId = req.usuario.restaurante_id;
-
-console.log("🍳 USUARIO COCINA:", req.usuario);
-console.log("🏠 RESTAURANTE DEL TOKEN:", restauranteId);
     const { estado } = req.body;
     const validos = ["pendiente", "en_preparacion", "listo", "pagado", "cancelado"];
     if (!validos.includes(estado))
@@ -146,18 +144,47 @@ console.log("🏠 RESTAURANTE DEL TOKEN:", restauranteId);
       return res.status(404).json({ error: "Pedido no encontrado en tu restaurante." });
     }
 
-    await pool.execute(
+    const [result] = await pool.execute(
       "UPDATE pedidos SET estado = ? WHERE id = ? AND restaurante_id = ?",
       [estado, req.params.id, restauranteId]
     );
-    await conn.commit();
-    if (r.affectedRows === 0) return res.status(404).json({ error: "Pedido no encontrado" });
+    if (result.affectedRows === 0) return res.status(404).json({ error: "Pedido no encontrado" });
     res.json({ ok: true });
   } catch (err) {
-    await conn.rollback();
     console.error("❌ Error PATCH /api/pedidos-cocina/:id/estado:", err);
     res.status(500).json({ error: "Error al actualizar estado" });
-  } finally { conn.release(); }
+  }
+});
+
+// ────────────────────────────────────────────────────────────
+// GET /api/pedidos-cocina/mesa/:mesaId
+// Ruta PÚBLICA — el cliente la usa para ver qué ya se ha pedido
+// en su propia mesa (evita que pida duplicado por accidente).
+// Solo trae pedidos activos (no pagados ni cancelados).
+// ────────────────────────────────────────────────────────────
+router.get("/mesa/:mesaId", async (req, res) => {
+  try {
+    const { mesaId } = req.params;
+    const { restaurante_id } = req.query;
+    if (!restaurante_id) {
+      return res.status(400).json({ error: "restaurante_id requerido" });
+    }
+
+    const [items] = await pool.query(
+      `SELECT dp.nombre, dp.cantidad, dp.precio, dp.categoria, dp.observacion
+       FROM detalle_pedido dp
+       JOIN pedidos p ON p.id = dp.pedido_id
+       WHERE p.mesa_id = ? AND p.restaurante_id = ?
+         AND p.estado NOT IN ('pagado','cancelado')
+       ORDER BY dp.id ASC`,
+      [mesaId, restaurante_id]
+    );
+
+    res.json(items);
+  } catch (err) {
+    console.error("❌ Error GET /api/pedidos-cocina/mesa/:mesaId:", err);
+    res.status(500).json({ error: "Error al obtener pedidos de la mesa" });
+  }
 });
 
 module.exports = router;

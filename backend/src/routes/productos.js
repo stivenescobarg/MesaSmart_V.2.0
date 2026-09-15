@@ -22,17 +22,20 @@ const role = require("../middlewares/roleMiddleware");
 router.get("/:restauranteId", async (req, res) => {
   const { restauranteId } = req.params;
   try {
-    const [productos] = await pool.query(
-      `SELECT
-         p.id, p.nombre, p.descripcion, p.precio, p.imagen,
-         p.tiene_termino, p.subcategoria,
-         c.nombre AS categoria
-       FROM productos p
-       JOIN categorias c ON c.id = p.categoria_id
-       WHERE p.restaurante_id = ?
-       ORDER BY c.nombre, p.nombre`,
-      [restauranteId]
-    );
+      const [productos] = await pool.query(
+  `SELECT
+     p.id, p.nombre, p.descripcion, p.precio, p.imagen,
+     p.tiene_termino, p.disponible,
+     COALESCE(sc.nombre, p.subcategoria) AS subcategoria,
+     c.nombre AS categoria,
+     c.destino AS destino
+   FROM productos p
+   JOIN categorias c ON c.id = p.categoria_id
+   LEFT JOIN subcategorias sc ON sc.id = p.subcategoria_id
+   WHERE p.restaurante_id = ?
+   ORDER BY c.nombre, p.nombre`,
+  [restauranteId]
+);
 
     // Para cada producto, traemos sus opciones y adiciones directamente
     // desde la tabla "opciones" (que ya tiene su propio producto_id),
@@ -70,9 +73,7 @@ router.get("/:restauranteId/categorias", async (req, res) => {
   const { restauranteId } = req.params;
   try {
     const [categorias] = await pool.query(
-      // Si tus categorías son globales (no por restaurante), quita
-      // el WHERE. Si cada restaurante tiene las suyas, esto ya filtra bien.
-      `SELECT id, nombre FROM categorias
+      `SELECT id, nombre, imagen, destino FROM categorias
        WHERE restaurante_id = ? OR restaurante_id IS NULL
        ORDER BY nombre`,
       [restauranteId]
@@ -81,6 +82,77 @@ router.get("/:restauranteId/categorias", async (req, res) => {
   } catch (err) {
     console.error("[GET /api/menu/:restauranteId/categorias]", err);
     res.status(500).json({ msg: "Error al cargar categorías." });
+  }
+});
+
+// ────────────────────────────────────────────────────────────
+// GET /api/menu/categorias/:categoriaId/subcategorias
+// Pública — llena el <select> de subcategoría al elegir una categoría.
+// ────────────────────────────────────────────────────────────
+router.get("/categorias/:categoriaId/subcategorias", async (req, res) => {
+  try {
+    const [subs] = await pool.query(
+      `SELECT id, nombre, imagen FROM subcategorias WHERE categoria_id = ? ORDER BY nombre`,
+      [req.params.categoriaId]
+    );
+    res.json(subs);
+  } catch (err) {
+    console.error("[GET /api/menu/categorias/:categoriaId/subcategorias]", err);
+    res.status(500).json({ msg: "Error al cargar subcategorías." });
+  }
+});
+
+// ────────────────────────────────────────────────────────────
+// POST /api/menu/categorias
+// Protegida (admin). Crea una categoría propia del restaurante,
+// con nombre e imagen (URL de Cloudinary ya subida).
+// ────────────────────────────────────────────────────────────
+router.post("/categorias", auth, role("admin"), async (req, res) => {
+  try {
+    const { nombre, imagen, destino } = req.body;
+    if (!nombre?.trim()) return res.status(400).json({ msg: "El nombre es obligatorio." });
+
+    const destinoFinal = destino === "bar" ? "bar" : "cocina";
+
+    const restauranteId = req.usuario.restaurante_id;
+    const [result] = await pool.query(
+      `INSERT INTO categorias (restaurante_id, nombre, imagen, destino) VALUES (?, ?, ?, ?)`,
+      [restauranteId, nombre.trim(), imagen || null, destinoFinal]
+    );
+    res.json({ ok: true, id: result.insertId, nombre: nombre.trim(), imagen: imagen || null, destino: destinoFinal });
+  } catch (err) {
+    console.error("[POST /api/menu/categorias]", err);
+    res.status(500).json({ msg: "Error al crear la categoría." });
+  }
+});
+
+// ────────────────────────────────────────────────────────────
+// POST /api/menu/subcategorias
+// Protegida (admin). Crea una subcategoría dentro de una
+// categoría existente del restaurante.
+// ────────────────────────────────────────────────────────────
+router.post("/subcategorias", auth, role("admin"), async (req, res) => {
+  try {
+    const { nombre, categoria_id, imagen } = req.body;
+    if (!nombre?.trim() || !categoria_id) {
+      return res.status(400).json({ msg: "Nombre y categoría son obligatorios." });
+    }
+
+    const restauranteId = req.usuario.restaurante_id;
+    const [[categoria]] = await pool.query(
+      `SELECT id FROM categorias WHERE id = ? AND (restaurante_id = ? OR restaurante_id IS NULL)`,
+      [categoria_id, restauranteId]
+    );
+    if (!categoria) return res.status(400).json({ msg: "La categoría no pertenece a tu restaurante." });
+
+    const [result] = await pool.query(
+      `INSERT INTO subcategorias (nombre, categoria_id, imagen) VALUES (?, ?, ?)`,
+      [nombre.trim(), categoria_id, imagen || null]
+    );
+    res.json({ ok: true, id: result.insertId, nombre: nombre.trim(), imagen: imagen || null });
+  } catch (err) {
+    console.error("[POST /api/menu/subcategorias]", err);
+    res.status(500).json({ msg: "Error al crear la subcategoría." });
   }
 });
 
@@ -165,6 +237,38 @@ router.put("/:id", auth, role("admin"), async (req, res) => {
   } catch (err) {
     console.error("[PUT /api/menu/:id]", err);
     res.status(500).json({ msg: "Error al actualizar el producto." });
+  }
+});
+
+// ────────────────────────────────────────────────────────────
+// PATCH /api/menu/:id/disponibilidad
+// Ruta PROTEGIDA. Activa/desactiva un producto sin borrarlo.
+// El cliente sigue viéndolo en el menú, pero marcado "Agotado"
+// y sin poder agregarlo al carrito.
+// ────────────────────────────────────────────────────────────
+router.patch("/:id/disponibilidad", auth, role("admin"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { disponible } = req.body; // true/false o 1/0
+    const restauranteId = req.usuario.restaurante_id;
+
+    const [[producto]] = await pool.query(
+      `SELECT id FROM productos WHERE id = ? AND restaurante_id = ?`,
+      [id, restauranteId]
+    );
+    if (!producto) {
+      return res.status(404).json({ msg: "Producto no encontrado en tu restaurante." });
+    }
+
+    await pool.query(
+      `UPDATE productos SET disponible = ? WHERE id = ? AND restaurante_id = ?`,
+      [disponible ? 1 : 0, id, restauranteId]
+    );
+
+    res.json({ ok: true, disponible: !!disponible });
+  } catch (err) {
+    console.error("[PATCH /api/menu/:id/disponibilidad]", err);
+    res.status(500).json({ msg: "Error al actualizar disponibilidad." });
   }
 });
 

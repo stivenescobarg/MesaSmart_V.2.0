@@ -1,3 +1,4 @@
+// backend/src/controllers/admin/userController.js
 const bcrypt = require("bcryptjs");
 const User   = require("../../models/User");
 const Sesion = require("../../models/Sesion");
@@ -28,11 +29,11 @@ exports.create = async (req, res) => {
       return res.status(400).json({ msg: "La contraseña debe tener al menos 6 caracteres." });
 
     const hash   = await bcrypt.hash(password, 10);
-    // 👇 correlativo calculado solo dentro del tenant actual
+    // Correlativo calculado solo dentro del tenant actual
     const numero = (await User.countByRol(rol, req.restaurante_id)) + 1;
 
     const id = await User.create({
-      restaurante_id: req.restaurante_id, // 👈 mismo origen que en egresoController (middleware tenant)
+      restaurante_id: req.restaurante_id, // mismo origen que en egresoController (middleware tenant)
       nombre: nombre.trim(),
       correo,
       correo_personal,
@@ -59,6 +60,16 @@ exports.remove = async (req, res) => {
     await Sesion.cerrarTodas(req.params.id, req.restaurante_id);
     res.json({ ok: true });
   } catch { res.status(500).json({ msg: "Error al eliminar usuario." }); }
+};
+
+exports.reactivar = async (req, res) => {
+  try {
+    const reactivado = await User.reactivar(req.params.id, req.restaurante_id);
+    if (!reactivado)
+      return res.status(404).json({ msg: "Usuario no encontrado." });
+
+    res.json({ ok: true });
+  } catch { res.status(500).json({ msg: "Error al reactivar usuario." }); }
 };
 
 exports.getSesiones = async (req, res) => {

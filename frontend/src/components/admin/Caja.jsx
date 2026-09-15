@@ -6,9 +6,12 @@
 // - Activar o pausar el servicio de pedidos.
 // - Cerrar caja y descargar automáticamente el reporte PDF.
 // - Visualizar las últimas ventas registradas.
-// - NUEVO: mostrar el desglose de servicio, propinas y descuentos del día.
+// - Mostrar el desglose de servicio, propinas y descuentos del día.
+// - NUEVO: abrir el detalle de una venta y corregirla (VentaDetalleModal).
 
 import { useState } from "react";
+import VentaDetalleModal from "./VentaDetalleModal";
+import { cajaService } from "../../services/cajaService";
 
 // Función para formatear números en pesos colombianos.
 // Ejemplo: 15000 -> $15.000
@@ -48,7 +51,8 @@ const Caja = ({
   servicioActivo, 
   onAbrirCaja, 
   onCerrarCaja, 
-  onToggleServicio 
+  onToggleServicio,
+  onCajaActualizada, // NUEVO: callback opcional del padre para refrescar el estado de caja tras editar una venta
 }) => {
 
   // Estado para almacenar el monto ingresado
@@ -59,6 +63,9 @@ const Caja = ({
 
   // Estado para indicar carga mientras se genera el PDF
   const [cerrando, setCerrando] = useState(false);
+
+  // NUEVO: venta actualmente abierta en el modal de detalle/edición (null = cerrado)
+  const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
 
   // Función para abrir la caja
   const handleAbrirCaja = () => {
@@ -102,6 +109,22 @@ const Caja = ({
     }
   };
 
+  // NUEVO: abre el modal de detalle/edición para una venta puntual
+const abrirEdicion = async (venta_id) => {
+  try {
+    const respuesta = await cajaService.getVentaDetalle(venta_id);
+    setVentaSeleccionada(respuesta.venta);
+  } catch (err) {
+    console.error("[abrirEdicion]", err);
+  }
+};
+
+  // NUEVO: se llama cuando VentaDetalleModal guarda una corrección con éxito
+  const handleVentaGuardada = () => {
+    setVentaSeleccionada(null);
+    onCajaActualizada?.(); // el padre decide cómo refrescar (ej. volver a llamar getEstado)
+  };
+
   // Obtiene el monto inicial de la caja
   const montoInicial = parseFloat(caja?.monto_inicial ?? 0) || 0;
 
@@ -114,12 +137,7 @@ const Caja = ({
     0
   );
 
-  // ── NUEVO: desglose de servicio / propinas / descuentos del día.
-  // Se calcula sumando los campos que debería devolver cada venta
-  // (v.servicio, v.propina, v.descuento). Si el backend todavía no los
-  // envía, simplemente suman 0 y las tarjetas muestran $0 — no rompe nada,
-  // pero para que muestren datos reales hace falta que `Caja.getVentas` en
-  // el backend incluya esas columnas (ver nota que te doy en el chat).
+  // Desglose de servicio / propinas / descuentos del día.
   const totalServicio  = ventas.reduce((acc, v) => acc + (parseFloat(v.servicio)  || 0), 0);
   const totalPropinas  = ventas.reduce((acc, v) => acc + (parseFloat(v.propina)   || 0), 0);
   const totalDescuentos = ventas.reduce((acc, v) => acc + (parseFloat(v.descuento) || 0), 0);
@@ -244,7 +262,7 @@ const Caja = ({
           </div>
 
           {/* ============================ */}
-          {/* NUEVO: DESGLOSE SERVICIO / PROPINAS / DESCUENTOS */}
+          {/* DESGLOSE SERVICIO / PROPINAS / DESCUENTOS */}
           {/* ============================ */}
 
           <div className="admin-card">
@@ -364,6 +382,10 @@ const Caja = ({
                 Ventas de esta sesión
               </h3>
 
+              <p className="texto-muted" style={{ marginBottom: "0.5rem", fontSize: "0.78rem" }}>
+                Haz clic en una venta para ver el detalle o corregirla →
+              </p>
+
               <table className="tabla">
 
                 <thead>
@@ -371,7 +393,7 @@ const Caja = ({
                     <th>Mesa</th>
                     <th>Hora</th>
                     <th>Método</th>
-                    {/* NUEVO: columna servicio/propina para trazabilidad visual */}
+                    {/* columna servicio/propina para trazabilidad visual */}
                     <th>Servicio</th>
                     <th>Propina</th>
                     <th>Total</th>
@@ -386,7 +408,11 @@ const Caja = ({
                     .slice(0, 8)
                     .map((v, i) => (
 
-                    <tr key={v.id ?? i}>
+                    <tr
+                      key={v.id ?? i}
+                      onClick={() => v.id && abrirEdicion(v.id)}
+                      style={{ cursor: v.id ? "pointer" : "default" }}
+                    >
 
                       {/* Nombre de mesa (o subcuenta, si aplica) */}
                       <td>
@@ -425,6 +451,18 @@ const Caja = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* ============================ */}
+      {/* MODAL DE DETALLE / EDICIÓN DE VENTA */}
+      {/* ============================ */}
+
+      {ventaSeleccionada && (
+        <VentaDetalleModal
+          venta={ventaSeleccionada}
+          onClose={() => setVentaSeleccionada(null)}
+          onGuardado={handleVentaGuardada}
+        />
       )}
     </div>
   );

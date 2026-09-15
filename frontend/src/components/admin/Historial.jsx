@@ -1,6 +1,8 @@
 // frontend/src/components/admin/Historial.jsx
 
 import { useState, useMemo, useEffect } from "react";
+import VentaDetalleModal from "./VentaDetalleModal";
+import { cajaService } from "../../services/cajaService";
 
 const ICONO_METODO = {
   efectivo:      "💵",
@@ -80,10 +82,16 @@ const Paginador = ({ paginaActual, totalPaginas, onCambiar }) => {
   );
 };
 
-const Historial = ({ historial }) => {
+// NUEVO: onVentaCorregida es opcional — pásala desde el padre (ej. AdminDashboard)
+// si quieres refrescar el historial completo (getHistorial) después de guardar
+// una corrección. Si no la pasas, el modal simplemente se cierra.
+const Historial = ({ historial, onVentaCorregida }) => {
   const [diaExpandido,   setDiaExpandido]   = useState(null);
   const [ventaExpandida, setVentaExpandida] = useState(null);
   const [pagina,         setPagina]         = useState(1);
+
+  // NUEVO: venta actualmente abierta en el modal de detalle/edición
+  const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
 
   const totalPaginas = Math.max(1, Math.ceil((historial?.length || 0) / POR_PAGINA));
 
@@ -101,6 +109,21 @@ const Historial = ({ historial }) => {
     setPagina(nueva);
     setDiaExpandido(null);
     setVentaExpandida(null);
+  };
+
+  // NUEVO: abre el modal de detalle/edición para una venta de una jornada cerrada
+  const abrirEdicion = async (venta_id) => {
+    try {
+      const respuesta = await cajaService.getVentaDetalle(venta_id);
+      setVentaSeleccionada(respuesta.venta);
+    } catch (err) {
+      console.error("[abrirEdicion historial]", err);
+    }
+  };
+
+  const handleVentaGuardada = () => {
+    setVentaSeleccionada(null);
+    onVentaCorregida?.(); // el padre decide si vuelve a pedir el historial
   };
 
   if (!historial || historial.length === 0) {
@@ -247,9 +270,24 @@ const Historial = ({ historial }) => {
                                     <tr>
                                       <td colSpan={5} style={{ padding: 0, background: "var(--bg)" }}>
                                         <div className="venta-detalle-productos">
-                                          <p className="venta-detalle-titulo">
-                                            📦 Productos cobrados en esta transacción
-                                          </p>
+                                          <div style={{
+                                            display: "flex", alignItems: "center",
+                                            justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem",
+                                          }}>
+                                            <p className="venta-detalle-titulo" style={{ margin: 0 }}>
+                                              📦 Productos cobrados en esta transacción
+                                            </p>
+                                            {/* NUEVO: botón para corregir esta venta — v.id viene del
+                                                SELECT de getHistorial, así que sí está disponible aquí */}
+                                            {v.id && (
+                                              <button
+                                                className="btn-secundario"
+                                                onClick={(e) => { e.stopPropagation(); abrirEdicion(v.id); }}
+                                              >
+                                                ✏️ Corregir esta venta
+                                              </button>
+                                            )}
+                                          </div>
                                           <table className="tabla tabla-productos">
                                             <thead>
                                               <tr>
@@ -298,6 +336,17 @@ const Historial = ({ historial }) => {
         totalPaginas={totalPaginas}
         onCambiar={cambiarPagina}
       />
+
+      {/* ============================ */}
+      {/* MODAL DE DETALLE / EDICIÓN DE VENTA (jornadas ya cerradas) */}
+      {/* ============================ */}
+      {ventaSeleccionada && (
+        <VentaDetalleModal
+          venta={ventaSeleccionada}
+          onClose={() => setVentaSeleccionada(null)}
+          onGuardado={handleVentaGuardada}
+        />
+      )}
     </div>
   );
 };

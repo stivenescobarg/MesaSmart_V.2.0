@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Modal from "./Modal";
 
-const PASSWORD_SEGURIDAD = "9876";
+const PASSWORD_SEGURIDAD = "9876"; // confirma desactivación
+const PIN_REACTIVACION   = "4321"; // confirma reactivación — cámbialo si quieres otro valor
 
 const ROLES = [
   { value: "cocina",    label: "🍳 Cocina" },
@@ -34,7 +35,7 @@ const validarFormulario = (nombre, correo, correoPersonal, telefono, password, c
 // activo puede venir como 1/0 (tinyint de MySQL) o true/false
 const esActivo = (u) => u.activo === 1 || u.activo === true || u.activo === "1";
 
-const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
+const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario, onReactivarUsuario }) => {
   const [formulario,       setFormulario]       = useState(false);
   const [nombre,           setNombre]           = useState("");
   const [correo,           setCorreo]           = useState("");
@@ -48,15 +49,24 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
   const [mostrarPass,      setMostrarPass]      = useState(false);
   const [expandidoId,      setExpandidoId]      = useState(null);
   const [pestana,          setPestana]          = useState("activos"); // "activos" | "desactivados"
-  const [modalDesactivar,  setModalDesactivar]  = useState(false);
-  const [usuarioADesactivar, setUsuarioADesactivar] = useState(null);
-  const [passSeguridad,    setPassSeguridad]    = useState("");
-  const [errorModal,       setErrorModal]       = useState("");
-  const [desactivando,     setDesactivando]     = useState(false);
 
-  const activos       = usuarios.filter(esActivo);
-  const desactivados  = usuarios.filter((u) => !esActivo(u));
-  const listaVisible  = pestana === "activos" ? activos : desactivados;
+  // Desactivar
+  const [modalDesactivar,    setModalDesactivar]    = useState(false);
+  const [usuarioADesactivar, setUsuarioADesactivar] = useState(null);
+  const [passSeguridad,      setPassSeguridad]      = useState("");
+  const [errorModalDesact,   setErrorModalDesact]   = useState("");
+  const [desactivando,       setDesactivando]       = useState(false);
+
+  // Reactivar
+  const [modalReactivar,    setModalReactivar]    = useState(false);
+  const [usuarioAReactivar, setUsuarioAReactivar] = useState(null);
+  const [pin,               setPin]               = useState("");
+  const [errorModalReact,   setErrorModalReact]   = useState("");
+  const [reactivando,       setReactivando]       = useState(false);
+
+  const activos      = usuarios.filter(esActivo);
+  const desactivados = usuarios.filter((u) => !esActivo(u));
+  const listaVisible = pestana === "activos" ? activos : desactivados;
 
   const limpiarFormulario = () => {
     setNombre(""); setCorreo(""); setCorreoPersonal(""); setTelefono("");
@@ -92,27 +102,28 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
     setExpandidoId((actual) => (actual === id ? null : id));
   };
 
+  // ── Desactivar ──
   const abrirModalDesactivar = (usuario) => {
     setUsuarioADesactivar(usuario);
     setPassSeguridad("");
-    setErrorModal("");
+    setErrorModalDesact("");
     setModalDesactivar(true);
   };
 
   const confirmarDesactivar = async () => {
     if (passSeguridad !== PASSWORD_SEGURIDAD) {
-      setErrorModal("Contraseña de seguridad incorrecta.");
+      setErrorModalDesact("Contraseña de seguridad incorrecta.");
       return;
     }
 
     const idUsuario = usuarioADesactivar?.id;
     if (!idUsuario) {
-      setErrorModal("No se pudo identificar el usuario. Recarga la página.");
+      setErrorModalDesact("No se pudo identificar el usuario. Recarga la página.");
       return;
     }
 
     setDesactivando(true);
-    setErrorModal("");
+    setErrorModalDesact("");
 
     try {
       await onEliminarUsuario(idUsuario);
@@ -120,9 +131,44 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
       setUsuarioADesactivar(null);
       setPassSeguridad("");
     } catch (err) {
-      setErrorModal(err.message || "Error al desactivar. Intenta de nuevo.");
+      setErrorModalDesact(err.message || "Error al desactivar. Intenta de nuevo.");
     } finally {
       setDesactivando(false);
+    }
+  };
+
+  // ── Reactivar ──
+  const abrirModalReactivar = (usuario) => {
+    setUsuarioAReactivar(usuario);
+    setPin("");
+    setErrorModalReact("");
+    setModalReactivar(true);
+  };
+
+  const confirmarReactivar = async () => {
+    if (pin !== PIN_REACTIVACION) {
+      setErrorModalReact("PIN incorrecto.");
+      return;
+    }
+
+    const idUsuario = usuarioAReactivar?.id;
+    if (!idUsuario) {
+      setErrorModalReact("No se pudo identificar el usuario. Recarga la página.");
+      return;
+    }
+
+    setReactivando(true);
+    setErrorModalReact("");
+
+    try {
+      await onReactivarUsuario(idUsuario);
+      setModalReactivar(false);
+      setUsuarioAReactivar(null);
+      setPin("");
+    } catch (err) {
+      setErrorModalReact(err.message || "Error al reactivar. Intenta de nuevo.");
+    } finally {
+      setReactivando(false);
     }
   };
 
@@ -246,12 +292,13 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
         ) : (
           listaVisible.map((u) => {
             const expandido = expandidoId === u.id;
+            const activo    = esActivo(u);
             return (
               <div key={u.id} className="usuario-item">
                 <div
                   className="usuario-row"
                   onClick={() => toggleExpandir(u.id)}
-                  style={{ cursor: "pointer", opacity: esActivo(u) ? 1 : 0.6 }}
+                  style={{ cursor: "pointer", opacity: activo ? 1 : 0.6 }}
                   title="Ver información completa"
                 >
                   <div className="usuario-info">
@@ -259,7 +306,7 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
                     <span className={`chip ${COLOR_ROL[u.rol] || "chip-neutro"}`}>
                       {etiquetaRol(u.rol)} {u.numero ? `#${u.numero}` : ""}
                     </span>
-                    {!esActivo(u) && (
+                    {!activo && (
                       <span className="chip chip-neutro">Desactivado</span>
                     )}
                   </div>
@@ -272,10 +319,15 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
                     <span className="texto-muted" style={{ fontSize: "0.75rem" }}>
                       {expandido ? "▲" : "▼"}
                     </span>
-                    {esActivo(u) && (
+                    {activo ? (
                       <button className="btn-eliminar"
                         onClick={(e) => { e.stopPropagation(); abrirModalDesactivar(u); }}
                         title="Desactivar usuario">✕</button>
+                    ) : (
+                      <button className="btn-secundario"
+                        style={{ padding: "0.25rem 0.6rem", fontSize: "0.8rem" }}
+                        onClick={(e) => { e.stopPropagation(); abrirModalReactivar(u); }}
+                        title="Reactivar usuario">↺ Reactivar</button>
                     )}
                   </div>
                 </div>
@@ -287,7 +339,7 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
                     <p><strong>Correo personal:</strong> {u.correo_personal || "—"}</p>
                     <p><strong>Teléfono:</strong> {u.telefono || "—"}</p>
                     <p><strong>Rol:</strong> {etiquetaRol(u.rol)}</p>
-                    <p><strong>Estado:</strong> {esActivo(u) ? "Activo" : "Desactivado"}</p>
+                    <p><strong>Estado:</strong> {activo ? "Activo" : "Desactivado"}</p>
                   </div>
                 )}
               </div>
@@ -305,7 +357,7 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
         labelCancelar="Cancelar"
         onConfirmar={confirmarDesactivar}
         onCancelar={() => {
-          if (desactivando) return; // no cerrar mientras procesa
+          if (desactivando) return;
           setModalDesactivar(false);
           setUsuarioADesactivar(null);
         }}
@@ -326,14 +378,58 @@ const Usuarios = ({ usuarios, onCrearUsuario, onEliminarUsuario }) => {
                 type="password"
                 placeholder="Ingresa la contraseña de seguridad"
                 value={passSeguridad}
-                onChange={(e) => { setPassSeguridad(e.target.value); setErrorModal(""); }}
+                onChange={(e) => { setPassSeguridad(e.target.value); setErrorModalDesact(""); }}
                 onKeyDown={(e) => e.key === "Enter" && confirmarDesactivar()}
                 autoFocus
               />
             </div>
-            {errorModal && (
+            {errorModalDesact && (
               <p style={{ color: "var(--red)", fontSize: "0.82rem", marginTop: "0.25rem" }}>
-                ⚠️ {errorModal}
+                ⚠️ {errorModalDesact}
+              </p>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* ── MODAL REACTIVACIÓN ── */}
+      <Modal
+        abierto={modalReactivar}
+        titulo="Reactivar usuario"
+        variante="default"
+        labelConfirmar={reactivando ? "Reactivando..." : "Reactivar"}
+        labelCancelar="Cancelar"
+        onConfirmar={confirmarReactivar}
+        onCancelar={() => {
+          if (reactivando) return;
+          setModalReactivar(false);
+          setUsuarioAReactivar(null);
+        }}
+      >
+        {usuarioAReactivar && (
+          <div>
+            <p className="texto-secundario" style={{ marginBottom: "1rem" }}>
+              Vas a reactivar a{" "}
+              <strong style={{ color: "var(--text-1)" }}>
+                {usuarioAReactivar.correo}
+              </strong>. Podrá volver a iniciar sesión con sus credenciales anteriores.
+            </p>
+            <div className="campo-grupo">
+              <label className="campo-label">PIN de reactivación</label>
+              <input
+                className="campo-input"
+                type="password"
+                inputMode="numeric"
+                placeholder="Ingresa el PIN"
+                value={pin}
+                onChange={(e) => { setPin(e.target.value); setErrorModalReact(""); }}
+                onKeyDown={(e) => e.key === "Enter" && confirmarReactivar()}
+                autoFocus
+              />
+            </div>
+            {errorModalReact && (
+              <p style={{ color: "var(--red)", fontSize: "0.82rem", marginTop: "0.25rem" }}>
+                ⚠️ {errorModalReact}
               </p>
             )}
           </div>
