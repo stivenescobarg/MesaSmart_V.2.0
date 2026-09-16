@@ -34,7 +34,7 @@ exports.crear = async (req, res) => {
         nombre: item.nombre.trim(),
         cantidad: Number(item.cantidad),
         precio: Number(item.precio) || 0,
-        imgKey: item.imgKey || null,
+        imagen: item.imagen || null,
         adiciones: Array.isArray(item.adiciones) ? item.adiciones : [],
         opcion: item.opcion || null,
       })),

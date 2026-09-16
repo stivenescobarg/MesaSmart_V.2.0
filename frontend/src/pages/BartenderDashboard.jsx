@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../hooks/useTheme";
-import { getImage } from "../utils/getImage";
 import { barService } from "../services/barService";
 import BarStock from "../components/bar/BarStock";
 import SidebarNav from "../components/bar/SidebarNav";
@@ -48,7 +47,7 @@ const DetalleOrden = ({ orden, onClose, onAvanzar, guardando }) => {
       {orden.observacion && <p className="bd-order-note">📌 {orden.observacion}</p>}
       <div className="bd-modal-items">
         {orden.items.map((item, indice) => {
-          const imagen = getImage(item.nombre, item.imagen || item.imgKey);
+          const imagen = item.imagen || null;
           return <article className="bd-modal-item" key={`${item.nombre}-${indice}`}>
             <div className="bd-modal-item-img">{imagen ? <img src={imagen} alt="" /> : "🍹"}</div>
             <div className="bd-modal-item-info">
@@ -70,7 +69,7 @@ const DetalleOrden = ({ orden, onClose, onAvanzar, guardando }) => {
 
 const OrderItemsPreview = ({ items }) => <div className="bd-items">
   {items?.slice(0, 4).map((item, indice) => {
-    const img = getImage(item.nombre, item.imagen || item.imgKey);
+    const img = item.imagen || null;
     return <div key={indice} className="bd-item">
       <div className="bd-item-img">
         {img ? <img src={img} alt={item.nombre} /> : <span className="bd-item-placeholder">🍹</span>}

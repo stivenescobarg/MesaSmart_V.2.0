@@ -13,9 +13,9 @@ const Pedido = {
 
       for (const item of items) {
         await conn.execute(
-          "INSERT INTO detalle_pedido (pedido_id,nombre,cantidad,precio,categoria,observacion) VALUES (?,?,?,?,?,?)",
+          "INSERT INTO detalle_pedido (pedido_id,nombre,cantidad,precio,categoria,imagen,observacion) VALUES (?,?,?,?,?,?,?)",
           [pedido_id, item.nombre, item.cantidad, item.precio,
-           item.categoria || "comida", item.observacion || null]);
+           item.categoria || "comida", item.imagen || null, item.observacion || null]);
       }
       await conn.execute("UPDATE mesas SET estado='ocupada' WHERE id=?", [mesa_id]);
       await conn.commit();
@@ -36,7 +36,7 @@ const Pedido = {
     const [r] = await pool.execute(
       `SELECT p.id as pedido_id, p.estado, p.total, p.observacion,
               dp.id as item_id, dp.nombre, dp.cantidad, dp.precio,
-              dp.categoria, dp.observacion as item_obs
+              dp.categoria, dp.imagen, dp.observacion as item_obs
        FROM pedidos p JOIN detalle_pedido dp ON dp.pedido_id=p.id
        WHERE p.mesa_id=? AND p.restaurante_id=? AND p.estado NOT IN ('pagado','cancelado')
        ORDER BY p.creado_en`, [mesa_id, restaurante_id]);

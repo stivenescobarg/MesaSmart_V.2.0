@@ -1,11 +1,7 @@
 // frontend/src/pages/KitchenDashboard.jsx
-// Tema claro · Azul cobalto #3250e6
-// Lógica original intacta, pero con imágenes usando getImage
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate }                       from "react-router-dom";
 import { useAuth }                           from "../context/AuthContext";
-import { getImage }                          from "../utils/getImage"; // ← helper unificado
 import { API_URL }                            from "../services/config";
 import StockCocina                           from "../components/kitchen/StockCocina";
 import KitchenSidebar                        from "../components/kitchen/KitchenSidebar";
@@ -97,8 +93,7 @@ const PedidoModal = ({ pedido, onClose, onAvanzar }) => {
 
         <div className="kd-modal-items">
           {pedido.items?.map((item, i) => {
-            // Usamos getImage con el nombre y la clave (si existe)
-            const img = getImage(item.nombre, item.imagen || item.imgKey);
+            const img = item.imagen || null;
             return (
               <div key={i} className="kd-modal-item">
                 <div className="kd-modal-item-img">
@@ -175,7 +170,7 @@ const PedidoCard = ({ pedido, onClick, onAvanzar }) => {
 
       <div className="kd-items">
         {pedido.items?.slice(0, 4).map((item, i) => {
-          const img = getImage(item.nombre, item.imagen || item.imgKey);
+          const img = item.imagen || null;
           return (
             <div key={i} className="kd-item">
               <div className="kd-item-img">

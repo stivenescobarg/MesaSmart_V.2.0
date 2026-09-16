@@ -21,7 +21,7 @@ const enriquecerImagenes = async (ordenes) => {
     ...orden,
     items: orden.items.map(item => ({
       ...item,
-      imgKey: item.imgKey || imagenPorNombre.get(item.nombre) || null,
+      imagen: item.imagen || imagenPorNombre.get(item.nombre) || null,
     })),
   }));
 };

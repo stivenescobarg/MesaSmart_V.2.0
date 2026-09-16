@@ -10,13 +10,19 @@
 // productos directamente desde la interfaz del cliente — pero
 // SOLO si están logueados como admin del restaurante que están
 // viendo (ver `esAdmin` más abajo).
+//
+// 🧹 LIMPIEZA: este componente ya NO depende de imágenes
+// empaquetadas localmente (data/imagenes.js). Todas las
+// imágenes de productos/categorías vienen como URL de Cloudinary
+// guardada directamente en la BD. Tampoco existe ya un "menú
+// demo" quemado — cada restaurante (incluido el que antes era
+// el demo) empieza vacío y el admin construye su propia carta.
 // ============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./Menu.css";
 import FoodCard from "../components/FoodCard";
-import { imagenes } from "../data/imagenes";
 import { API_URL } from "../services/config";
 import { authService } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
@@ -24,6 +30,8 @@ import ImageUploadField from "../components/ImageUploadField";
 import { useBlockBack } from "../hooks/useBeforeUnload";
 
 // ── Íconos por categoría ─────────────────────────────────────
+// Se usan como fallback visual (círculo + emoji) cuando la
+// categoría todavía no tiene una imagen propia en Cloudinary.
 const catIconos = {
   "Platos fuertes": "🍽️",
   "Entradas":       "🥗",
@@ -38,6 +46,7 @@ const catIconos = {
 };
 
 // ── Degradados por categoría ─────────────────────────────────
+// Igual que los íconos: fallback visual mientras no haya imagen.
 const catGradientes = {
   "Platos fuertes": "linear-gradient(135deg,#7c2d12,#f97316)",
   "Entradas":       "linear-gradient(135deg,#14532d,#4ade80)",
@@ -67,18 +76,10 @@ const TERMINOS  = ["Poco hecho","Término medio","Bien hecho","Muy bien hecho"];
 // fmtCOP: función auxiliar para formatear números como precios en COP
 const fmtCOP    = n => `$${Number(n).toLocaleString("es-CO")}`;
 
-const resolveImg = (valorImagen) => {
-  if (!valorImagen) return null;
-  if (valorImagen.startsWith("http")) return valorImagen; // nuevo: URL de Cloudinary
-  return imagenes[valorImagen] || null; // legacy: viene del bundle estático
-};
-
-// ── Restaurante "demo" ───────────────────────────────────────
-// Único restaurante que, mientras no tenga productos propios en
-// la BD, cae al menú estático de ejemplo (comportamiento legacy).
-// Cualquier otro restaurante nuevo arranca con el menú realmente
-// vacío para que vea SU plantilla, no la comida de otro tenant.
-const RESTAURANTE_DEMO_ID = "1";
+// resolveImg: la imagen SIEMPRE es una URL de Cloudinary (o null si el
+// producto/categoría no tiene foto todavía). Ya no hay bundle estático
+// al que caer, así que esto es prácticamente un passthrough.
+const resolveImg = (valorImagen) => valorImagen || null;
 
 
 // ============================================================
@@ -316,7 +317,7 @@ const Menu = () => {
   useEffect(() => {
     if (cartOpen && !quejaMesa && mesaId) setQuejaMesa(String(mesaId));
   }, [cartOpen, mesaId, quejaMesa]);
-  
+
   // ── Scroll automático: al elegir categoría, salta directo a sus productos ──
   useEffect(() => {
     if (categoria && activeTab === "menu") {
@@ -327,7 +328,7 @@ const Menu = () => {
     }
   }, [categoria, subCategoria, activeTab]);
 
-  
+
   // ── fetchPedidosMesa: trae lo que ya se ha pedido en esta mesa ───
   const fetchPedidosMesa = () => {
     if (!mesaId || !restauranteId) return;
@@ -382,264 +383,12 @@ const Menu = () => {
     fetchPedidosMesa();
   }, [mesaId, restauranteId]);
 
-  // ── menuData: datos estáticos de respaldo (SOLO restaurante demo) ──
-  const menuData = {
-    "Platos fuertes": [
-      {
-        nombre:"Hamburguesa Especial", img:imagenes.hamburguesa, categoria:"Platos fuertes",
-        descripcion:"Carne de res a la parrilla, pan artesanal, queso, lechuga y tomate.",
-        precio:28000, tiene_termino:false,
-        opciones: [{nombre:"Papas a la francesa",precio:0},{nombre:"Papas al vapor",precio:0},{nombre:"Ensalada verde",precio:0}],
-        adiciones:[{nombre:"Queso extra",precio:3000},{nombre:"Tocineta",precio:5000},{nombre:"Aguacate extra",precio:4000}],
-      },
-      {
-        nombre:"Alitas BBQ", img:imagenes.alitas, categoria:"Platos fuertes",
-        descripcion:"Alitas crocantes bañadas en salsa BBQ ahumada. Con dip de queso azul.",
-        precio:32000, tiene_termino:false,
-        opciones: [{nombre:"Papas a la francesa",precio:0},{nombre:"Papas al vapor",precio:0}],
-        adiciones:[{nombre:"Salsa extra",precio:2000},{nombre:"Queso fundido",precio:4000}],
-      },
-      {
-        nombre:"Pechuga a la Plancha", img:imagenes.pechuga, categoria:"Platos fuertes",
-        descripcion:"Pechuga jugosa marinada a la plancha con especias, servida con guarnición.",
-        precio:26000, tiene_termino:false,
-        opciones: [{nombre:"Arroz con ensalada",precio:0},{nombre:"Papas al vapor",precio:0}],
-        adiciones:[{nombre:"Salsa especial",precio:2000},{nombre:"Aguacate extra",precio:4000}],
-      },
-      {
-        nombre:"Sudado de Pollo", img:imagenes.sudado, categoria:"Platos fuertes",
-        descripcion:"Pollo tierno en salsa criolla con papa, yuca y arroz blanco.",
-        precio:24000, tiene_termino:false,
-        opciones: [{nombre:"Con arroz",precio:0},{nombre:"Con yuca",precio:0}],
-        adiciones:[{nombre:"Chicharrón",precio:5000},{nombre:"Aguacate",precio:3000}],
-      },
-      {
-        nombre:"Chicharrón", img:imagenes.chicharron, categoria:"Platos fuertes",
-        descripcion:"Chicharrón crocante de cerdo, acompañado con arepa y limón.",
-        precio:22000, tiene_termino:false,
-        opciones: [{nombre:"Con arepa",precio:0},{nombre:"Con papa",precio:0}],
-        adiciones:[{nombre:"Ají picante",precio:1000},{nombre:"Limón extra",precio:500}],
-      },
-    ],
-    "Entradas": [
-      {
-        nombre:"Patacones con Guacamole", img:imagenes.patacon, categoria:"Entradas",
-        descripcion:"Patacones crocantes con guacamole fresco, tomate y cilantro.",
-        precio:18000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Queso rallado",precio:2000}],
-      },
-      {
-        nombre:"Crispetas", img:imagenes.crispetas, categoria:"Entradas",
-        descripcion:"Crispetas de maíz dulces o saladas, perfectas para compartir.",
-        precio:8000, tiene_termino:false,
-        opciones:[{nombre:"Dulces",precio:0},{nombre:"Saladas",precio:0}],
-        adiciones:[{nombre:"Mantequilla extra",precio:1000}],
-      },
-      {
-        nombre:"Deditos de Queso", img:imagenes.deditos, categoria:"Entradas",
-        descripcion:"Deditos crocantes rellenos de queso fundido. Imposible comer solo uno.",
-        precio:16000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Salsa BBQ",precio:1500},{nombre:"Salsa rosada",precio:1500}],
-      },
-      {
-        nombre:"Empanadas", img:imagenes.empanadas, categoria:"Entradas",
-        descripcion:"Empanadas de pipián, carne o pollo. Crujientes por fuera, jugosas por dentro.",
-        precio:12000, tiene_termino:false,
-        opciones:[{nombre:"De carne",precio:0},{nombre:"De pollo",precio:0},{nombre:"De pipián",precio:0}],
-        adiciones:[{nombre:"Ají extra",precio:500}],
-      },
-      {
-        nombre:"Carpaccio", img:imagenes.carpaccio, categoria:"Entradas",
-        descripcion:"Finas láminas de res con rúcula, alcaparras, parmesano y aceite de oliva.",
-        precio:28000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Extra parmesano",precio:3000}],
-      },
-    ],
-    "Platos típicos": [
-      {
-        nombre:"Bandeja Paisa", img:imagenes.bandeja, categoria:"Platos típicos",
-        descripcion:"Frijoles, arroz, carne molida, chicharrón, chorizo, huevo frito, arepa y aguacate.",
-        precio:36000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Mazorca adicional",precio:5000},{nombre:"Chorizo extra",precio:6000}],
-      },
-      {
-        nombre:"Mondongo", img:imagenes.mondongo, categoria:"Platos típicos",
-        descripcion:"Sopa tradicional de mondongo con papa, zanahoria, maíz y hierbas aromáticas.",
-        precio:28000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Arepa extra",precio:2000},{nombre:"Limón extra",precio:500}],
-      },
-      {
-        nombre:"Sancocho", img:imagenes.sancocho, categoria:"Platos típicos",
-        descripcion:"Sancocho trifásico con pollo, res y cerdo, papa, yuca, plátano y mazorca.",
-        precio:32000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Presa extra",precio:6000},{nombre:"Arroz extra",precio:2000}],
-      },
-      {
-        nombre:"Frijoles Antioqueños", img:imagenes.frijoles, categoria:"Platos típicos",
-        descripcion:"Frijoles cargamanto con hogao, chicharrón y todo el sabor de Antioquia.",
-        precio:22000, tiene_termino:false,
-        opciones:[{nombre:"Con arroz",precio:0},{nombre:"Solo frijoles",precio:0}],
-        adiciones:[{nombre:"Chicharrón extra",precio:5000},{nombre:"Aguacate",precio:3000}],
-      },
-      {
-        nombre:"Cazuela de Mariscos", img:imagenes.cazuela, categoria:"Platos típicos",
-        descripcion:"Cazuela cremosa con camarones, calamares y mejillones en salsa de coco.",
-        precio:42000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Pan tostado",precio:3000},{nombre:"Arroz de coco",precio:4000}],
-      },
-    ],
-    "Pastas": [
-      {
-        nombre:"Carbonara Clásica", img:imagenes.carbonara, categoria:"Pastas",
-        descripcion:"Spaghetti con salsa de huevo, queso pecorino, guanciale crujiente y pimienta negra.",
-        precio:30000, tiene_termino:false,
-        opciones:[{nombre:"Spaghetti",precio:0},{nombre:"Fettuccine",precio:0},{nombre:"Penne",precio:0}],
-        adiciones:[{nombre:"Extra queso parmesano",precio:3000},{nombre:"Tocineta extra",precio:4000}],
-      },
-      {
-        nombre:"Pasta al Pesto", img:imagenes.pesto, categoria:"Pastas",
-        descripcion:"Linguine al dente con pesto de albahaca fresca, piñones tostados y parmesano.",
-        precio:27000, tiene_termino:false,
-        opciones:[{nombre:"Linguine",precio:0},{nombre:"Fettuccine",precio:0}],
-        adiciones:[{nombre:"Pollo grillado",precio:8000},{nombre:"Camarones",precio:12000}],
-      },
-      {
-        nombre:"Lasaña de Carne", img:imagenes.carbonara, categoria:"Pastas",
-        descripcion:"Lasaña tradicional con carne de res, salsa bechamel y queso gratinado.",
-        precio:32000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Extra queso",precio:3000},{nombre:"Salsa extra",precio:2000}],
-      },
-    ],
-    "Cortes": [
-      {
-        nombre:"Punta de Anca", img:imagenes.ribeye, categoria:"Cortes",
-        descripcion:"Corte de res premium, jugoso y tierno. Cocinado a la parrilla de carbón.",
-        precio:58000, tiene_termino:true,
-        opciones:[{nombre:"Papas al romero",precio:0},{nombre:"Puré de papa",precio:0},{nombre:"Ensalada mixta",precio:0}],
-        adiciones:[{nombre:"Salsa chimichurri",precio:4000},{nombre:"Salsa de pimienta",precio:4000}],
-      },
-      {
-        nombre:"Solomito", img:imagenes.strip, categoria:"Cortes",
-        descripcion:"Solomito de res tierno con mantequilla de hierbas y sal marina gruesa.",
-        precio:62000, tiene_termino:true,
-        opciones:[{nombre:"Papas al romero",precio:0},{nombre:"Arroz integral",precio:0}],
-        adiciones:[{nombre:"Hongos salteados",precio:6000},{nombre:"Cebolla caramelizada",precio:3000}],
-      },
-      {
-        nombre:"Ribeye 300g", img:imagenes.puntaDeAnca, categoria:"Cortes",
-        descripcion:"Ribeye madurado en seco, 300g. Marmoleo perfecto, sabor inigualable.",
-        precio:75000, tiene_termino:true,
-        opciones:[{nombre:"Papas al romero",precio:0},{nombre:"Puré de papa",precio:0}],
-        adiciones:[{nombre:"Queso azul",precio:5000},{nombre:"Salsa chimichurri",precio:4000}],
-      },
-    ],
-    "Sushi": [
-      {
-        nombre:"Roll California", img:imagenes.california, categoria:"Sushi",
-        descripcion:"Arroz de sushi, cangrejo, aguacate, pepino, tobiko. 8 piezas.",
-        precio:26000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Salsa spicy",precio:2000},{nombre:"Tobiko extra",precio:3000}],
-      },
-      {
-        nombre:"Roll Spicy Tuna", img:imagenes.spicytuna, categoria:"Sushi",
-        descripcion:"Atún fresco con mayonesa spicy, aguacate y cebollín. 8 piezas.",
-        precio:32000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Salsa de soya extra",precio:1000},{nombre:"Jengibre extra",precio:1500}],
-      },
-      {
-        nombre:"Burrito Roll", img:imagenes.burrito, categoria:"Sushi",
-        descripcion:"Roll estilo burrito con arroz de sushi, pollo, aguacate y queso crema.",
-        precio:29000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Salsa spicy",precio:2000},{nombre:"Queso extra",precio:2500}],
-      },
-    ],
-    "Comida Vegana": [
-      {
-        nombre:"Bowl de Quinoa", img:imagenes.quinoa, categoria:"Comida Vegana",
-        descripcion:"Quinoa tricolor, garbanzos al horno, kale, tomates cherry y tahini de limón.",
-        precio:24000, tiene_termino:false,
-        opciones:[{nombre:"Con aguacate",precio:0},{nombre:"Sin aguacate",precio:0}],
-        adiciones:[{nombre:"Tofu marinado",precio:5000},{nombre:"Semillas de chía",precio:2000}],
-      },
-      {
-        nombre:"Burger Vegana", img:imagenes.burgerVeg, categoria:"Comida Vegana",
-        descripcion:"Pan artesanal, medallón de lentejas y betabel, lechuga, tomate y mayonesa vegana.",
-        precio:26000, tiene_termino:false,
-        opciones:[{nombre:"Papas al horno",precio:0},{nombre:"Ensalada de kale",precio:0}],
-        adiciones:[{nombre:"Queso vegano",precio:4000},{nombre:"Aguacate extra",precio:3000}],
-      },
-      {
-        nombre:"Cazuela Vegana", img:imagenes.cazuela, categoria:"Comida Vegana",
-        descripcion:"Cazuela cremosa de verduras, garbanzos y leche de coco con hierbas frescas.",
-        precio:22000, tiene_termino:false,
-        opciones:[], adiciones:[{nombre:"Pan artesanal",precio:3000},{nombre:"Arroz integral",precio:2000}],
-      },
-    ],
-    "Quesos": [
-      {
-        nombre:"Tabla de Quesos Premium", img:imagenes.tablaQuesos, categoria:"Quesos",
-        descripcion:"Selección de 4 quesos: brie, gouda añejo, manchego y azul. Con mermelada y frutos secos.",
-        precio:45000, tiene_termino:false,
-        opciones:[],
-        adiciones:[{nombre:"Vino de la casa (copa)",precio:18000},{nombre:"Pan baguette extra",precio:5000}],
-      },
-      {
-        nombre:"Fondue de Queso", img:imagenes.fondue, categoria:"Quesos",
-        descripcion:"Fondue cremoso de gruyère y emmental con pan rústico, vegetales y charcutería.",
-        precio:38000, tiene_termino:false,
-        opciones:[],
-        adiciones:[{nombre:"Papas baby asadas",precio:6000},{nombre:"Manzana en rodajas",precio:3000}],
-      },
-      {
-        nombre:"Deditos de Queso", img:imagenes.deditos, categoria:"Quesos",
-        descripcion:"Deditos crocantes rellenos de queso fundido. Perfectos para compartir.",
-        precio:16000, tiene_termino:false,
-        opciones:[],
-        adiciones:[{nombre:"Salsa BBQ",precio:1500},{nombre:"Salsa rosada",precio:1500}],
-      },
-    ],
-    "Bar": {
-      Licores:[
-        {
-          nombre:        "Aguardiente Antioqueño",
-          img:           imagenes.aguardiente,
-          categoria:     "Bar",
-          descripcion:   "Aguardiente antioqueño botella personal, frío.",
-          precio:        12000,
-          tiene_termino: false,
-          opciones:  [{ nombre:"Con hielo", precio:0 }, { nombre:"Sin hielo", precio:0 }],
-          adiciones: [{ nombre:"Limón extra", precio:1000 }],
-        },
-      ],
-      Cervezas:[],
-      Jugos:[
-        {
-          nombre:"Jugo Natural", img:imagenes.jugo, categoria:"Bar",
-          descripcion:"Jugo natural de la fruta del día, sin azúcar o con azúcar al gusto.",
-          precio:8000, tiene_termino:false,
-          opciones:[{nombre:"Con azúcar",precio:0},{nombre:"Sin azúcar",precio:0},{nombre:"Con leche",precio:0}],
-          adiciones:[],
-        },
-      ],
-      Micheladas:[],
-      Gaseosas:[],
-      Malteadas:[],
-    },
-  };
-
-  // ── Decisión: ¿qué datos usar? ────────────────────────────
-  // Si el restaurante ya tiene productos en la BD, se usan esos.
-  // Si NO tiene productos todavía:
-  //   - El restaurante demo (RESTAURANTE_DEMO_ID) cae al menú
-  //     estático de ejemplo (comportamiento legacy).
-  //   - Cualquier otro restaurante nuevo arranca con el menú
-  //     realmente vacío ({}) para ver SU propia plantilla vacía,
-  //     no la comida de otro tenant.
-  const tieneProductosBD  = Object.keys(menuDB).length > 0;
-  const esRestauranteDemo = String(restauranteId) === RESTAURANTE_DEMO_ID;
-  const dataFinal = tieneProductosBD
-    ? (esRestauranteDemo ? { ...menuData, ...menuDB } : menuDB)
-    : (esRestauranteDemo ? menuData : {});
+  // ── dataFinal: el menú SIEMPRE es lo que hay en la BD para este
+  // restaurante. Ya no existe un "restaurante demo" que caiga a datos
+  // quemados — si un restaurante (incluido el que antes era el demo)
+  // todavía no tiene productos, simplemente ve su carta vacía y, si
+  // es admin, el botón para agregar su primer producto.
+  const dataFinal = menuDB;
   const menuVacio = Object.keys(dataFinal).length === 0;
 
   // ── firstImg / getCatImage: imagen representativa de una categoría ──
@@ -657,26 +406,24 @@ const Menu = () => {
   };
 
   // ── Productos destacados en la pantalla de inicio ─────────
-  // Si es el restaurante demo y todavía no tiene datos propios en
-  // la BD, se usa la selección estática de siempre. Para cualquier
-  // otro restaurante, los destacados salen de sus propios productos
-  // reales (los primeros que encuentre) — y si aún no tiene ninguno,
-  // simplemente no hay nada que destacar.
-  const destacados = (esRestauranteDemo && !tieneProductosBD)
-    ? [menuData["Platos fuertes"]?.[0], menuData["Cortes"]?.[0], menuData["Platos típicos"]?.[1]].filter(Boolean)
-    : Object.values(dataFinal)
-        .flatMap(val => (typeof val === "object" && !Array.isArray(val)) ? Object.values(val).flat() : (Array.isArray(val) ? val : []))
-        .slice(0, 3);
+  // Salen siempre de los productos reales del restaurante (los
+  // primeros que encuentre). Si todavía no tiene ninguno, no hay
+  // nada que destacar — eso ya lo cubre `menuVacio` con el EmptyMenuState.
+  const destacados = Object.values(dataFinal)
+    .flatMap(val => (typeof val === "object" && !Array.isArray(val)) ? Object.values(val).flat() : (Array.isArray(val) ? val : []))
+    .slice(0, 3);
 
   // ── addToCart: agregar producto al carrito ─────────────────
+  // Ya no hay que "adivinar" una imgKey del bundle local: la imagen
+  // del producto ya viaja en el propio `item` como URL de Cloudinary
+  // (item.img / item.imagen), así que se guarda tal cual en el carrito.
   const addToCart = item => {
-    const imgKey = Object.entries(imagenes).find(([k,v]) => v === item.img)?.[0] || null;
     setCart(prev => {
       const opcionKey = Array.isArray(item.opcion) ? item.opcion.join(",") : (item.opcion || "");
       const key = `${item.nombre}|${item.termino||""}|${opcionKey}|${(item.adiciones||[]).join(",")}`;
       const existe = prev.find(c => c._key === key);
       if (existe) return prev.map(c => c._key===key ? {...c,qty:c.qty+1} : c);
-      return [...prev, {...item, _key:key, qty:1, imgKey}];
+      return [...prev, {...item, _key:key, qty:1}];
     });
   };
 
@@ -698,9 +445,7 @@ const Menu = () => {
   // Separa los items del carrito en dos grupos:
   //   - comidas → se envían a la API de cocina
   //   - bebidas → se envían a la API del bar
-  // 👇 SaaS: ahora se manda mesa_id (el id real que viene en la URL
-  // del QR) en vez de mesa_nombre. Así el backend usa la mesa exacta
-  // del menú, sin tener que adivinarla buscando por texto.
+  // La mesa va por mesa_id (el id real que viene en la URL del QR).
   const handlePagar = async () => {
     if (enviandoPedido) return;
 
@@ -711,9 +456,7 @@ const Menu = () => {
 
     setEnviandoPedido(true);
 
-    // El destino real viene de la categoría en BD. BAR_CATS queda solo
-    // como fallback para los productos estáticos de demo, que no tienen
-    // `destino` propio todavía.
+    // El destino real viene de la categoría en BD.
     const esBebida = c => c.destino ? c.destino === "bar" : BAR_CATS.includes(c.categoria);
 
     const comidas = cart.filter(c => !esBebida(c));
@@ -735,8 +478,7 @@ const Menu = () => {
               cantidad:    c.qty,
               precio:      c.precio,
               categoria:   "comida",
-              imgKey:      c.imgKey || null,
-              imagen:      c.imgKey || null,
+              imagen:      c.imagen || c.img || null,
               observacion: [c.termino, ...(c.opcion || []), ...(c.adiciones || [])]
                 .filter(Boolean).join(", ") || null,
             })),
@@ -765,7 +507,7 @@ const Menu = () => {
               nombre:    b.nombre,
               cantidad:  b.qty,
               precio:    b.precio,
-              imgKey:    b.imgKey || null,
+              imagen:    b.imagen || b.img || null,
               adiciones: b.adiciones || [],
               opcion:    b.opcion || [],
             })),

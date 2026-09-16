@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { getImage } from "../../utils/getImage"; // ← importar helper
 import "./OrderCard.css";
 
 // ... el resto del código igual hasta la función ItemRow
 
 function ItemRow({ item }) {
-  const img = getImage(item.nombre, item.imagen || item.imgKey);
+  const img = item.imagen || null;
   return (
     <div className="oc-item">
       <div className="oc-item-img">

@@ -185,7 +185,8 @@ exports.getPedidos = async (req, res) => {
         m.nombre AS mesa_nombre,
         JSON_ARRAYAGG(JSON_OBJECT(
           'id', dp.id, 'nombre', dp.nombre, 'cantidad', dp.cantidad,
-          'precio', dp.precio, 'categoria', dp.categoria, 'observacion', dp.observacion
+          'precio', dp.precio, 'categoria', dp.categoria, 'imagen', dp.imagen,
+          'observacion', dp.observacion
         )) AS items
       FROM pedidos p
       LEFT JOIN mesas m ON m.id = p.mesa_id

@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { API_URL } from "../../services/config";
-import { getImage } from "../../utils/getImage";
 import StockResumenPanel from "./StockResumenPanel";
 import ModalPin from "./modals/ModalPin";
 
@@ -593,7 +592,7 @@ const StockCocina = () => {
             {productosVisibles.map(p => {
               const nivel = COLOR_NIVEL(p);
               const pct   = Math.min(1, p.cantidad_actual / Math.max(p.cantidad_minima * 2, 1));
-              const img   = getImage(p.nombre, p.imagen);
+              const img   = p.imagen || null;
               return (
                 <div key={p.id} style={{
                   background: "var(--kd-bg-card)",
