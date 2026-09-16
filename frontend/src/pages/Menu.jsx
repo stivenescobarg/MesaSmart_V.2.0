@@ -74,7 +74,14 @@ const BAR_ICONS = { Licores:"🥃", Cervezas:"🍺", Jugos:"🍊", Micheladas:"�
 const TERMINOS  = ["Poco hecho","Término medio","Bien hecho","Muy bien hecho"];
 
 // fmtCOP: función auxiliar para formatear números como precios en COP
-const fmtCOP    = n => `$${Number(n).toLocaleString("es-CO")}`;
+const fmtCOP = n =>
+  `$${Math.round(Number(n) || 0).toLocaleString("es-CO", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })}`;
+
+  // "62.500", "62,500", "$62.500", "62500" → 62500
+const parseCOP = v => Number(String(v ?? "").replace(/\D/g, "")) || 0;
 
 // resolveImg: la imagen SIEMPRE es una URL de Cloudinary (o null si el
 // producto/categoría no tiene foto todavía). Ya no hay bundle estático

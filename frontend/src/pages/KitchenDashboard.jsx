@@ -277,26 +277,33 @@ const PEDIDOS_POR_PAGINA = 12;
   setVisiblePedidos(PEDIDOS_POR_PAGINA);
 }, [filtro]);
 
-  const avanzarEstado = async (pedido) => {
-    const nuevoEstado = ESTADO_NEXT[pedido.estado];
-    if (!nuevoEstado) return;
+const avanzarEstado = async (pedido) => {
+  const nuevoEstado = ESTADO_NEXT[pedido.estado];
+  if (!nuevoEstado) return;
+  const estadoPrevio = pedido.estado;
 
+  setPedidos(prev =>
+    prev.map(p => p.id === pedido.id ? { ...p, estado: nuevoEstado } : p)
+  );
+
+  try {
+    const res = await fetch(`${API_URL}/pedidos-cocina/${pedido.id}/estado`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authService.getToken()}`,
+      },
+      body: JSON.stringify({ estado: nuevoEstado }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    cargar();                       // refresca con la verdad del servidor
+  } catch {
     setPedidos(prev =>
-      prev.map(p => p.id === pedido.id ? { ...p, estado: nuevoEstado } : p)
+      prev.map(p => p.id === pedido.id ? { ...p, estado: estadoPrevio } : p)
     );
-
-    try {
-      await fetch(`${API_URL}/pedidos-cocina/${pedido.id}/estado`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estado: nuevoEstado }),
-      });
-    } catch {
-      setPedidos(prev =>
-        prev.map(p => p.id === pedido.id ? { ...p, estado: pedido.estado } : p)
-      );
-    }
-  };
+    setError(true);
+  }
+};
 
   const handleSalir = async () => {
     localStorage.removeItem("ms_token");
