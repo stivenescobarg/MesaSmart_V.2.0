@@ -78,7 +78,27 @@ const downloadFile = async (endpoint, filename) => {
   link.remove();
   window.URL.revokeObjectURL(url);
 };
+const getBlobUrl = async (endpoint) => {
+  const token = authService.getToken();
 
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      handleUnauthorized(Boolean(token));
+    }
+    const data = await res.json().catch(() => ({}));
+    throw construirError(data, res.status);
+  }
+
+  const blob = await res.blob();
+  return window.URL.createObjectURL(blob);
+};
 export const api = {
   get:    (endpoint)       => request(endpoint, { method: "GET" }),
   post:   (endpoint, body) => request(endpoint, { method: "POST",   body: JSON.stringify(body) }),
@@ -86,4 +106,5 @@ export const api = {
   patch:  (endpoint, body) => request(endpoint, { method: "PATCH",  body: JSON.stringify(body) }),
   delete: (endpoint)       => request(endpoint, { method: "DELETE" }),
   download: downloadFile,
+  getBlobUrl,
 };
