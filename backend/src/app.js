@@ -25,10 +25,19 @@ const analiticaRoutes = require("./routes/admin/analiticaRoutes");
 const superAdminRoutes = require("./routes/admin/superAdminRoutes");
 const ingredienteRoutes = require("./routes/ingredienteRoutes");
 
-const app = express();
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim());
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  origin: (origin, callback) => {
+    // Permite peticiones sin origin (ej. Postman, health checks)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Origin no permitido por CORS: ${origin}`));
+    }
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
