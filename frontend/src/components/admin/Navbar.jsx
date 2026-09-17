@@ -1,4 +1,5 @@
 // frontend/src/components/admin/Navbar.jsx
+import { useEffect, useRef, useState } from "react";
 import { useAuth }  from "../../context/AuthContext";
 import { useTheme } from "../../hooks/useTheme";
 
@@ -10,17 +11,21 @@ import { useTheme } from "../../hooks/useTheme";
 // dentro de admin-main (como Dashboard, Mesas, etc.) — es una página
 // aparte (Menu.jsx) con su propio layout, así que en vez de cambiar
 // `seccion` hay que navegar a su ruta.
+//
+// 👇 "atajo: true" marca las secciones que se usan constantemente
+// durante el turno — quedan siempre visibles en la barra. El resto
+// vive únicamente en el menú hamburguesa.
 const SECCIONES = [
   { key: "dashboard", label: "Dashboard", icono: "◈" },
-  { key: "inicio",    label: "Caja",      icono: "⬡" },
-  { key: "mesas",     label: "Mesas",     icono: "⊞" },
+  { key: "inicio",    label: "Caja",      icono: "⬡", atajo: true },
+  { key: "mesas",     label: "Mesas",     icono: "⊞", atajo: true },
   { key: "menu",      label: "Menú",      icono: "🍽️", esNavegacion: true },
-  { key: "egresos",   label: "Egresos",   icono: "📤", soloCompleto: true },
+  { key: "egresos",   label: "Egresos",   icono: "📤", soloCompleto: true, atajo: true },
   { key: "dashboard-financiero", label: "Dashboard Financiero", icono: "📊", soloCompleto: true },
   { key: "analitica", label: "Analítica", icono: "📈" },
   { key: "proveedores",     label: "Proveedores",      icono: "🏭", soloCompleto: true },
   { key: "cuentas-pagar",   label: "Cuentas por pagar", icono: "📄", soloCompleto: true },
-  { key: "stock",     label: "Stock",     icono: "📦" },
+  { key: "stock",     label: "Stock",     icono: "📦", atajo: true },
   { key: "historial", label: "Historial", icono: "≡" },
   { key: "quejas",    label: "Quejas",    icono: "💬" },
   { key: "usuarios",  label: "Usuarios",  icono: "◉" },
@@ -30,6 +35,9 @@ const SECCIONES = [
 const Navbar = ({ seccion, setSeccion, servicioActivo, onSalir, onIrAlMenu }) => {
   const { usuario, saludo } = useAuth();
   const { esOscuro, toggleThema } = useTheme();
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const panelRef = useRef(null);
+  const botonRef = useRef(null);
 
   // Mientras usuario.plan no llegue del backend (undefined), esto se
   // comporta como "sin filtro" (todas las secciones visibles) para no
@@ -40,27 +48,76 @@ const Navbar = ({ seccion, setSeccion, servicioActivo, onSalir, onIrAlMenu }) =>
     ? SECCIONES.filter(s => !s.soloCompleto || usuario.plan === "completo")
     : SECCIONES;
 
+  const atajos = seccionesVisibles.filter(s => s.atajo);
+  const resto  = seccionesVisibles.filter(s => !s.atajo);
+
+  const seccionActual = SECCIONES.find(s => s.key === seccion && !s.esNavegacion);
+  const mostrarBreadcrumb = seccionActual && !seccionActual.atajo;
+
   // 👇 Un solo handler: si la sección es de navegación real, usa
   // onIrAlMenu; si es una sección embebida normal, cambia `seccion`
-  // como siempre.
+  // como siempre. En ambos casos cierra el panel (si estaba abierto).
   const handleClick = (sec) => {
     if (sec.esNavegacion) {
       onIrAlMenu?.();
     } else {
       setSeccion(sec.key);
     }
+    setMenuAbierto(false);
   };
+
+  // Cerrar al hacer clic afuera o con Escape
+  useEffect(() => {
+    if (!menuAbierto) return;
+
+    const alClicAfuera = (e) => {
+      if (
+        panelRef.current && !panelRef.current.contains(e.target) &&
+        botonRef.current && !botonRef.current.contains(e.target)
+      ) {
+        setMenuAbierto(false);
+      }
+    };
+    const alTeclado = (e) => {
+      if (e.key === "Escape") setMenuAbierto(false);
+    };
+
+    document.addEventListener("mousedown", alClicAfuera);
+    document.addEventListener("keydown", alTeclado);
+    return () => {
+      document.removeEventListener("mousedown", alClicAfuera);
+      document.removeEventListener("keydown", alTeclado);
+    };
+  }, [menuAbierto]);
 
   return (
     <header className="admin-header">
       <div className="header-marca">
+        <button
+          ref={botonRef}
+          className={`nav-hamburguesa ${menuAbierto ? "activo" : ""}`}
+          onClick={() => setMenuAbierto(v => !v)}
+          aria-expanded={menuAbierto}
+          aria-label="Abrir menú de secciones"
+        >
+          <span />
+          <span />
+          <span />
+        </button>
         <span className="header-logo">◆</span>
         <h1 className="panel-title">MesaSmart</h1>
         <span className="header-sub">Admin</span>
+        {mostrarBreadcrumb && (
+          <span className="header-seccion-actual">
+            <span className="header-seccion-sep">/</span>
+            {seccionActual.icono} {seccionActual.label}
+          </span>
+        )}
       </div>
 
-      <nav className="admin-nav">
-        {seccionesVisibles.map((sec) => (
+      {/* Atajos rápidos — las secciones que se usan constantemente en el turno */}
+      <nav className="nav-atajos">
+        {atajos.map((sec) => (
           <button
             key={sec.key}
             className={`nav-btn ${seccion === sec.key && !sec.esNavegacion ? "activo" : ""}`}
@@ -98,6 +155,28 @@ const Navbar = ({ seccion, setSeccion, servicioActivo, onSalir, onIrAlMenu }) =>
 
         <button className="btn-salir" onClick={onSalir}>Salir →</button>
       </div>
+
+      {menuAbierto && (
+        <div className="nav-panel-overlay" onClick={() => setMenuAbierto(false)} />
+      )}
+
+      {/* Resto de secciones — todo lo que no es atajo rápido */}
+      <nav
+        ref={panelRef}
+        className={`nav-panel ${menuAbierto ? "abierto" : ""}`}
+        aria-hidden={!menuAbierto}
+      >
+        {resto.map((sec) => (
+          <button
+            key={sec.key}
+            className={`nav-panel-btn ${seccion === sec.key && !sec.esNavegacion ? "activo" : ""}`}
+            onClick={() => handleClick(sec)}
+          >
+            <span className="nav-icono">{sec.icono}</span>
+            <span className="nav-label">{sec.label}</span>
+          </button>
+        ))}
+      </nav>
     </header>
   );
 };

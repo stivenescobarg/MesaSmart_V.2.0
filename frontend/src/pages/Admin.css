@@ -108,7 +108,41 @@
   font-family: 'DM Mono', monospace;
 }
 
-.admin-nav { display: flex; gap: 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/*
+  ACTUALIZACIÓN: ahora hay 4 atajos rápidos (Caja, Mesas, Egresos,
+  Stock) visibles en la barra, y el resto vive en el hamburguesa.
+
+  1) Vuelve a agregar esto (lo habíamos quitado la vez pasada,
+     ahora sí se usa para los atajos):
+
+  .nav-atajos { display: flex; gap: 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--r-sm);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .nav-btn:hover { background: var(--bg-hover); color: var(--text-1); }
+  .nav-btn.activo { background: var(--amber-dim); color: var(--amber); border-color: var(--amber-border); }
+
+  .nav-icono { font-size: 0.85rem; opacity: 0.8; }
+
+  2) El resto de este bloque REEMPLAZA lo que ya tenías del
+     hamburguesa/panel (sin cambios respecto a la versión anterior).
+*/
+
+.nav-atajos { display: flex; gap: 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 .nav-btn {
   display: flex;
@@ -131,7 +165,142 @@
 
 .nav-icono { font-size: 0.85rem; opacity: 0.8; }
 
-.header-actions { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+/* ── BOTÓN HAMBURGUESA (mismo tratamiento visual que .btn-tema) ── */
+.nav-hamburguesa {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.nav-hamburguesa:hover {
+  border-color: var(--amber-border);
+  transform: scale(1.06);
+}
+
+.nav-hamburguesa span {
+  display: block;
+  height: 2px;
+  width: 16px;
+  background: var(--text-2);
+  border-radius: 2px;
+  transition: transform 0.2s ease, opacity 0.2s ease, background 0.15s ease;
+}
+
+.nav-hamburguesa:hover span { background: var(--text-1); }
+
+.nav-hamburguesa.activo {
+  background: var(--amber-dim);
+  border-color: var(--amber-border);
+}
+.nav-hamburguesa.activo span { background: var(--amber); }
+.nav-hamburguesa.activo span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.nav-hamburguesa.activo span:nth-child(2) { opacity: 0; }
+.nav-hamburguesa.activo span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* ── Indicador de sección actual junto al logo (solo si no es atajo) ── */
+.header-marca { min-width: 0; }
+
+.header-seccion-actual {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 0.82rem;
+  font-family: 'DM Sans', sans-serif;
+  margin-left: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-seccion-sep { color: var(--text-2); opacity: 0.4; flex-shrink: 0; }
+
+/* ── FIX: evita que Menu.css apile header-actions en columna ──── */
+.admin-header .header-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  flex-shrink: 0 !important;
+}
+
+/* ── Fondo oscuro detrás del panel al abrirlo ───────────────── */
+.nav-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 40;
+}
+
+/* ── Panel desplegable — mismos tokens que tus cards ────────── */
+.nav-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 12px;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 4px;
+  width: min(560px, calc(100vw - 24px));
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.22s ease;
+}
+
+.nav-panel.abierto { max-height: 480px; opacity: 1; padding: 8px; }
+
+.nav-panel-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nav-panel-btn:hover { background: var(--bg-hover); color: var(--text-1); }
+
+.nav-panel-btn.activo {
+  background: var(--amber-dim);
+  color: var(--amber);
+  border-color: var(--amber-border);
+  font-weight: 600;
+}
+
+.nav-panel-btn .nav-icono { font-size: 0.9rem; opacity: 0.85; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .nav-panel { left: 8px; right: 8px; width: auto; grid-template-columns: 1fr; }
+  .header-seccion-actual { display: none; }
+}
 
 /* ── BADGE SERVICIO ──────────────────────────────────────────── */
 .badge-servicio {

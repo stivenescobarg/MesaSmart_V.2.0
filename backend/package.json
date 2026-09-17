@@ -8,25 +8,16 @@
 
   "main": "src/server.js",
 
-  "scripts": {
-
-    "start": "node src/server.js",
-
-    "dev": "nodemon src/server.js",
-
-    "seed": "node src/config/seed.js",
-
-    "test": "jest --runInBand --detectOpenHandles --forceExit",
-
-    "test:unit": "jest tests/unit --runInBand",
-
-    "test:integration": "jest tests --testMatch='**/tests/!(unit)/*.test.js' --runInBand",
-
-    "test:watch": "jest --watch",
-
-    "test:coverage": "jest --coverage --runInBand"
-
-  },
+"scripts": {
+  "start": "node src/server.js",
+  "dev": "nodemon src/server.js",
+  "seed": "node src/config/seed.js",
+  "test": "npm run test:unit && npm run test:integration",
+  "test:unit": "jest --config jest.unit.config.js --runInBand",
+  "test:integration": "jest --config jest.integration.config.js --runInBand --detectOpenHandles --forceExit",
+  "test:watch": "jest --config jest.unit.config.js --watch",
+  "test:coverage": "jest --config jest.unit.config.js --coverage --runInBand"
+},
 
   "keywords": [],
 
@@ -41,8 +32,6 @@
     "cloudinary": "^1.41.3",
 
     "cors": "^2.8.6",
-
-    "dotenv": "^17.3.1",
 
     "express": "^5.2.1",
 
@@ -71,6 +60,8 @@
     "bcrypt": "^6.0.0",
 
     "cross-env": "^10.1.0",
+
+    "dotenv": "^17.4.2",
 
     "dotenv-cli": "^11.0.0",
 
