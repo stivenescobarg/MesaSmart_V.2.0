@@ -25,55 +25,29 @@
 
   "license": "ISC",
 
-  "dependencies": {
-
+"dependencies": {
     "bcryptjs": "^3.0.3",
-
     "cloudinary": "^1.41.3",
-
     "cors": "^2.8.6",
-
-    "express": "^5.2.1",
-
-    "jsonwebtoken": "^9.0.3",
-
-    "multer": "^2.3.0",
-
-    "multer-storage-cloudinary": "^4.0.0",
-
-    "mysql2": "^3.20.0",
-
-    "pdfkit": "^0.15.0",
-
-    "qrcode": "^1.5.4",
-
-    "swagger-jsdoc": "^6.3.0",
-
-    "swagger-ui-express": "^5.0.1",
-
-    "uuid": "^11.0.3"
-
-  },
-
-  "devDependencies": {
-
-    "bcrypt": "^6.0.0",
-
-    "cross-env": "^10.1.0",
-
     "dotenv": "^17.4.2",
-
-    "dotenv-cli": "^11.0.0",
-
     "exceljs": "^4.4.0",
-
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.3.0",
+    "multer-storage-cloudinary": "^4.0.0",
+    "mysql2": "^3.20.0",
+    "pdfkit": "^0.15.0",
+    "qrcode": "^1.5.4",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^11.0.3"
+},
+"devDependencies": {
+    "bcrypt": "^6.0.0",
+    "cross-env": "^10.1.0",
+    "dotenv-cli": "^11.0.0",
     "jest": "^30.4.2",
-
     "nodemon": "^3.1.14",
-
     "supertest": "^7.2.2"
-
-  }
-
 }
-
+}
