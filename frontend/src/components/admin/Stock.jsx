@@ -139,7 +139,7 @@ const Stock = ({ toast }) => {
       p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       p.proveedor.toLowerCase().includes(busqueda.toLowerCase())
     );
-      
+
   const totalPaginas = Math.max(
     1,
     Math.ceil(productosFiltrados.length / PRODUCTOS_POR_PAGINA)
@@ -367,15 +367,27 @@ const Stock = ({ toast }) => {
       {/* ══ MODAL: CREAR PRODUCTO ══════════════════════════════ */}
       {modalForm && (
         <div className="modal-overlay" onClick={() => setModalForm(false)}>
-          <div className="modal-box" style={{ maxWidth: "480px" }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header modal-header-normal">
+          <div
+            className="modal-box"
+            style={{
+              maxWidth: "480px",
+              width: "100%",
+              maxHeight: "calc(100vh - 80px)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              margin: "auto",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="modal-header modal-header-normal" style={{ flexShrink: 0 }}>
               <span className="modal-titulo">Agregar producto al inventario</span>
               <button className="modal-cerrar" onClick={() => setModalForm(false)}>✕</button>
             </div>
-            <div className="modal-body">
+            <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
               <div className="campo-grupo">
                 <label className="campo-label">Nombre del producto *</label>
-                <input className="campo-input" autoFocus placeholder="Ej: Aceite de oliva"
+                <input className="campo-input" placeholder="Ej: Aceite de oliva"
                   value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} />
               </div>
               <div className="campo-grupo">
@@ -415,7 +427,7 @@ const Stock = ({ toast }) => {
                 </div>
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer" style={{ flexShrink: 0 }}>
               <button className="btn-ghost" onClick={() => setModalForm(false)}>Cancelar</button>
               <button className="btn-primario" onClick={handleCrear} disabled={procesando}>
                 {procesando ? "Guardando..." : "Agregar producto"}
@@ -428,12 +440,22 @@ const Stock = ({ toast }) => {
       {/* ══ MODAL: INGRESO ════════════════════════════════════ */}
       {modalIngreso && (
         <div className="modal-overlay" onClick={() => setModalIngreso(null)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <div className="modal-header modal-header-normal">
+          <div
+            className="modal-box"
+            style={{
+              maxHeight: "calc(100vh - 80px)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              margin: "auto",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="modal-header modal-header-normal" style={{ flexShrink: 0 }}>
               <span className="modal-titulo">Registrar ingreso</span>
               <button className="modal-cerrar" onClick={() => setModalIngreso(null)}>✕</button>
             </div>
-            <div className="modal-body">
+            <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
               <p className="texto-secundario" style={{ marginBottom: "1rem" }}>
                 Producto: <strong style={{ color: "var(--text-1)" }}>{modalIngreso.nombre}</strong>
                 <br />
@@ -443,7 +465,7 @@ const Stock = ({ toast }) => {
               </p>
               <div className="campo-grupo">
                 <label className="campo-label">Cantidad a ingresar ({modalIngreso.unidad})</label>
-                <input className="campo-input" type="number" min="0.1" step="0.1" autoFocus
+                <input className="campo-input" type="number" min="0.1" step="0.1"
                   placeholder="0" value={movForm.cantidad}
                   onChange={e => setMovForm({ ...movForm, cantidad: e.target.value })} />
               </div>
@@ -465,7 +487,7 @@ const Stock = ({ toast }) => {
                 </div>
               )}
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer" style={{ flexShrink: 0 }}>
               <button className="btn-ghost" onClick={() => setModalIngreso(null)}>Cancelar</button>
               <button className="btn-primario" onClick={handleIngreso} disabled={procesando}>
                 {procesando ? "Registrando..." : "Registrar ingreso"}
@@ -478,18 +500,28 @@ const Stock = ({ toast }) => {
       {/* ══ MODAL: AJUSTE ═════════════════════════════════════ */}
       {modalAjuste && (
         <div className="modal-overlay" onClick={() => setModalAjuste(null)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <div className="modal-header modal-header-normal">
+          <div
+            className="modal-box"
+            style={{
+              maxHeight: "calc(100vh - 80px)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              margin: "auto",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="modal-header modal-header-normal" style={{ flexShrink: 0 }}>
               <span className="modal-titulo">Ajustar stock</span>
               <button className="modal-cerrar" onClick={() => setModalAjuste(null)}>✕</button>
             </div>
-            <div className="modal-body">
+            <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
               <p className="texto-secundario" style={{ marginBottom: "1rem" }}>
                 Ajuste directo de la cantidad real en bodega para <strong style={{ color: "var(--text-1)" }}>{modalAjuste.nombre}</strong>.
               </p>
               <div className="campo-grupo">
                 <label className="campo-label">Nueva cantidad ({modalAjuste.unidad})</label>
-                <input className="campo-input" type="number" min="0" step="0.1" autoFocus
+                <input className="campo-input" type="number" min="0" step="0.1"
                   value={movForm.cantidad}
                   onChange={e => setMovForm({ ...movForm, cantidad: e.target.value })} />
               </div>
@@ -500,7 +532,7 @@ const Stock = ({ toast }) => {
                   onChange={e => setMovForm({ ...movForm, observacion: e.target.value })} />
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer" style={{ flexShrink: 0 }}>
               <button className="btn-ghost" onClick={() => setModalAjuste(null)}>Cancelar</button>
               <button className="btn-primario" onClick={handleAjuste} disabled={procesando}>
                 {procesando ? "Ajustando..." : "Guardar ajuste"}
@@ -510,7 +542,7 @@ const Stock = ({ toast }) => {
         </div>
       )}
 
-      {/* ══ MODAL: ELIMINAR ═══════════════════════════════════ */}
+      {/* ══ MODAL: ELIMINAR (usa el componente Modal, igual que antes — sin tocar) ═══ */}
       <Modal
         abierto={!!modalEliminar}
         titulo="Eliminar producto"
