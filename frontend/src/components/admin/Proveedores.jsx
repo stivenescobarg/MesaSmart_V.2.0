@@ -95,6 +95,12 @@ const Proveedores = ({ toast }) => {
   // Modal eliminar
   const [modalEliminar, setModalEliminar] = useState(null);
 
+  // Popover de observaciones — guarda { id, texto, top, left } del proveedor
+  // cuya nota está abierta. Usamos posición "fixed" calculada desde el ícono
+  // en pantalla (getBoundingClientRect) para que nunca lo recorte el overflow
+  // del contenedor de la tabla, sin importar cómo esté configurado ese CSS.
+  const [notaAbierta, setNotaAbierta] = useState(null);
+
   const cargar = useCallback(async () => {
     setCargando(true);
     try {
@@ -126,6 +132,19 @@ const Proveedores = ({ toast }) => {
   useEffect(() => {
     if (pagina > totalPaginas) setPagina(totalPaginas);
   }, [totalPaginas]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cierra el popover de observaciones al hacer clic en cualquier otro lugar de la página,
+  // o al hacer scroll (para que no quede "flotando" en una posición vieja)
+  useEffect(() => {
+    if (!notaAbierta) return;
+    const cerrar = () => setNotaAbierta(null);
+    document.addEventListener("click", cerrar);
+    window.addEventListener("scroll", cerrar, true);
+    return () => {
+      document.removeEventListener("click", cerrar);
+      window.removeEventListener("scroll", cerrar, true);
+    };
+  }, [notaAbierta]);
 
   const proveedoresPagina = useMemo(() => {
     const inicio = (pagina - 1) * POR_PAGINA;
@@ -264,7 +283,43 @@ const Proveedores = ({ toast }) => {
               <tbody>
                 {proveedoresPagina.map(p => (
                   <tr key={p.id}>
-                    <td className="td-nombre">{p.nombre}</td>
+                    <td className="td-nombre">
+                      {p.nombre}
+                      {p.observaciones && p.observaciones.trim() && (
+                        <button
+                          className="chip chip-neutro"
+                          style={{
+                            marginLeft: "0.5rem",
+                            padding: "0.15rem 0.5rem",
+                            fontSize: "0.72rem",
+                            lineHeight: 1.2,
+                            verticalAlign: "middle",
+                            cursor: "pointer",
+                            border: "1px solid var(--border)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.25rem",
+                          }}
+                          title="Ver observaciones"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (notaAbierta?.id === p.id) {
+                              setNotaAbierta(null);
+                              return;
+                            }
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setNotaAbierta({
+                              id: p.id,
+                              texto: p.observaciones,
+                              top: rect.bottom + 6,
+                              left: rect.left,
+                            });
+                          }}
+                        >
+                          📝 Nota
+                        </button>
+                      )}
+                    </td>
                     <td style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.82rem" }}>{p.nit || "—"}</td>
                     <td>{p.categoria ? <span className="chip chip-neutro">{p.categoria}</span> : "—"}</td>
                     <td style={{ fontSize: "0.82rem" }}>
@@ -304,6 +359,37 @@ const Proveedores = ({ toast }) => {
             onCambiar={setPagina}
           />
         </>
+      )}
+
+      {/* ── POPOVER: OBSERVACIONES ────────────────────────────
+          position: fixed a propósito — así nunca lo recorta el
+          overflow del contenedor de la tabla (.tabla-wrapper), sin
+          importar cómo esté configurado ese CSS.                 */}
+      {notaAbierta && (
+        <div
+          className="admin-card"
+          style={{
+            position: "fixed",
+            top: notaAbierta.top,
+            left: notaAbierta.left,
+            zIndex: 1000,
+            width: "260px",
+            maxWidth: "80vw",
+            padding: "0.7rem 0.85rem",
+            fontSize: "0.8rem",
+            fontWeight: 400,
+            whiteSpace: "normal",
+            lineHeight: 1.4,
+            background: "var(--bg-card)",
+            border: "1px solid var(--border-light)",
+            borderRadius: "var(--r-sm)",
+            boxShadow: "var(--shadow, 0 4px 16px rgba(0,0,0,0.18))",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="campo-label" style={{ marginBottom: "0.3rem" }}>Observaciones</p>
+          <p className="texto-secundario" style={{ margin: 0 }}>{notaAbierta.texto}</p>
+        </div>
       )}
 
       {/* ── MODAL: CREAR / EDITAR ───────────────────────────── */}

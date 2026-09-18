@@ -394,6 +394,15 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
   }
 };
 
+const handleVerQR = async (mesa) => {
+  try {
+    const imagenBlobUrl = await mesaService.verQR(mesa.id);
+    setQrMesa({ id: mesa.id, nombre: mesa.nombre, imagen: imagenBlobUrl, url: null });
+  } catch (err) {
+    console.error("Error al obtener QR:", err);
+  }
+};
+
   // --------------------------------------------------------------------------
   // ELIMINAR MESA
   // --------------------------------------------------------------------------
@@ -699,6 +708,7 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
             mesas={mesas}
             cajaAbierta={cajaAbierta}
             onCrearMesa={handleCrearMesa}
+            onVerQR={handleVerQR}
             onEliminarMesa={handleEliminarMesa}
             onModificarItem={handleModificarItem}
             onEliminarItem={handleEliminarItem}

@@ -17,6 +17,7 @@ const Mesas = ({
   mesas,
   cajaAbierta,
   onCrearMesa,
+  onVerQR,
   onEliminarMesa,
   onModificarItem,
   onEliminarItem,   // ← NUEVO
@@ -211,6 +212,15 @@ const Mesas = ({
                 )}
                 {modoEliminar && mesa.ocupada && (
                   <div className="mesa-bloqueada" title="Mesa con pedidos activos">🔒</div>
+                )}
+                                {!modoEliminar && (
+                  <button
+                    className="btn-ghost"
+                    style={{ marginTop: "0.4rem", fontSize: "0.7rem" }}
+                    onClick={e => { e.stopPropagation(); onVerQR(mesa); }}
+                  >
+                    📱 Ver QR
+                  </button>
                 )}
               </div>
             ))}
