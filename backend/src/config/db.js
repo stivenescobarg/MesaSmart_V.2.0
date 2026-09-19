@@ -10,6 +10,10 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit:    10,
   timezone:           "Z", // 👈 UTC — coincide con el servidor de Aiven, sin conversiones implícitas
+  ssl: {
+    minVersion: "TLSv1.2",
+    rejectUnauthorized: false,
+  },
 });
 
 const connectDB = async () => {
