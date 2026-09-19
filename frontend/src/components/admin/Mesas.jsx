@@ -7,11 +7,36 @@
 // si el `onPagoTotal`/`onPagoParcial` que te pasan como prop a este
 // componente todavía no lo espera, simplemente lo ignora y todo sigue
 // funcionando igual que antes.
+//
+// ✅ NUEVO — FORMULARIO COMPLETO DE MESA: al pulsar "+ Nueva mesa" ya no sale
+// solo un campo de nombre. Ahora se puede elegir nombre, zona (lista real de
+// zonas), capacidad, forma y posición inicial en el plano — los mismos campos
+// que tiene la tabla `mesas` en la base de datos. `onCrearMesa` se sigue
+// llamando con (nombre, zona_id) como antes y recibe un TERCER argumento
+// opcional con el resto de los datos: { zona_id, capacidad, forma, pos_x, pos_y }.
 
 import { useState, useEffect } from "react";
 import DetalleMesa       from "./DetalleMesa";
 import PlanoRestaurante  from "./PlanoRestaurante";
 import { zonaService }   from "../../services/zonaService";
+
+// Formas disponibles para una mesa (columna `forma` en la BD).
+const FORMAS_MESA = [
+  { valor: "cuadrada",    etiqueta: "Cuadrada" },
+  { valor: "redonda",     etiqueta: "Redonda" },
+  { valor: "rectangular", etiqueta: "Rectangular" },
+];
+
+// Valores iniciales del formulario. La zona arranca en la que esté filtrada
+// en ese momento (igual que antes), y la posición en 20/20 como las mesas nuevas.
+const formInicial = (zonaId = null) => ({
+  nombre:    "",
+  zona_id:   zonaId ?? "",
+  capacidad: 4,
+  forma:     "cuadrada",
+  pos_x:     20,
+  pos_y:     20,
+});
 
 const Mesas = ({
   mesas,
@@ -27,7 +52,7 @@ const Mesas = ({
   toast,
 }) => {
   const [mesaSeleccionada, setMesaSeleccionada] = useState(null);
-  const [nombreNuevaMesa,  setNombreNuevaMesa]  = useState("");
+  const [formMesa,         setFormMesa]          = useState(formInicial());
   const [modoCrear,        setModoCrear]         = useState(false);
   const [modoEliminar,     setModoEliminar]      = useState(false);
   const [vistaPlano,       setVistaPlano]        = useState(false);
@@ -43,11 +68,37 @@ const Mesas = ({
       .catch(() => {});
   }, [mesas]);
 
-  const handleCrear = () => {
-    if (!nombreNuevaMesa.trim()) return;
-    onCrearMesa(nombreNuevaMesa.trim(), zonaFiltro);
-    setNombreNuevaMesa("");
+  // Actualiza un solo campo del formulario
+  const setCampo = (campo, valor) =>
+    setFormMesa(prev => ({ ...prev, [campo]: valor }));
+
+  // Abre el formulario con valores limpios (zona = la que esté filtrada)
+  const abrirFormCrear = () => {
+    setFormMesa(formInicial(zonaFiltro));
+    setModoCrear(true);
+  };
+
+  const cerrarFormCrear = () => {
     setModoCrear(false);
+    setFormMesa(formInicial(zonaFiltro));
+  };
+
+  const handleCrear = () => {
+    const nombre = formMesa.nombre.trim();
+    if (!nombre) return;
+
+    // Normaliza lo escrito en el formulario antes de enviarlo
+    const datos = {
+      zona_id:   formMesa.zona_id === "" ? null : Number(formMesa.zona_id),
+      capacidad: Math.min(Math.max(parseInt(formMesa.capacidad, 10) || 4, 1), 50),
+      forma:     formMesa.forma || "cuadrada",
+      pos_x:     Math.max(0, parseInt(formMesa.pos_x, 10) || 0),
+      pos_y:     Math.max(0, parseInt(formMesa.pos_y, 10) || 0),
+    };
+
+    // (nombre, zona_id) igual que antes + tercer argumento con el resto de campos
+    onCrearMesa(nombre, datos.zona_id, datos);
+    cerrarFormCrear();
   };
 
   // ── Detalle de mesa ────────────────────────────────────────────
@@ -141,23 +192,11 @@ const Mesas = ({
           )}
 
           <div className="mesas-acciones">
-            {!modoCrear ? (
-              <button className="btn-secundario" onClick={() => setModoCrear(true)}>
+            {/* El botón se oculta mientras el formulario está abierto */}
+            {!modoCrear && (
+              <button className="btn-secundario" onClick={abrirFormCrear}>
                 + Nueva mesa
               </button>
-            ) : (
-              <div className="crear-mesa-form">
-                <input
-                  className="campo-input campo-inline"
-                  placeholder="Nombre de la mesa (ej: Mesa Bar)"
-                  value={nombreNuevaMesa}
-                  onChange={e => setNombreNuevaMesa(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleCrear()}
-                  autoFocus
-                />
-                <button className="btn-primario" onClick={handleCrear}>Crear</button>
-                <button className="btn-ghost" onClick={() => setModoCrear(false)}>Cancelar</button>
-              </div>
             )}
 
             <button
@@ -167,6 +206,136 @@ const Mesas = ({
               {modoEliminar ? "Listo" : "✕ Eliminar mesa"}
             </button>
           </div>
+
+          {/* ══ FORMULARIO COMPLETO DE NUEVA MESA ═════════════════ */}
+          {modoCrear && (
+            <div className="admin-card" style={{ marginBottom: "1rem" }}>
+              <h3 className="subtitulo">Nueva mesa</h3>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+                  gap: "0.75rem 1rem",
+                  marginTop: "0.5rem",
+                }}
+              >
+                {/* Nombre (ocupa toda la fila) */}
+                <div className="campo-grupo" style={{ gridColumn: "1 / -1" }}>
+                  <label className="campo-label">Nombre de la mesa *</label>
+                  <input
+                    className="campo-input"
+                    placeholder="Ej: Mesa 4, Mesa Bar, Terraza 2"
+                    value={formMesa.nombre}
+                    onChange={e => setCampo("nombre", e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleCrear()}
+                    maxLength={60}
+                    autoFocus
+                  />
+                </div>
+
+                {/* Zona: lista real de zonas del restaurante */}
+                <div className="campo-grupo">
+                  <label className="campo-label">Zona</label>
+                  <select
+                    className="campo-input"
+                    value={formMesa.zona_id}
+                    onChange={e => setCampo("zona_id", e.target.value)}
+                  >
+                    <option value="">Sin zona</option>
+                    {zonas.map(z => (
+                      <option key={z.id} value={z.id}>{z.nombre}</option>
+                    ))}
+                  </select>
+                  {zonas.length === 0 && (
+                    <p className="texto-muted" style={{ fontSize: "0.72rem", marginTop: "0.25rem" }}>
+                      Aún no hay zonas creadas.
+                    </p>
+                  )}
+                </div>
+
+                {/* Capacidad */}
+                <div className="campo-grupo">
+                  <label className="campo-label">Capacidad (personas)</label>
+                  <input
+                    className="campo-input"
+                    type="number"
+                    min="1"
+                    max="50"
+                    step="1"
+                    value={formMesa.capacidad}
+                    onChange={e => setCampo("capacidad", e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleCrear()}
+                  />
+                </div>
+
+                {/* Forma */}
+                <div className="campo-grupo">
+                  <label className="campo-label">Forma</label>
+                  <select
+                    className="campo-input"
+                    value={formMesa.forma}
+                    onChange={e => setCampo("forma", e.target.value)}
+                  >
+                    {FORMAS_MESA.map(f => (
+                      <option key={f.valor} value={f.valor}>{f.etiqueta}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Posición inicial en el plano (opcional, plegable) */}
+              <details style={{ marginTop: "0.75rem" }}>
+                <summary style={{ cursor: "pointer", fontSize: "0.85rem" }}>
+                  Posición en el plano (opcional)
+                </summary>
+                <p className="texto-muted" style={{ fontSize: "0.75rem", margin: "0.4rem 0" }}>
+                  Es donde aparecerá la mesa en la vista Plano. Después puedes arrastrarla.
+                </p>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 160px))",
+                    gap: "0.75rem",
+                  }}
+                >
+                  <div className="campo-grupo">
+                    <label className="campo-label">Posición X</label>
+                    <input
+                      className="campo-input"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formMesa.pos_x}
+                      onChange={e => setCampo("pos_x", e.target.value)}
+                    />
+                  </div>
+                  <div className="campo-grupo">
+                    <label className="campo-label">Posición Y</label>
+                    <input
+                      className="campo-input"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formMesa.pos_y}
+                      onChange={e => setCampo("pos_y", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </details>
+
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem", flexWrap: "wrap" }}>
+                <button
+                  className="btn-primario"
+                  onClick={handleCrear}
+                  disabled={!formMesa.nombre.trim()}
+                >
+                  Crear mesa
+                </button>
+                <button className="btn-ghost" onClick={cerrarFormCrear}>Cancelar</button>
+              </div>
+            </div>
+          )}
 
           <div className="mesas-grid">
             {mesasFiltradas.map(mesa => (
