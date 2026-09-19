@@ -12,6 +12,13 @@
 //   billetes y monedas hay de cada denominación; el total se calcula solo,
 //   se compara contra el efectivo esperado y viaja al backend para que
 //   aparezca en el PDF del cierre.
+//
+// ACTUALIZACIÓN DE ESTILO (v2): el arqueo ahora se distribuye en 3
+// columnas (billetes / monedas / resumen-comparativo), con badges de
+// color por denominación y tarjetas destacadas para el total y el
+// efectivo esperado. Todo usa las clases de arqueo-styles.css, que a
+// su vez usa las variables de tema (--bg, --amber, etc.), así que se
+// ve bien tanto en modo oscuro como en html.light-mode.
 
 import { useState } from "react";
 import VentaDetalleModal from "./VentaDetalleModal";
@@ -26,6 +33,11 @@ const COP = (n) => `$${(parseFloat(n) || 0).toLocaleString("es-CO")}`;
 // ─────────────────────────────────────────────────────────────
 const BILLETES = [100000, 50000, 20000, 10000, 5000, 2000];
 const MONEDAS  = [1000, 500, 200, 100, 50];
+
+// Un color distinto por fila, solo para que cada denominación sea
+// fácil de ubicar de un vistazo (mismos tokens que ya usan los .chip).
+const COLORES_BILLETES = ["azul", "morado", "verde", "naranja", "rojo", "amber"];
+const COLORES_MONEDAS  = ["morado", "verde", "naranja", "rojo", "azul"];
 
 // Conteo inicial: un campo vacío por cada denominación (clave = valor como texto)
 const conteoVacio = () =>
@@ -62,24 +74,18 @@ const descargarPDF = (base64) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Fila de una denominación: [ $50.000 ] [ cantidad ] [ subtotal ]
+// Fila de una denominación: [●] [ $50.000 ] [ cantidad ] = [ subtotal ]
 // ─────────────────────────────────────────────────────────────
-const FilaDenominacion = ({ valor, cantidad, onCambiar }) => {
+const FilaDenominacion = ({ valor, cantidad, color, onCambiar }) => {
   const n = aEntero(cantidad);
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 88px 104px",
-        gap: "0.5rem",
-        alignItems: "center",
-        padding: "0.2rem 0",
-      }}
-    >
-      <span style={{ fontWeight: 600 }}>{COP(valor)}</span>
+    <div className="arqueo-fila">
+      <span className={`arqueo-fila-badge ${color}`}>$</span>
+
+      <span className="arqueo-fila-valor">{COP(valor)}</span>
 
       <input
-        className="campo-input"
+        className="campo-input arqueo-fila-input"
         type="number"
         min="0"
         step="1"
@@ -91,22 +97,47 @@ const FilaDenominacion = ({ valor, cantidad, onCambiar }) => {
         onFocus={(e) => e.target.select()}
         // Evita que la rueda del mouse cambie el número sin querer
         onWheel={(e) => e.currentTarget.blur()}
-        style={{ textAlign: "right", padding: "0.3rem 0.5rem" }}
       />
 
-      <span
-        style={{
-          textAlign: "right",
-          fontVariantNumeric: "tabular-nums",
-          color: n > 0 ? "var(--amber)" : "var(--text-3, #8b93a3)",
-        }}
-      >
+      <span className="arqueo-fila-igual">=</span>
+
+      <span className={`arqueo-fila-subtotal${n > 0 ? " con-valor" : ""}`}>
         {n > 0 ? COP(n * valor) : "—"}
       </span>
     </div>
   );
 };
 
+// ── Panel de un grupo (Billetes / Monedas) ──
+// Vive AFUERA de ArqueoEfectivo a propósito: si se define adentro, React
+// lo recrea en cada tecla y el input pierde el foco después del primer dígito.
+const Panel = ({ titulo, icono, badgeClase, lista, colores, conteo, total, onCambiar }) => (
+  <div className="arqueo-panel">
+    <div className="arqueo-panel-header">
+      <span className={`arqueo-badge-grupo ${badgeClase}`}>{icono}</span>
+      <h4>{titulo}</h4>
+      <span className="arqueo-panel-count">{lista.length} denominaciones</span>
+    </div>
+
+    <div className="arqueo-panel-body">
+      {lista.map((d, i) => (
+        <FilaDenominacion
+          key={d}
+          valor={d}
+          cantidad={conteo[String(d)]}
+          color={colores[i]}
+          onCambiar={onCambiar}
+        />
+      ))}
+    </div>
+
+    <div className="arqueo-panel-footer">
+      <span className={`arqueo-badge-grupo ${badgeClase}`}>{icono}</span>
+      <span>Total {titulo.toLowerCase()}</span>
+      <strong>{COP(total)}</strong>
+    </div>
+  </div>
+);
 // ─────────────────────────────────────────────────────────────
 // Panel de conteo de efectivo (se muestra al iniciar el cierre)
 // ─────────────────────────────────────────────────────────────
@@ -124,120 +155,126 @@ const ArqueoEfectivo = ({ conteo, onCambiar, onLimpiar, esperado }) => {
 
   const estado =
     diferencia === 0
-      ? { texto: "Caja cuadrada", color: "var(--green)" }
+      ? { texto: "Caja cuadrada", clase: "arqueo-estado-cuadrada", icono: "✓" }
       : diferencia > 0
-        ? { texto: "Sobrante", color: "var(--amber)" }
-        : { texto: "Faltante", color: "var(--red, #ef5757)" };
+        ? { texto: "Sobrante", clase: "arqueo-estado-sobrante", icono: "▲" }
+        : { texto: "Faltante", clase: "arqueo-estado-faltante", icono: "▼" };
 
-  const borde = "1px solid var(--border, #232938)";
 
-  const renderGrupo = (titulo, lista, total, cantidadPiezas, unidad) => (
-    <div>
-      <p className="metrica-etiqueta" style={{ marginBottom: "0.4rem" }}>{titulo}</p>
-      {lista.map((d) => (
-        <FilaDenominacion
-          key={d}
-          valor={d}
-          cantidad={conteo[String(d)]}
-          onCambiar={onCambiar}
-        />
-      ))}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginTop: "0.4rem",
-          paddingTop: "0.4rem",
-          borderTop: borde,
-          fontSize: "0.85rem",
-        }}
-      >
-        <span className="texto-muted">{cantidadPiezas} {unidad}</span>
-        <strong>{COP(total)}</strong>
-      </div>
-    </div>
-  );
-
-  const linea = (etiqueta, valor, opts = {}) => (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "0.15rem 0",
-        fontSize: opts.grande ? "1rem" : "0.85rem",
-        fontWeight: opts.grande ? 700 : 400,
-        color: opts.color,
-      }}
-    >
-      <span>{etiqueta}</span>
-      <span style={{ fontVariantNumeric: "tabular-nums" }}>{valor}</span>
-    </div>
-  );
 
   return (
-    <div style={{ margin: "0.75rem 0", textAlign: "left" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          flexWrap: "wrap",
-          gap: "0.5rem",
-        }}
-      >
-        <h3 className="subtitulo" style={{ margin: 0 }}>Conteo de efectivo</h3>
+    <div className="arqueo">
+
+      {/* Encabezado */}
+      <div className="arqueo-header">
+        <div className="arqueo-header-info">
+          <span className="arqueo-header-icono">🧾</span>
+          <div>
+            <p className="arqueo-header-titulo">Arqueo de caja</p>
+            <p className="arqueo-header-sub">
+              Cuenta el efectivo que hay en la caja y verifica que cuadre con las ventas del día.
+            </p>
+          </div>
+        </div>
+
         <button type="button" className="btn-ghost" onClick={onLimpiar} disabled={!hayConteo}>
           Limpiar conteo
         </button>
       </div>
 
-      <p className="texto-muted" style={{ margin: "0.25rem 0 0.75rem", fontSize: "0.8rem" }}>
-        Escribe cuántos billetes y monedas hay de cada valor. El total se calcula solo.
-      </p>
-
-      {/* Billetes y monedas lado a lado (se apilan en pantallas angostas) */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))",
-          gap: "1.25rem",
-        }}
-      >
-        {renderGrupo("Billetes", BILLETES, totalBilletes, piezas(BILLETES), "billete(s)")}
-        {renderGrupo("Monedas", MONEDAS, totalMonedas, piezas(MONEDAS), "moneda(s)")}
+      {/* Banner informativo */}
+      <div className="alerta-info arqueo-banner">
+        <span>ℹ️</span>
+        <span>Escribe cuántos billetes y monedas hay de cada valor. El total se calcula automáticamente.</span>
       </div>
 
-      {/* Resumen y comparación contra lo esperado */}
-      <div
-        style={{
-          marginTop: "1rem",
-          padding: "0.75rem 1rem",
-          border: borde,
-          borderRadius: "8px",
-        }}
-      >
-        {linea("Efectivo contado", COP(totalContado), { grande: true })}
+      {/* Billetes / monedas / resumen */}
+      <div className="arqueo-layout">
 
-        <div style={{ borderTop: borde, margin: "0.5rem 0" }} />
+        <Panel
+          titulo="Billetes"
+          icono="💵"
+          badgeClase="arqueo-badge-grupo-billetes"
+          lista={BILLETES}
+          colores={COLORES_BILLETES}
+          conteo={conteo}
+          onCambiar={onCambiar}
+          total={totalBilletes}
+        />
 
-        {linea("Monto inicial", COP(esperado.montoInicial))}
-        {linea("+ Efectivo cobrado en ventas", COP(esperado.efectivoVentas))}
-        {linea("− Egresos", COP(esperado.totalEgresos))}
-        {linea("Efectivo esperado", COP(esperado.total), { grande: true })}
+        <Panel
+          titulo="Monedas"
+          icono="🪙"
+          badgeClase="arqueo-badge-grupo-monedas"
+          lista={MONEDAS}
+          colores={COLORES_MONEDAS}
+          conteo={conteo}
+          onCambiar={onCambiar}
+          total={totalMonedas}
+        />
 
-        <div style={{ borderTop: borde, margin: "0.5rem 0" }} />
+        <div className="arqueo-col-resumen">
 
-        {hayConteo ? (
-          linea(
-            `Diferencia — ${estado.texto}`,
-            `${diferencia > 0 ? "+" : diferencia < 0 ? "−" : ""}${COP(Math.abs(diferencia))}`,
-            { grande: true, color: estado.color }
-          )
-        ) : (
-          <span className="texto-muted" style={{ fontSize: "0.8rem" }}>
-            Empieza a contar para ver si la caja cuadra.
-          </span>
-        )}
+          {/* Resumen del conteo */}
+          <div className="arqueo-card">
+            <p className="arqueo-card-titulo">
+              <span className="icono">📋</span> Resumen del arqueo
+            </p>
+
+            <div className="arqueo-linea">
+              <span className="label">💵 Total billetes</span>
+              <span className="valor-mono">{COP(totalBilletes)}</span>
+            </div>
+            <div className="arqueo-linea">
+              <span className="label">🪙 Total monedas</span>
+              <span className="valor-mono">{COP(totalMonedas)}</span>
+            </div>
+
+            <div className="arqueo-destacado">
+              <span className="label">💰 Total efectivo contado</span>
+              <span className="valor-mono">{COP(totalContado)}</span>
+            </div>
+          </div>
+
+          {/* Comparativo contra lo esperado */}
+          <div className="arqueo-card">
+            <p className="arqueo-card-titulo">
+              <span className="icono">⚖️</span> Comparativo
+            </p>
+
+            <div className="arqueo-linea">
+              <span className="label">💳 Monto inicial</span>
+              <span className="valor-mono">{COP(esperado.montoInicial)}</span>
+            </div>
+            <div className="arqueo-linea">
+              <span className="label">📈 + Efectivo cobrado en ventas</span>
+              <span className="valor-mono">{COP(esperado.efectivoVentas)}</span>
+            </div>
+            <div className="arqueo-linea">
+              <span className="label">➖ Egresos</span>
+              <span className="valor-mono">{COP(esperado.totalEgresos)}</span>
+            </div>
+
+            <div className="arqueo-destacado">
+              <span className="label">🎯 Efectivo esperado</span>
+              <span className="valor-mono">{COP(esperado.total)}</span>
+            </div>
+
+            {hayConteo ? (
+              <div className={`arqueo-estado ${estado.clase}`}>
+                <span>{estado.icono} {estado.texto}</span>
+                <span className="valor-mono">
+                  {diferencia > 0 ? "+" : diferencia < 0 ? "−" : ""}{COP(Math.abs(diferencia))}
+                </span>
+              </div>
+            ) : (
+              <p className="arqueo-hint">
+                <span>ℹ️</span> Empieza a contar para ver si la caja cuadra.
+              </p>
+            )}
+          </div>
+
+        </div>
       </div>
     </div>
   );
@@ -599,16 +636,7 @@ const abrirEdicion = async (venta_id) => {
               <div className="confirm-box">
 
                 {/* NUEVO: conteo de billetes y monedas antes de cerrar */}
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    fontSize: "0.82rem",
-                    margin: "0.25rem 0 0.5rem",
-                    cursor: "pointer",
-                  }}
-                >
+                <label className="arqueo-toggle">
                   <input
                     type="checkbox"
                     checked={omitirConteo}
@@ -627,7 +655,7 @@ const abrirEdicion = async (venta_id) => {
                   />
                 )}
 
-                <p>
+                <p style={{ marginTop: "0.85rem" }}>
                   ¿Confirmas el cierre? 
                   Se descargará el reporte PDF.
                 </p>

@@ -48,8 +48,11 @@ const Navbar = ({ seccion, setSeccion, servicioActivo, onSalir, onIrAlMenu }) =>
     ? SECCIONES.filter(s => !s.soloCompleto || usuario.plan === "completo")
     : SECCIONES;
 
-  const atajos = seccionesVisibles.filter(s => s.atajo);
-  const resto  = seccionesVisibles.filter(s => !s.atajo);
+   const atajos = seccionesVisibles.filter(s => s.atajo);
+  // El panel hamburguesa muestra TODAS las secciones (atajos incluidos):
+  // en mobile .nav-atajos puede no entrar/no verse, y necesitamos que
+  // esas rutas sigan siendo accesibles desde el menú.
+  const resto  = seccionesVisibles;
 
   const seccionActual = SECCIONES.find(s => s.key === seccion && !s.esNavegacion);
   const mostrarBreadcrumb = seccionActual && !seccionActual.atajo;
@@ -160,7 +163,9 @@ const Navbar = ({ seccion, setSeccion, servicioActivo, onSalir, onIrAlMenu }) =>
         <div className="nav-panel-overlay" onClick={() => setMenuAbierto(false)} />
       )}
 
-      {/* Resto de secciones — todo lo que no es atajo rápido */}
+      {/* Panel completo — incluye los atajos también, para que en
+          mobile (donde nav-atajos puede quedar oculto) todas las
+          rutas sigan siendo accesibles desde acá */}
       <nav
         ref={panelRef}
         className={`nav-panel ${menuAbierto ? "abierto" : ""}`}
