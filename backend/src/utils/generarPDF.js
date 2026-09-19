@@ -5,6 +5,11 @@
 // REDISEÑO (tema oscuro tipo dashboard): tarjetas redondeadas sobre fondo
 // oscuro, badges de color por sección, resumen financiero en mini-tarjetas,
 // tabla de productos con numeración, y caja destacada de efectivo esperado.
+//
+// NUEVO — ARQUEO DE EFECTIVO: si se recibe `arqueo` (conteo físico de billetes
+// y monedas hecho antes de cerrar), se agrega la sección "Arqueo de efectivo"
+// con el detalle por denominación, los totales y la diferencia contra el
+// efectivo esperado. Si `arqueo` no viene, el PDF sale exactamente igual que antes.
 
 const PDFDocument = require("pdfkit");
 
@@ -183,7 +188,7 @@ const sectionTitle = (doc, x, y, title, opts = {}) => {
 
 // ─── FUNCIÓN PRINCIPAL ────────────────────────────────────────────
 
-const generarPDF = ({ caja, ventas, egresos, cerradoPor, comparativaAyer }) => {
+const generarPDF = ({ caja, ventas, egresos, cerradoPor, comparativaAyer, arqueo }) => {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ margin: PAGE_MARGIN, size: "A4", bufferPages: true });
@@ -259,9 +264,19 @@ const generarPDF = ({ caja, ventas, egresos, cerradoPor, comparativaAyer }) => {
       // ─── RESUMEN FINANCIERO ───────────────────────────────────────
       const totalVentas = parseFloat(caja.total_ventas) || ventas.reduce((a, v) => a + v.total, 0);
       const totalEgresos = egresos.reduce((a, e) => a + e.monto, 0);
-      const efectivo = ventas.filter(v => v.metodo_pago === "efectivo").reduce((a, v) => a + v.total, 0);
-      const tarjeta = ventas.filter(v => v.metodo_pago === "tarjeta").reduce((a, v) => a + v.total, 0);
-      const transferencia = ventas.filter(v => v.metodo_pago === "transferencia").reduce((a, v) => a + v.total, 0);
+
+      // Efectivo / tarjeta / transferencia: se toman de los totales que calcula
+      // Caja.cerrar desde `venta_pagos` (caja.total_efectivo, etc.), porque así
+      // las ventas de pago MIXTO quedan repartidas en cada método. Si por algún
+      // motivo esos totales no vienen, se usa el cálculo anterior por venta.
+      const totalPorMetodo = (metodo, claveCaja) => {
+        const desdeCaja = caja[claveCaja];
+        if (desdeCaja !== undefined && desdeCaja !== null) return parseFloat(desdeCaja) || 0;
+        return ventas.filter(v => v.metodo_pago === metodo).reduce((a, v) => a + v.total, 0);
+      };
+      const efectivo = totalPorMetodo("efectivo", "total_efectivo");
+      const tarjeta = totalPorMetodo("tarjeta", "total_tarjeta");
+      const transferencia = totalPorMetodo("transferencia", "total_transferencia");
       const efectivoNeto = (parseFloat(caja.monto_inicial) || 0) + efectivo - totalEgresos;
 
       const finCardH = 108;
@@ -508,6 +523,83 @@ const generarPDF = ({ caja, ventas, egresos, cerradoPor, comparativaAyer }) => {
           });
           doc.y = cy0 + catCardH + 14;
         }
+      }
+
+      // ─── ARQUEO DE EFECTIVO (conteo físico de billetes y monedas) ─────
+      // Solo aparece si el cierre incluyó conteo. Muestra cuántos billetes /
+      // monedas de cada denominación se contaron, el total contado y la
+      // diferencia contra el efectivo esperado (monto inicial + efectivo − egresos).
+      if (arqueo && Array.isArray(arqueo.filas)) {
+        const filasConteo = arqueo.filas.filter((f) => f.cantidad > 0);
+        const aRowH = 22;
+        const nRows = Math.max(filasConteo.length, 1);
+        const miniH = 54;
+        const arqueoCardH = padTop + tableHeaderH + 4 + nRows * aRowH + 44 + miniH + 12;
+
+        ensureSpace(arqueoCardH + 10);
+        cy0 = doc.y;
+        card(doc, contentX, cy0, contentW, arqueoCardH);
+        iy = cy0 + 16;
+        sectionTitle(doc, contentX + 16, iy, "Arqueo de efectivo (conteo físico)", { icon: "cash", iconBg: C.greenBg, iconFg: C.green });
+        iy += 28;
+
+        const colA = { den: contentX + 44, tipo: contentX + 170, cant: contentX + contentW - 190, sub: contentX + contentW - 110 };
+        const headerYA = iy;
+        doc.rect(contentX + 16, headerYA, contentW - 32, tableHeaderH).fill(C.rowAlt);
+        doc.font("Helvetica-Bold").fontSize(8).fillColor(C.gray);
+        doc.text("DENOMINACIÓN", colA.den, headerYA + 6);
+        doc.text("TIPO", colA.tipo, headerYA + 6);
+        doc.text("CANTIDAD", colA.cant, headerYA + 6, { width: 70, align: "right" });
+        doc.text("SUBTOTAL", colA.sub, headerYA + 6, { width: 70, align: "right" });
+        iy = headerYA + tableHeaderH + 4;
+
+        if (filasConteo.length === 0) {
+          doc.font("Helvetica").fontSize(9).fillColor(C.grayDim)
+            .text("No se registró efectivo en el conteo.", colA.den, iy + 3);
+          iy += aRowH;
+        } else {
+          filasConteo.forEach((f, i) => {
+            const esBillete = f.tipo === "billete";
+            if (i % 2 === 0) doc.rect(contentX + 16, iy - 2, contentW - 32, aRowH).fill(C.rowAlt);
+            iconBadge(doc, contentX + 20, iy, 16, esBillete ? C.greenBg : C.amberBg, esBillete ? C.green : C.amber, "cash");
+            doc.font("Helvetica-Bold").fontSize(9).fillColor(C.white).text(COP(f.valor), colA.den, iy + 3);
+            doc.font("Helvetica").fontSize(9).fillColor(C.text).text(esBillete ? "Billete" : "Moneda", colA.tipo, iy + 3);
+            doc.font("Helvetica").fontSize(9).fillColor(C.gray).text(`x ${f.cantidad}`, colA.cant, iy + 3, { width: 70, align: "right" });
+            doc.font("Helvetica-Bold").fontSize(9).fillColor(C.amber).text(COP(f.subtotal), colA.sub, iy + 3, { width: 70, align: "right" });
+            iy += aRowH;
+          });
+        }
+
+        // Subtotales billetes / monedas
+        doc.moveTo(contentX + 16, iy + 2).lineTo(contentX + contentW - 16, iy + 2).strokeColor(C.cardBorder).lineWidth(1).stroke();
+        doc.font("Helvetica").fontSize(8.5).fillColor(C.gray).text("Total billetes", colA.cant - 40, iy + 8, { width: 110, align: "right" });
+        doc.font("Helvetica-Bold").fontSize(9).fillColor(C.white).text(COP(arqueo.total_billetes), colA.sub, iy + 8, { width: 70, align: "right" });
+        doc.font("Helvetica").fontSize(8.5).fillColor(C.gray).text("Total monedas", colA.cant - 40, iy + 22, { width: 110, align: "right" });
+        doc.font("Helvetica-Bold").fontSize(9).fillColor(C.white).text(COP(arqueo.total_monedas), colA.sub, iy + 22, { width: 70, align: "right" });
+
+        // Mini-tarjetas: contado / esperado / diferencia
+        const totalContado = parseFloat(arqueo.total_contado) || 0;
+        const diferencia = totalContado - efectivoNeto;
+        const difColor = diferencia === 0 ? C.green : (diferencia > 0 ? C.amber : C.red);
+        const difEtiqueta = diferencia === 0 ? "CAJA CUADRADA" : (diferencia > 0 ? "SOBRANTE" : "FALTANTE");
+        const difTexto = `${diferencia > 0 ? "+" : diferencia < 0 ? "-" : ""}${COP(Math.abs(diferencia))}`;
+
+        const miniGap = 10;
+        const miniW = (contentW - 32 - miniGap * 2) / 3;
+        const miniY = iy + 44;
+        const minis = [
+          { label: "EFECTIVO CONTADO", value: COP(totalContado), color: C.green, border: C.cardBorder },
+          { label: "EFECTIVO ESPERADO", value: COP(efectivoNeto), color: C.amber, border: C.cardBorder },
+          { label: `DIFERENCIA - ${difEtiqueta}`, value: difTexto, color: difColor, border: difColor },
+        ];
+        minis.forEach((m, i) => {
+          const mx = contentX + 16 + i * (miniW + miniGap);
+          card(doc, mx, miniY, miniW, miniH, { bg: C.rowAlt, border: m.border, radius: 8 });
+          doc.font("Helvetica").fontSize(7.5).fillColor(C.gray).text(m.label, mx + 10, miniY + 11, { width: miniW - 20 });
+          doc.font("Helvetica-Bold").fontSize(14).fillColor(m.color).text(m.value, mx + 10, miniY + 27, { width: miniW - 20 });
+        });
+
+        doc.y = cy0 + arqueoCardH + 14;
       }
 
       // ─── TOTAL FINAL: EFECTIVO ESPERADO EN CAJA ───────────────────

@@ -4,7 +4,9 @@ import { api } from "./api";
 export const cajaService = {
   getEstado:     ()      => api.get("/caja/estado"),
   abrir:         (monto) => api.post("/caja/abrir",  { monto_inicial: monto }),
-  cerrar:        ()      => api.post("/caja/cerrar"),
+  // NUEVO: `arqueo` es opcional ({ conteo: { "100000": 2, ... } } o null).
+  // Si no se envía, el body queda vacío y el cierre funciona igual que antes.
+  cerrar:        (arqueo) => api.post("/caja/cerrar", { arqueo }),
   getHistorial:  ()      => api.get("/caja/historial"),
   registrarPago: (data)  => api.post("/caja/pago", data),
   getVentaDetalle: (id)         => api.get(`/caja/venta/${id}`),

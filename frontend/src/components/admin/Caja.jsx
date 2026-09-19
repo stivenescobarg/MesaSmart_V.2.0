@@ -8,6 +8,10 @@
 // - Visualizar las últimas ventas registradas.
 // - Mostrar el desglose de servicio, propinas y descuentos del día.
 // - NUEVO: abrir el detalle de una venta y corregirla (VentaDetalleModal).
+// - NUEVO: ARQUEO DE EFECTIVO — antes de cerrar la caja se cuenta cuántos
+//   billetes y monedas hay de cada denominación; el total se calcula solo,
+//   se compara contra el efectivo esperado y viaja al backend para que
+//   aparezca en el PDF del cierre.
 
 import { useState } from "react";
 import VentaDetalleModal from "./VentaDetalleModal";
@@ -16,6 +20,19 @@ import { cajaService } from "../../services/cajaService";
 // Función para formatear números en pesos colombianos.
 // Ejemplo: 15000 -> $15.000
 const COP = (n) => `$${(parseFloat(n) || 0).toLocaleString("es-CO")}`;
+
+// ─────────────────────────────────────────────────────────────
+// ARQUEO — denominaciones del peso colombiano
+// ─────────────────────────────────────────────────────────────
+const BILLETES = [100000, 50000, 20000, 10000, 5000, 2000];
+const MONEDAS  = [1000, 500, 200, 100, 50];
+
+// Conteo inicial: un campo vacío por cada denominación (clave = valor como texto)
+const conteoVacio = () =>
+  Object.fromEntries([...BILLETES, ...MONEDAS].map((d) => [String(d), ""]));
+
+// Convierte lo escrito en el input a un entero >= 0
+const aEntero = (valor) => Math.max(0, parseInt(valor, 10) || 0);
 
 // Función encargada de descargar el PDF en base64
 // que devuelve el backend al cerrar caja.
@@ -44,6 +61,188 @@ const descargarPDF = (base64) => {
   URL.revokeObjectURL(url);
 };
 
+// ─────────────────────────────────────────────────────────────
+// Fila de una denominación: [ $50.000 ] [ cantidad ] [ subtotal ]
+// ─────────────────────────────────────────────────────────────
+const FilaDenominacion = ({ valor, cantidad, onCambiar }) => {
+  const n = aEntero(cantidad);
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 88px 104px",
+        gap: "0.5rem",
+        alignItems: "center",
+        padding: "0.2rem 0",
+      }}
+    >
+      <span style={{ fontWeight: 600 }}>{COP(valor)}</span>
+
+      <input
+        className="campo-input"
+        type="number"
+        min="0"
+        step="1"
+        inputMode="numeric"
+        placeholder="0"
+        value={cantidad}
+        aria-label={`Cantidad de ${COP(valor)}`}
+        onChange={(e) => onCambiar(valor, e.target.value.replace(/[^\d]/g, ""))}
+        onFocus={(e) => e.target.select()}
+        // Evita que la rueda del mouse cambie el número sin querer
+        onWheel={(e) => e.currentTarget.blur()}
+        style={{ textAlign: "right", padding: "0.3rem 0.5rem" }}
+      />
+
+      <span
+        style={{
+          textAlign: "right",
+          fontVariantNumeric: "tabular-nums",
+          color: n > 0 ? "var(--amber)" : "var(--text-3, #8b93a3)",
+        }}
+      >
+        {n > 0 ? COP(n * valor) : "—"}
+      </span>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Panel de conteo de efectivo (se muestra al iniciar el cierre)
+// ─────────────────────────────────────────────────────────────
+const ArqueoEfectivo = ({ conteo, onCambiar, onLimpiar, esperado }) => {
+  const subtotal = (lista) =>
+    lista.reduce((acc, d) => acc + d * aEntero(conteo[String(d)]), 0);
+  const piezas = (lista) =>
+    lista.reduce((acc, d) => acc + aEntero(conteo[String(d)]), 0);
+
+  const totalBilletes = subtotal(BILLETES);
+  const totalMonedas  = subtotal(MONEDAS);
+  const totalContado  = totalBilletes + totalMonedas;
+  const diferencia    = totalContado - esperado.total;
+  const hayConteo     = totalContado > 0;
+
+  const estado =
+    diferencia === 0
+      ? { texto: "Caja cuadrada", color: "var(--green)" }
+      : diferencia > 0
+        ? { texto: "Sobrante", color: "var(--amber)" }
+        : { texto: "Faltante", color: "var(--red, #ef5757)" };
+
+  const borde = "1px solid var(--border, #232938)";
+
+  const renderGrupo = (titulo, lista, total, cantidadPiezas, unidad) => (
+    <div>
+      <p className="metrica-etiqueta" style={{ marginBottom: "0.4rem" }}>{titulo}</p>
+      {lista.map((d) => (
+        <FilaDenominacion
+          key={d}
+          valor={d}
+          cantidad={conteo[String(d)]}
+          onCambiar={onCambiar}
+        />
+      ))}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: "0.4rem",
+          paddingTop: "0.4rem",
+          borderTop: borde,
+          fontSize: "0.85rem",
+        }}
+      >
+        <span className="texto-muted">{cantidadPiezas} {unidad}</span>
+        <strong>{COP(total)}</strong>
+      </div>
+    </div>
+  );
+
+  const linea = (etiqueta, valor, opts = {}) => (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "0.15rem 0",
+        fontSize: opts.grande ? "1rem" : "0.85rem",
+        fontWeight: opts.grande ? 700 : 400,
+        color: opts.color,
+      }}
+    >
+      <span>{etiqueta}</span>
+      <span style={{ fontVariantNumeric: "tabular-nums" }}>{valor}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ margin: "0.75rem 0", textAlign: "left" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          flexWrap: "wrap",
+          gap: "0.5rem",
+        }}
+      >
+        <h3 className="subtitulo" style={{ margin: 0 }}>Conteo de efectivo</h3>
+        <button type="button" className="btn-ghost" onClick={onLimpiar} disabled={!hayConteo}>
+          Limpiar conteo
+        </button>
+      </div>
+
+      <p className="texto-muted" style={{ margin: "0.25rem 0 0.75rem", fontSize: "0.8rem" }}>
+        Escribe cuántos billetes y monedas hay de cada valor. El total se calcula solo.
+      </p>
+
+      {/* Billetes y monedas lado a lado (se apilan en pantallas angostas) */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))",
+          gap: "1.25rem",
+        }}
+      >
+        {renderGrupo("Billetes", BILLETES, totalBilletes, piezas(BILLETES), "billete(s)")}
+        {renderGrupo("Monedas", MONEDAS, totalMonedas, piezas(MONEDAS), "moneda(s)")}
+      </div>
+
+      {/* Resumen y comparación contra lo esperado */}
+      <div
+        style={{
+          marginTop: "1rem",
+          padding: "0.75rem 1rem",
+          border: borde,
+          borderRadius: "8px",
+        }}
+      >
+        {linea("Efectivo contado", COP(totalContado), { grande: true })}
+
+        <div style={{ borderTop: borde, margin: "0.5rem 0" }} />
+
+        {linea("Monto inicial", COP(esperado.montoInicial))}
+        {linea("+ Efectivo cobrado en ventas", COP(esperado.efectivoVentas))}
+        {linea("− Egresos", COP(esperado.totalEgresos))}
+        {linea("Efectivo esperado", COP(esperado.total), { grande: true })}
+
+        <div style={{ borderTop: borde, margin: "0.5rem 0" }} />
+
+        {hayConteo ? (
+          linea(
+            `Diferencia — ${estado.texto}`,
+            `${diferencia > 0 ? "+" : diferencia < 0 ? "−" : ""}${COP(Math.abs(diferencia))}`,
+            { grande: true, color: estado.color }
+          )
+        ) : (
+          <span className="texto-muted" style={{ fontSize: "0.8rem" }}>
+            Empieza a contar para ver si la caja cuadra.
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Componente principal Caja
 const Caja = ({ 
   cajaAbierta, 
@@ -66,6 +265,13 @@ const Caja = ({
 
   // NUEVO: venta actualmente abierta en el modal de detalle/edición (null = cerrado)
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
+
+  // NUEVO — ARQUEO: cantidades escritas por denominación y opción de omitir el conteo
+  const [conteo, setConteo] = useState(conteoVacio);
+  const [omitirConteo, setOmitirConteo] = useState(false);
+
+  const handleCambioConteo = (valor, cantidad) =>
+    setConteo((prev) => ({ ...prev, [String(valor)]: cantidad }));
 
   // Función para abrir la caja
   const handleAbrirCaja = () => {
@@ -93,12 +299,30 @@ const Caja = ({
 
     try {
 
+      // NUEVO: si hay conteo, se envía como argumento a onCerrarCaja para que
+      // el padre lo reenvíe al backend. Solo se mandan las CANTIDADES; los
+      // totales los recalcula el servidor.
+      const arqueo = omitirConteo
+        ? null
+        : {
+            conteo: Object.fromEntries(
+              [...BILLETES, ...MONEDAS].map((d) => [String(d), aEntero(conteo[String(d)])])
+            ),
+          };
+
       // Llama función del padre y espera la respuesta
-      const resultado = await onCerrarCaja();
+      const resultado = await onCerrarCaja(arqueo);
 
       // Si el backend devuelve un PDF, lo descarga
       if (resultado?.pdf) {
         descargarPDF(resultado.pdf);
+      }
+
+      // Cierre exitoso (el padre devuelve null si falló): se limpia el conteo
+      // para la próxima jornada. Si falló, se conserva para no tener que recontar.
+      if (resultado) {
+        setConteo(conteoVacio());
+        setOmitirConteo(false);
       }
 
     } finally {
@@ -141,6 +365,31 @@ const abrirEdicion = async (venta_id) => {
   const totalServicio  = ventas.reduce((acc, v) => acc + (parseFloat(v.servicio)  || 0), 0);
   const totalPropinas  = ventas.reduce((acc, v) => acc + (parseFloat(v.propina)   || 0), 0);
   const totalDescuentos = ventas.reduce((acc, v) => acc + (parseFloat(v.descuento) || 0), 0);
+
+  // NUEVO — ARQUEO: efectivo esperado en caja = monto inicial + efectivo cobrado − egresos.
+  // El efectivo se toma del desglose de pagos de cada venta (así las ventas de
+  // pago mixto aportan solo su parte en efectivo); si una venta no trae
+  // desglose, se usa su método de pago único.
+  const efectivoVentas = ventas.reduce((acc, v) => {
+    if (Array.isArray(v.pagos) && v.pagos.length) {
+      return acc + v.pagos
+        .filter((p) => String(p.metodo_pago).toLowerCase() === "efectivo")
+        .reduce((a, p) => a + (parseFloat(p.monto) || 0), 0);
+    }
+    return acc + (String(v.metodo_pago ?? "").toLowerCase() === "efectivo" ? (parseFloat(v.total) || 0) : 0);
+  }, 0);
+
+  const totalEgresos = (caja?.egresos ?? []).reduce(
+    (acc, e) => acc + (parseFloat(e.monto) || 0),
+    0
+  );
+
+  const esperadoEfectivo = {
+    montoInicial,
+    efectivoVentas,
+    totalEgresos,
+    total: montoInicial + efectivoVentas - totalEgresos,
+  };
 
   // Formatea la hora de apertura
   const horaApertura = caja?.apertura
@@ -314,7 +563,11 @@ const abrirEdicion = async (venta_id) => {
           {/* CIERRE DE CAJA */}
           {/* ============================ */}
 
-          <div className="admin-card caja-acciones-card">
+          {/* Al iniciar el cierre la tarjeta ocupa todo el ancho para que quepa el conteo de efectivo */}
+          <div
+            className="admin-card caja-acciones-card"
+            style={confirmandoCierre ? { gridColumn: "1 / -1" } : undefined}
+          >
 
             <h3 className="subtitulo">
               Cierre de jornada
@@ -330,7 +583,12 @@ const abrirEdicion = async (venta_id) => {
 
               <button
                 className="btn-peligro"
-                onClick={() => setConfirmandoCierre(true)}
+                onClick={() => {
+                  setConfirmandoCierre(true);
+                  // Refresca la caja para que el efectivo esperado incluya
+                  // las últimas ventas y egresos antes de contar.
+                  onCajaActualizada?.();
+                }}
               >
                 🔒 Cerrar caja
               </button>
@@ -339,6 +597,35 @@ const abrirEdicion = async (venta_id) => {
 
               // Confirmación antes de cerrar
               <div className="confirm-box">
+
+                {/* NUEVO: conteo de billetes y monedas antes de cerrar */}
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    fontSize: "0.82rem",
+                    margin: "0.25rem 0 0.5rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={omitirConteo}
+                    onChange={(e) => setOmitirConteo(e.target.checked)}
+                    disabled={cerrando}
+                  />
+                  Cerrar sin conteo de efectivo
+                </label>
+
+                {!omitirConteo && (
+                  <ArqueoEfectivo
+                    conteo={conteo}
+                    onCambiar={handleCambioConteo}
+                    onLimpiar={() => setConteo(conteoVacio())}
+                    esperado={esperadoEfectivo}
+                  />
+                )}
 
                 <p>
                   ¿Confirmas el cierre? 
@@ -362,6 +649,7 @@ const abrirEdicion = async (venta_id) => {
                   <button
                     className="btn-ghost"
                     onClick={() => setConfirmandoCierre(false)}
+                    disabled={cerrando}
                   >
                     Cancelar
                   </button>
