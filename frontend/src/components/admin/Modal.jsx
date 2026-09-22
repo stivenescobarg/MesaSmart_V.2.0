@@ -1,7 +1,22 @@
 // ══════════════════════════════════════════════════════════════════
 // components/admin/Modal.jsx
 // Modal genérico reutilizable (reemplaza todos los confirm/alert).
+//
+// FIX (este pase): se renderiza con un PORTAL (`createPortal` hacia
+// `document.body`) en vez de quedar anidado dentro del árbol de la
+// página. Esto es lo mismo que ya se corrigió en el Modal interno de
+// DetalleMesa.jsx — si algún contenedor padre tiene `transform`, rompe
+// el `position: fixed` de un hijo no-portal y lo desalinea/recorta del
+// viewport real. Con el portal, este modal (el que usa
+// VentaDetalleModal para "Editar venta") también queda siempre
+// centrado y completo, sin importar dónde esté montado.
+//
+// Además: `ancho` ahora se aplica con `min(ancho, 95vw)` para que en
+// pantallas angostas (celular) nunca se desborde, sin necesidad de
+// tocar Admin.css.
 // ══════════════════════════════════════════════════════════════════
+
+import { createPortal } from "react-dom";
 
 /**
  * @param {{
@@ -12,7 +27,8 @@
  *   onCancelar?: fn,
  *   labelConfirmar?: string,
  *   labelCancelar?: string,
- *   variante?: "peligro" | "normal"
+ *   variante?: "peligro" | "normal",
+ *   ancho?: string,
  * }} props
  */
 const Modal = ({
@@ -28,15 +44,15 @@ const Modal = ({
 }) => {
   if (!abierto) return null;
 
-  return (
+  const contenido = (
     <div className="modal-overlay" onClick={onCancelar}>
       <div
         className="modal-box"
         style={{
-          ...(ancho ? { maxWidth: ancho } : null),
-          maxHeight: "88vh",       // ← NUEVO: nunca más alto que el 88% de la pantalla
-          display: "flex",         // ← NUEVO
-          flexDirection: "column", // ← NUEVO
+          maxWidth: ancho ? `min(${ancho}, 95vw)` : undefined,
+          maxHeight: "88vh",
+          display: "flex",
+          flexDirection: "column",
         }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -49,7 +65,9 @@ const Modal = ({
           )}
         </div>
 
-        <div className="modal-body" style={{ overflowY: "auto" }}>{children}</div>
+        <div className="modal-body" style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+          {children}
+        </div>
 
         {(onConfirmar || onCancelar) && (
           <div className="modal-footer">
@@ -71,6 +89,8 @@ const Modal = ({
       </div>
     </div>
   );
+
+  return createPortal(contenido, document.body);
 };
 
 export default Modal;
