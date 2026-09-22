@@ -1,4 +1,6 @@
+// AppRouter.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
+import LandingPage from "./pages/LandingPage";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import PrivateRoute from "./components/admin/PrivateRoute";
 import Login from "./pages/Login";
@@ -10,17 +12,17 @@ import DetalleProducto from "./pages/DetalleProducto";
 
 const AppRouter = () => (
   <Routes>
-    <Route path="/" element={<Navigate to="/login" replace />} />
+    <Route path="/" element={<LandingPage />} />
     <Route path="/login" element={<Login />} />
 
     <Route
-  path="/super-admin"
-  element={
-    <PrivateRoute rolesPermitidos={["super_admin"]}>
-      <SuperAdminDashboard />
-    </PrivateRoute>
-  }
-/>
+      path="/super-admin"
+      element={
+        <PrivateRoute rolesPermitidos={["super_admin"]}>
+          <SuperAdminDashboard />
+        </PrivateRoute>
+      }
+    />
 
     <Route
       path="/admin"
@@ -49,7 +51,6 @@ const AppRouter = () => (
       }
     />
 
-    {/* 👇 este es el único cambio: /menu ahora recibe restauranteId y mesaId */}
     <Route path="/menu/:restauranteId/:mesaId" element={<Menu />} />
     <Route path="/producto" element={<DetalleProducto />} />
 

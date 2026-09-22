@@ -19,6 +19,16 @@
 // subcuenta_nombre. Es retrocompatible: si `resumen` viene undefined
 // (por ejemplo si alguna otra pantalla todavía llama a estas funciones
 // sin ese argumento), todo cae a los valores por defecto de antes.
+//
+// ✅ NUEVO (formulario completo de mesa): handleCrearMesa ahora acepta un
+// tercer argumento opcional `extras` ({ zona_id, capacidad, forma, pos_x,
+// pos_y }) que viene del formulario de Mesas.jsx. Si no llega, se usan los
+// mismos valores fijos de antes (capacidad 4, posición 20/20, cuadrada).
+//
+// ✅ NUEVO (arqueo de efectivo): handleCerrarCaja ahora recibe el `arqueo`
+// (conteo de billetes y monedas) que envía Caja.jsx y lo reenvía a
+// cajaService.cerrar para que aparezca en el PDF del cierre. Si no llega,
+// el cierre funciona exactamente igual que antes.
 // ============================================================================
 
 import { useState, useEffect, useCallback } from "react";
@@ -342,12 +352,28 @@ const irAlMenu = () => {
   // CERRAR CAJA
   // --------------------------------------------------------------------------
   // Devuelve el resultado para que Caja.jsx pueda descargar el PDF
-  const handleCerrarCaja = async () => {
+  // ✅ NUEVO: recibe `arqueo` (conteo de billetes y monedas, o null si se
+  // omitió) y lo reenvía al backend para que salga en el PDF del cierre.
+  const handleCerrarCaja = async (arqueo = null) => {
     try {
-      const res = await cajaService.cerrar();
+      const res = await cajaService.cerrar(arqueo);
       setCajaAbierta(false); // Marca caja como cerrada
       setCaja(null); // Limpia los datos de la caja
       toast.exito("Caja cerrada. PDF generado.");
+
+      // ✅ NUEVO: si hubo conteo, avisa el resultado también en pantalla
+      // (así se ve aunque el plan del restaurante no incluya el PDF).
+      if (res?.arqueo) {
+        const dif = res.arqueo.diferencia;
+        if (dif === 0) {
+          toast.exito("Conteo de efectivo: la caja cuadra ✓");
+        } else {
+          toast.advertencia(
+            `Conteo de efectivo: ${dif > 0 ? "sobrante" : "faltante"} de ${COP(Math.abs(dif))}`
+          );
+        }
+      }
+
       await cargarHistorial(); // Actualiza el historial
       setSeccion("historial"); // Cambia a la vista de historial
       return res; // { ok, total_ventas, pdf } para descargar el reporte
@@ -372,7 +398,11 @@ const irAlMenu = () => {
   // --------------------------------------------------------------------------
   // CREAR MESA
   // --------------------------------------------------------------------------
-const handleCrearMesa = async (nombre, zona_id = null) => {
+  // ✅ NUEVO: `extras` trae { zona_id, capacidad, forma, pos_x, pos_y } desde
+  // el formulario completo de Mesas.jsx. Se esparce DESPUÉS de los valores
+  // por defecto, así que si no llega (o llega incompleto) se conservan los
+  // de antes: capacidad 4, posición 20/20 y forma "cuadrada".
+const handleCrearMesa = async (nombre, zona_id = null, extras = {}) => {
   try {
     const res = await mesaService.crear({
       nombre,
@@ -381,6 +411,7 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
       pos_x: 20,
       pos_y: 20,
       forma: "cuadrada",
+      ...extras,
     });
     await cargarMesas();
     toast.exito(`"${nombre}" creada`);
@@ -391,6 +422,15 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
     }
   } catch (err) {
     toast.error(err.message);
+  }
+};
+
+const handleVerQR = async (mesa) => {
+  try {
+    const imagenBlobUrl = await mesaService.verQR(mesa.id);
+    setQrMesa({ id: mesa.id, nombre: mesa.nombre, imagen: imagenBlobUrl, url: null });
+  } catch (err) {
+    console.error("Error al obtener QR:", err);
   }
 };
 
@@ -699,6 +739,7 @@ const handleCrearMesa = async (nombre, zona_id = null) => {
             mesas={mesas}
             cajaAbierta={cajaAbierta}
             onCrearMesa={handleCrearMesa}
+            onVerQR={handleVerQR}
             onEliminarMesa={handleEliminarMesa}
             onModificarItem={handleModificarItem}
             onEliminarItem={handleEliminarItem}

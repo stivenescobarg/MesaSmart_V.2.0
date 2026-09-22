@@ -6,12 +6,75 @@ const { tieneFeature } = require("../../middlewares/requierePlan");
 
 const METODOS_VALIDOS = ["efectivo", "tarjeta", "transferencia"];
 
+// ─────────────────────────────────────────────────────────────────────
+// ── NUEVO: ARQUEO DE EFECTIVO (conteo físico de billetes y monedas) ──
+// ─────────────────────────────────────────────────────────────────────
+// El frontend manda { arqueo: { conteo: { "100000": 3, "50000": 1, ... } } }
+// al cerrar la caja. NO confiamos en los totales que calcule el cliente:
+// aquí se recalculan todos los subtotales a partir de las cantidades.
+// Todo el arqueo es OPCIONAL: si no viene, cerrar caja funciona igual que antes.
+const DENOMINACIONES_ARQUEO = [
+  { valor: 100000, tipo: "billete" },
+  { valor: 50000,  tipo: "billete" },
+  { valor: 20000,  tipo: "billete" },
+  { valor: 10000,  tipo: "billete" },
+  { valor: 5000,   tipo: "billete" },
+  { valor: 2000,   tipo: "billete" },
+  { valor: 1000,   tipo: "moneda"  },
+  { valor: 500,    tipo: "moneda"  },
+  { valor: 200,    tipo: "moneda"  },
+  { valor: 100,    tipo: "moneda"  },
+  { valor: 50,     tipo: "moneda"  },
+];
+
+const normalizarArqueo = (raw, { monto_inicial, total_efectivo, total_egresos }) => {
+  if (!raw || typeof raw !== "object" || !raw.conteo || typeof raw.conteo !== "object") {
+    return null;
+  }
+
+  const filas = DENOMINACIONES_ARQUEO.map(({ valor, tipo }) => {
+    // Entero entre 0 y 1.000.000 (tope solo para evitar valores absurdos).
+    const cantidad = Math.min(Math.max(parseInt(raw.conteo[String(valor)], 10) || 0, 0), 1000000);
+    return { valor, tipo, cantidad, subtotal: valor * cantidad };
+  });
+
+  const total_billetes = filas.filter(f => f.tipo === "billete").reduce((a, f) => a + f.subtotal, 0);
+  const total_monedas  = filas.filter(f => f.tipo === "moneda").reduce((a, f) => a + f.subtotal, 0);
+  const total_contado  = total_billetes + total_monedas;
+
+  // Efectivo esperado = monto inicial + efectivo cobrado (desde venta_pagos) − egresos.
+  const efectivo_esperado =
+    (parseFloat(monto_inicial)  || 0) +
+    (parseFloat(total_efectivo) || 0) -
+    (parseFloat(total_egresos)  || 0);
+
+  return {
+    filas,
+    total_billetes,
+    total_monedas,
+    total_contado,
+    efectivo_esperado,
+    diferencia: total_contado - efectivo_esperado, // >0 sobrante, <0 faltante
+  };
+};
+
 exports.getEstado = async (req, res) => {
   try {
     const caja = await Caja.getAbierta(req.restaurante_id);
     if (!caja) return res.json({ ok: true, abierta: false, caja: null });
     const ventas = await Caja.getVentas(caja.id);
-    res.json({ ok: true, abierta: true, caja: { ...caja, ventas } });
+
+    // NUEVO: egresos de la jornada, para que la pantalla de cierre pueda
+    // mostrar el efectivo esperado mientras se cuenta. Es solo un campo extra
+    // en la respuesta; si falla, no rompe el estado de caja.
+    let egresos = [];
+    try {
+      egresos = await Egreso.getByCaja(caja.id);
+    } catch (egErr) {
+      console.error("[getEstado/egresos]", egErr.message);
+    }
+
+    res.json({ ok: true, abierta: true, caja: { ...caja, ventas, egresos } });
   } catch { res.status(500).json({ msg: "Error al obtener caja." }); }
 };
 
@@ -37,6 +100,21 @@ exports.cerrar = async (req, res) => {
 
     const resultado = await Caja.cerrar(caja.id, req.usuario.id, req.restaurante_id);
 
+    // ── NUEVO: arqueo de efectivo (opcional). Se normaliza DESPUÉS de cerrar
+    // porque necesita total_efectivo y total_egresos ya calculados por
+    // Caja.cerrar. Está envuelto en try/catch: un conteo mal formado nunca
+    // debe impedir que la respuesta de cierre llegue al cliente.
+    let arqueo = null;
+    try {
+      arqueo = normalizarArqueo(req.body?.arqueo, {
+        monto_inicial:  caja.monto_inicial,
+        total_efectivo: resultado.total_efectivo,
+        total_egresos:  resultado.total_egresos,
+      });
+    } catch (arqErr) {
+      console.error("[cerrar caja/arqueo]", arqErr.message);
+    }
+
     // El reporte PDF automático es exclusivo del Plan Completo (ver planes.js).
     // Cerrar caja en sí es una función Básica, así que NO bloqueamos la ruta
     // con requierePlan — solo omitimos el PDF si el restaurante no califica.
@@ -50,13 +128,14 @@ exports.cerrar = async (req, res) => {
           ventas:    datosPDF.ventas,
           egresos,
           cerradoPor: req.usuario,
+          arqueo,
         });
       } catch (pdfErr) {
         console.error("[PDF] Error al generar:", pdfErr.message);
       }
     }
 
-    res.json({ ok: true, ...resultado, pdf: pdfBase64 });
+    res.json({ ok: true, ...resultado, arqueo, pdf: pdfBase64 });
   } catch (err) {
     console.error("[cerrar caja]", err);
     res.status(err.status || 500).json({ msg: err.status ? err.message : "Error al cerrar caja." });

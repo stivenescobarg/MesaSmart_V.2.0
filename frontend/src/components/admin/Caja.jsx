@@ -8,6 +8,17 @@
 // - Visualizar las últimas ventas registradas.
 // - Mostrar el desglose de servicio, propinas y descuentos del día.
 // - NUEVO: abrir el detalle de una venta y corregirla (VentaDetalleModal).
+// - NUEVO: ARQUEO DE EFECTIVO — antes de cerrar la caja se cuenta cuántos
+//   billetes y monedas hay de cada denominación; el total se calcula solo,
+//   se compara contra el efectivo esperado y viaja al backend para que
+//   aparezca en el PDF del cierre.
+//
+// ACTUALIZACIÓN DE ESTILO (v2): el arqueo ahora se distribuye en 3
+// columnas (billetes / monedas / resumen-comparativo), con badges de
+// color por denominación y tarjetas destacadas para el total y el
+// efectivo esperado. Todo usa las clases de arqueo-styles.css, que a
+// su vez usa las variables de tema (--bg, --amber, etc.), así que se
+// ve bien tanto en modo oscuro como en html.light-mode.
 
 import { useState } from "react";
 import VentaDetalleModal from "./VentaDetalleModal";
@@ -16,6 +27,24 @@ import { cajaService } from "../../services/cajaService";
 // Función para formatear números en pesos colombianos.
 // Ejemplo: 15000 -> $15.000
 const COP = (n) => `$${(parseFloat(n) || 0).toLocaleString("es-CO")}`;
+
+// ─────────────────────────────────────────────────────────────
+// ARQUEO — denominaciones del peso colombiano
+// ─────────────────────────────────────────────────────────────
+const BILLETES = [100000, 50000, 20000, 10000, 5000, 2000];
+const MONEDAS  = [1000, 500, 200, 100, 50];
+
+// Un color distinto por fila, solo para que cada denominación sea
+// fácil de ubicar de un vistazo (mismos tokens que ya usan los .chip).
+const COLORES_BILLETES = ["azul", "morado", "verde", "naranja", "rojo", "amber"];
+const COLORES_MONEDAS  = ["morado", "verde", "naranja", "rojo", "azul"];
+
+// Conteo inicial: un campo vacío por cada denominación (clave = valor como texto)
+const conteoVacio = () =>
+  Object.fromEntries([...BILLETES, ...MONEDAS].map((d) => [String(d), ""]));
+
+// Convierte lo escrito en el input a un entero >= 0
+const aEntero = (valor) => Math.max(0, parseInt(valor, 10) || 0);
 
 // Función encargada de descargar el PDF en base64
 // que devuelve el backend al cerrar caja.
@@ -44,6 +73,213 @@ const descargarPDF = (base64) => {
   URL.revokeObjectURL(url);
 };
 
+// ─────────────────────────────────────────────────────────────
+// Fila de una denominación: [●] [ $50.000 ] [ cantidad ] = [ subtotal ]
+// ─────────────────────────────────────────────────────────────
+const FilaDenominacion = ({ valor, cantidad, color, onCambiar }) => {
+  const n = aEntero(cantidad);
+  return (
+    <div className="arqueo-fila">
+      <span className={`arqueo-fila-badge ${color}`}>$</span>
+
+      <span className="arqueo-fila-valor">{COP(valor)}</span>
+
+      <input
+        className="campo-input arqueo-fila-input"
+        type="number"
+        min="0"
+        step="1"
+        inputMode="numeric"
+        placeholder="0"
+        value={cantidad}
+        aria-label={`Cantidad de ${COP(valor)}`}
+        onChange={(e) => onCambiar(valor, e.target.value.replace(/[^\d]/g, ""))}
+        onFocus={(e) => e.target.select()}
+        // Evita que la rueda del mouse cambie el número sin querer
+        onWheel={(e) => e.currentTarget.blur()}
+      />
+
+      <span className="arqueo-fila-igual">=</span>
+
+      <span className={`arqueo-fila-subtotal${n > 0 ? " con-valor" : ""}`}>
+        {n > 0 ? COP(n * valor) : "—"}
+      </span>
+    </div>
+  );
+};
+
+// ── Panel de un grupo (Billetes / Monedas) ──
+// Vive AFUERA de ArqueoEfectivo a propósito: si se define adentro, React
+// lo recrea en cada tecla y el input pierde el foco después del primer dígito.
+const Panel = ({ titulo, icono, badgeClase, lista, colores, conteo, total, onCambiar }) => (
+  <div className="arqueo-panel">
+    <div className="arqueo-panel-header">
+      <span className={`arqueo-badge-grupo ${badgeClase}`}>{icono}</span>
+      <h4>{titulo}</h4>
+      <span className="arqueo-panel-count">{lista.length} denominaciones</span>
+    </div>
+
+    <div className="arqueo-panel-body">
+      {lista.map((d, i) => (
+        <FilaDenominacion
+          key={d}
+          valor={d}
+          cantidad={conteo[String(d)]}
+          color={colores[i]}
+          onCambiar={onCambiar}
+        />
+      ))}
+    </div>
+
+    <div className="arqueo-panel-footer">
+      <span className={`arqueo-badge-grupo ${badgeClase}`}>{icono}</span>
+      <span>Total {titulo.toLowerCase()}</span>
+      <strong>{COP(total)}</strong>
+    </div>
+  </div>
+);
+// ─────────────────────────────────────────────────────────────
+// Panel de conteo de efectivo (se muestra al iniciar el cierre)
+// ─────────────────────────────────────────────────────────────
+const ArqueoEfectivo = ({ conteo, onCambiar, onLimpiar, esperado }) => {
+  const subtotal = (lista) =>
+    lista.reduce((acc, d) => acc + d * aEntero(conteo[String(d)]), 0);
+  const piezas = (lista) =>
+    lista.reduce((acc, d) => acc + aEntero(conteo[String(d)]), 0);
+
+  const totalBilletes = subtotal(BILLETES);
+  const totalMonedas  = subtotal(MONEDAS);
+  const totalContado  = totalBilletes + totalMonedas;
+  const diferencia    = totalContado - esperado.total;
+  const hayConteo     = totalContado > 0;
+
+  const estado =
+    diferencia === 0
+      ? { texto: "Caja cuadrada", clase: "arqueo-estado-cuadrada", icono: "✓" }
+      : diferencia > 0
+        ? { texto: "Sobrante", clase: "arqueo-estado-sobrante", icono: "▲" }
+        : { texto: "Faltante", clase: "arqueo-estado-faltante", icono: "▼" };
+
+
+
+  return (
+    <div className="arqueo">
+
+      {/* Encabezado */}
+      <div className="arqueo-header">
+        <div className="arqueo-header-info">
+          <span className="arqueo-header-icono">🧾</span>
+          <div>
+            <p className="arqueo-header-titulo">Arqueo de caja</p>
+            <p className="arqueo-header-sub">
+              Cuenta el efectivo que hay en la caja y verifica que cuadre con las ventas del día.
+            </p>
+          </div>
+        </div>
+
+        <button type="button" className="btn-ghost" onClick={onLimpiar} disabled={!hayConteo}>
+          Limpiar conteo
+        </button>
+      </div>
+
+      {/* Banner informativo */}
+      <div className="alerta-info arqueo-banner">
+        <span>ℹ️</span>
+        <span>Escribe cuántos billetes y monedas hay de cada valor. El total se calcula automáticamente.</span>
+      </div>
+
+      {/* Billetes / monedas / resumen */}
+      <div className="arqueo-layout">
+
+        <Panel
+          titulo="Billetes"
+          icono="💵"
+          badgeClase="arqueo-badge-grupo-billetes"
+          lista={BILLETES}
+          colores={COLORES_BILLETES}
+          conteo={conteo}
+          onCambiar={onCambiar}
+          total={totalBilletes}
+        />
+
+        <Panel
+          titulo="Monedas"
+          icono="🪙"
+          badgeClase="arqueo-badge-grupo-monedas"
+          lista={MONEDAS}
+          colores={COLORES_MONEDAS}
+          conteo={conteo}
+          onCambiar={onCambiar}
+          total={totalMonedas}
+        />
+
+        <div className="arqueo-col-resumen">
+
+          {/* Resumen del conteo */}
+          <div className="arqueo-card">
+            <p className="arqueo-card-titulo">
+              <span className="icono">📋</span> Resumen del arqueo
+            </p>
+
+            <div className="arqueo-linea">
+              <span className="label">💵 Total billetes</span>
+              <span className="valor-mono">{COP(totalBilletes)}</span>
+            </div>
+            <div className="arqueo-linea">
+              <span className="label">🪙 Total monedas</span>
+              <span className="valor-mono">{COP(totalMonedas)}</span>
+            </div>
+
+            <div className="arqueo-destacado">
+              <span className="label">💰 Total efectivo contado</span>
+              <span className="valor-mono">{COP(totalContado)}</span>
+            </div>
+          </div>
+
+          {/* Comparativo contra lo esperado */}
+          <div className="arqueo-card">
+            <p className="arqueo-card-titulo">
+              <span className="icono">⚖️</span> Comparativo
+            </p>
+
+            <div className="arqueo-linea">
+              <span className="label">💳 Monto inicial</span>
+              <span className="valor-mono">{COP(esperado.montoInicial)}</span>
+            </div>
+            <div className="arqueo-linea">
+              <span className="label">📈 + Efectivo cobrado en ventas</span>
+              <span className="valor-mono">{COP(esperado.efectivoVentas)}</span>
+            </div>
+            <div className="arqueo-linea">
+              <span className="label">➖ Egresos</span>
+              <span className="valor-mono">{COP(esperado.totalEgresos)}</span>
+            </div>
+
+            <div className="arqueo-destacado">
+              <span className="label">🎯 Efectivo esperado</span>
+              <span className="valor-mono">{COP(esperado.total)}</span>
+            </div>
+
+            {hayConteo ? (
+              <div className={`arqueo-estado ${estado.clase}`}>
+                <span>{estado.icono} {estado.texto}</span>
+                <span className="valor-mono">
+                  {diferencia > 0 ? "+" : diferencia < 0 ? "−" : ""}{COP(Math.abs(diferencia))}
+                </span>
+              </div>
+            ) : (
+              <p className="arqueo-hint">
+                <span>ℹ️</span> Empieza a contar para ver si la caja cuadra.
+              </p>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Componente principal Caja
 const Caja = ({ 
   cajaAbierta, 
@@ -66,6 +302,13 @@ const Caja = ({
 
   // NUEVO: venta actualmente abierta en el modal de detalle/edición (null = cerrado)
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
+
+  // NUEVO — ARQUEO: cantidades escritas por denominación y opción de omitir el conteo
+  const [conteo, setConteo] = useState(conteoVacio);
+  const [omitirConteo, setOmitirConteo] = useState(false);
+
+  const handleCambioConteo = (valor, cantidad) =>
+    setConteo((prev) => ({ ...prev, [String(valor)]: cantidad }));
 
   // Función para abrir la caja
   const handleAbrirCaja = () => {
@@ -93,12 +336,30 @@ const Caja = ({
 
     try {
 
+      // NUEVO: si hay conteo, se envía como argumento a onCerrarCaja para que
+      // el padre lo reenvíe al backend. Solo se mandan las CANTIDADES; los
+      // totales los recalcula el servidor.
+      const arqueo = omitirConteo
+        ? null
+        : {
+            conteo: Object.fromEntries(
+              [...BILLETES, ...MONEDAS].map((d) => [String(d), aEntero(conteo[String(d)])])
+            ),
+          };
+
       // Llama función del padre y espera la respuesta
-      const resultado = await onCerrarCaja();
+      const resultado = await onCerrarCaja(arqueo);
 
       // Si el backend devuelve un PDF, lo descarga
       if (resultado?.pdf) {
         descargarPDF(resultado.pdf);
+      }
+
+      // Cierre exitoso (el padre devuelve null si falló): se limpia el conteo
+      // para la próxima jornada. Si falló, se conserva para no tener que recontar.
+      if (resultado) {
+        setConteo(conteoVacio());
+        setOmitirConteo(false);
       }
 
     } finally {
@@ -141,6 +402,31 @@ const abrirEdicion = async (venta_id) => {
   const totalServicio  = ventas.reduce((acc, v) => acc + (parseFloat(v.servicio)  || 0), 0);
   const totalPropinas  = ventas.reduce((acc, v) => acc + (parseFloat(v.propina)   || 0), 0);
   const totalDescuentos = ventas.reduce((acc, v) => acc + (parseFloat(v.descuento) || 0), 0);
+
+  // NUEVO — ARQUEO: efectivo esperado en caja = monto inicial + efectivo cobrado − egresos.
+  // El efectivo se toma del desglose de pagos de cada venta (así las ventas de
+  // pago mixto aportan solo su parte en efectivo); si una venta no trae
+  // desglose, se usa su método de pago único.
+  const efectivoVentas = ventas.reduce((acc, v) => {
+    if (Array.isArray(v.pagos) && v.pagos.length) {
+      return acc + v.pagos
+        .filter((p) => String(p.metodo_pago).toLowerCase() === "efectivo")
+        .reduce((a, p) => a + (parseFloat(p.monto) || 0), 0);
+    }
+    return acc + (String(v.metodo_pago ?? "").toLowerCase() === "efectivo" ? (parseFloat(v.total) || 0) : 0);
+  }, 0);
+
+  const totalEgresos = (caja?.egresos ?? []).reduce(
+    (acc, e) => acc + (parseFloat(e.monto) || 0),
+    0
+  );
+
+  const esperadoEfectivo = {
+    montoInicial,
+    efectivoVentas,
+    totalEgresos,
+    total: montoInicial + efectivoVentas - totalEgresos,
+  };
 
   // Formatea la hora de apertura
   const horaApertura = caja?.apertura
@@ -314,7 +600,11 @@ const abrirEdicion = async (venta_id) => {
           {/* CIERRE DE CAJA */}
           {/* ============================ */}
 
-          <div className="admin-card caja-acciones-card">
+          {/* Al iniciar el cierre la tarjeta ocupa todo el ancho para que quepa el conteo de efectivo */}
+          <div
+            className="admin-card caja-acciones-card"
+            style={confirmandoCierre ? { gridColumn: "1 / -1" } : undefined}
+          >
 
             <h3 className="subtitulo">
               Cierre de jornada
@@ -330,7 +620,12 @@ const abrirEdicion = async (venta_id) => {
 
               <button
                 className="btn-peligro"
-                onClick={() => setConfirmandoCierre(true)}
+                onClick={() => {
+                  setConfirmandoCierre(true);
+                  // Refresca la caja para que el efectivo esperado incluya
+                  // las últimas ventas y egresos antes de contar.
+                  onCajaActualizada?.();
+                }}
               >
                 🔒 Cerrar caja
               </button>
@@ -340,7 +635,27 @@ const abrirEdicion = async (venta_id) => {
               // Confirmación antes de cerrar
               <div className="confirm-box">
 
-                <p>
+                {/* NUEVO: conteo de billetes y monedas antes de cerrar */}
+                <label className="arqueo-toggle">
+                  <input
+                    type="checkbox"
+                    checked={omitirConteo}
+                    onChange={(e) => setOmitirConteo(e.target.checked)}
+                    disabled={cerrando}
+                  />
+                  Cerrar sin conteo de efectivo
+                </label>
+
+                {!omitirConteo && (
+                  <ArqueoEfectivo
+                    conteo={conteo}
+                    onCambiar={handleCambioConteo}
+                    onLimpiar={() => setConteo(conteoVacio())}
+                    esperado={esperadoEfectivo}
+                  />
+                )}
+
+                <p style={{ marginTop: "0.85rem" }}>
                   ¿Confirmas el cierre? 
                   Se descargará el reporte PDF.
                 </p>
@@ -362,6 +677,7 @@ const abrirEdicion = async (venta_id) => {
                   <button
                     className="btn-ghost"
                     onClick={() => setConfirmandoCierre(false)}
+                    disabled={cerrando}
                   >
                     Cancelar
                   </button>

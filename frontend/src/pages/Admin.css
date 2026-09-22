@@ -266,15 +266,22 @@
   transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.22s ease;
 }
 
-.nav-panel.abierto { max-height: 480px; opacity: 1; padding: 8px; }
+.nav-panel.abierto {
+  max-height: min(480px, calc(100vh - 90px));
+  opacity: 1;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.nav-panel { gap: 6px; }
 
 .nav-panel-btn {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.85rem;
-  background: transparent;
-  border: 1px solid transparent;
+  gap: 0.55rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-light);
   border-radius: var(--r-sm);
   color: var(--text-2);
   font-size: 0.85rem;
@@ -285,7 +292,7 @@
   transition: all 0.15s ease;
 }
 
-.nav-panel-btn:hover { background: var(--bg-hover); color: var(--text-1); }
+.nav-panel-btn:hover { background: var(--amber-dim); color: var(--text-1); border-color: var(--amber-border); }
 
 .nav-panel-btn.activo {
   background: var(--amber-dim);
@@ -299,6 +306,7 @@
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .nav-panel { left: 8px; right: 8px; width: auto; grid-template-columns: 1fr; }
+  .nav-panel.abierto { max-height: calc(100vh - 76px); }
   .header-seccion-actual { display: none; }
 }
 
@@ -667,7 +675,7 @@ select.campo-input {
 @media (max-width: 640px) {
   .admin-header { padding: 0 0.9rem; }
   .admin-main   { padding: 1.25rem 0.9rem 3rem; }
-  .nav-label    { display: none; }
+  .nav-atajos .nav-label { display: none; }
   .nav-btn      { padding: 0.4rem 0.65rem; }
   .caja-acciones-card { grid-column: span 1; }
   .caja-abierta-grid  { grid-template-columns: 1fr 1fr; }
@@ -1490,4 +1498,308 @@ html.light-mode body:has(.admin-container) {
 @media (max-width: 640px) {
   .paginador-numeros .paginador-num:nth-child(n+4) { display: none; }
   .paginador-numeros .paginador-num.activo { display: flex; }
+}
+/* ══════════════════════════════════════════════════════════════
+   AGREGAR AL FINAL DE Admin.css
+   Estilos para el ARQUEO DE EFECTIVO (Caja.jsx)
+   Todo usa las variables de tema (--bg, --amber, etc.) así que
+   funciona igual en modo oscuro y en html.light-mode.
+══════════════════════════════════════════════════════════════ */
+
+.arqueo { margin-top: 0.75rem; }
+
+/* ── Encabezado ──────────────────────────────────────────────── */
+.arqueo-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.85rem;
+}
+
+.arqueo-header-info { display: flex; align-items: flex-start; gap: 0.65rem; }
+
+.arqueo-header-icono {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  background: var(--amber-dim);
+  border: 1px solid var(--amber-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.arqueo-header-titulo { font-size: 0.95rem; font-weight: 700; color: var(--text-1); }
+.arqueo-header-sub { font-size: 0.8rem; color: var(--text-2); margin-top: 0.15rem; }
+
+/* ── Banner informativo (reutiliza el look de .alerta-info) ─── */
+.arqueo-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Layout general: billetes | monedas | resumen ───────────── */
+.arqueo-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr minmax(260px, 320px);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.arqueo-col-resumen { display: flex; flex-direction: column; gap: 0.85rem; }
+
+/* ── Panel de billetes / monedas ─────────────────────────────── */
+.arqueo-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.arqueo-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.arqueo-panel-header .arqueo-badge-grupo {
+  width: 28px; height: 28px;
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.arqueo-badge-grupo-billetes { background: var(--green-dim); border: 1px solid var(--green-border); }
+.arqueo-badge-grupo-monedas  { background: var(--naranja-dim); border: 1px solid rgba(249,115,22,.3); }
+
+.arqueo-panel-header h4 { font-size: 0.9rem; font-weight: 700; color: var(--text-1); }
+
+.arqueo-panel-count {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-2);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 0.15rem 0.55rem;
+  white-space: nowrap;
+}
+
+.arqueo-panel-body { padding: 0.35rem 1rem; }
+
+/* ── Fila individual de denominación ────────────────────────── */
+.arqueo-fila {
+  display: grid;
+  grid-template-columns: 26px 68px 1fr 14px minmax(56px, auto);
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+}
+.arqueo-fila + .arqueo-fila { border-top: 1px solid var(--border); }
+
+.arqueo-fila-badge {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  border: 1px solid;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  flex-shrink: 0;
+}
+.arqueo-fila-badge.azul    { background: var(--blue-dim);   border-color: rgba(59,130,246,.3);  color: var(--blue); }
+.arqueo-fila-badge.morado  { background: var(--morado-dim); border-color: rgba(168,85,247,.3);  color: var(--morado); }
+.arqueo-fila-badge.verde   { background: var(--green-dim);  border-color: var(--green-border);  color: var(--green); }
+.arqueo-fila-badge.naranja { background: var(--naranja-dim);border-color: rgba(249,115,22,.3);  color: var(--naranja); }
+.arqueo-fila-badge.rojo    { background: var(--red-dim);    border-color: var(--red-border);    color: var(--red); }
+.arqueo-fila-badge.amber   { background: var(--amber-dim);  border-color: var(--amber-border);  color: var(--amber); }
+
+.arqueo-fila-valor {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-1);
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+}
+
+.arqueo-fila-input {
+  padding: 0.45rem 0.6rem !important;
+  text-align: right;
+  font-family: 'DM Mono', monospace;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.arqueo-fila-igual { color: var(--text-3); font-size: 0.85rem; text-align: center; }
+
+.arqueo-fila-subtotal {
+  text-align: right;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  color: var(--text-3);
+}
+.arqueo-fila-subtotal.con-valor { color: var(--amber); font-weight: 700; }
+
+/* ── Total del panel ─────────────────────────────────────────── */
+.arqueo-panel-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-top: 0.35rem;
+  background: var(--bg-hover);
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.arqueo-panel-footer .arqueo-badge-grupo { width: 22px; height: 22px; font-size: 0.75rem; }
+.arqueo-panel-footer strong {
+  margin-left: auto;
+  font-family: 'DM Mono', monospace;
+  color: var(--amber);
+  font-size: 0.92rem;
+}
+
+/* ── Tarjetas de la columna derecha (resumen / comparativo) ──── */
+.arqueo-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1rem 1.1rem;
+}
+
+.arqueo-card-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-1);
+  margin-bottom: 0.7rem;
+}
+.arqueo-card-titulo .icono { font-size: 0.95rem; }
+
+.arqueo-linea {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.32rem 0;
+  font-size: 0.83rem;
+  color: var(--text-2);
+}
+.arqueo-linea .label { display: flex; align-items: center; gap: 0.4rem; }
+.arqueo-linea .valor-mono { font-family: 'DM Mono', monospace; color: var(--text-1); }
+
+.arqueo-divisor { border-top: 1px solid var(--border); margin: 0.5rem 0; }
+
+/* Fila destacada: total contado / efectivo esperado */
+.arqueo-destacado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  margin-top: 0.35rem;
+  background: var(--amber-dim);
+  border: 1px solid var(--amber-border);
+  border-radius: var(--r-md);
+}
+.arqueo-destacado .label {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-size: 0.85rem; font-weight: 700; color: var(--text-1);
+}
+.arqueo-destacado .valor-mono {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--amber);
+}
+
+/* Estado de la diferencia (aparece bajo "Efectivo esperado") */
+.arqueo-estado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  margin-top: 0.6rem;
+  border-radius: var(--r-sm);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.arqueo-estado-cuadrada { background: var(--green-dim); border: 1px solid var(--green-border); color: var(--green); }
+.arqueo-estado-sobrante { background: var(--amber-dim); border: 1px solid var(--amber-border); color: var(--amber); }
+.arqueo-estado-faltante { background: var(--red-dim);   border: 1px solid var(--red-border);   color: var(--red); }
+
+.arqueo-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--text-2);
+}
+
+/* ── Toggle "cerrar sin conteo" ──────────────────────────────── */
+.arqueo-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-2);
+  margin: 0 0 0.85rem;
+  cursor: pointer;
+}
+.arqueo-toggle input[type="checkbox"] {
+  accent-color: var(--amber);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+/* ── Botón "Limpiar conteo" en el encabezado ────────────────── */
+.arqueo-header .btn-ghost { flex-shrink: 0; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 980px) {
+  .arqueo-layout { grid-template-columns: 1fr 1fr; }
+  .arqueo-col-resumen { grid-column: 1 / -1; flex-direction: row; }
+  .arqueo-col-resumen .arqueo-card { flex: 1; }
+}
+
+@media (max-width: 640px) {
+  .arqueo-layout { grid-template-columns: 1fr; }
+  .arqueo-col-resumen { flex-direction: column; }
+  .arqueo-header { flex-direction: column; }
+
+  /* La fila pasa a 2 renglones: arriba ícono + denominación + "=" + subtotal,
+     abajo el input a todo el ancho. Así el número nunca se monta encima
+     del campo, sin importar qué tan grande sea la letra. */
+  .arqueo-fila {
+    grid-template-columns: 22px 1fr 14px auto;
+    row-gap: 0.3rem;
+    column-gap: 0.4rem;
+    padding: 0.55rem 0;
+  }
+  .arqueo-fila-badge    { grid-row: 1; grid-column: 1; }
+  .arqueo-fila-valor    { grid-row: 1; grid-column: 2; }
+  .arqueo-fila-igual    { grid-row: 1; grid-column: 3; }
+  .arqueo-fila-subtotal { grid-row: 1; grid-column: 4; }
+  .arqueo-fila-input    {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    font-size: 1.05rem;
+  }
 }

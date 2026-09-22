@@ -1,0 +1,1798 @@
+/* ============================================================================
+   MesaSmart - Landing page styles
+   Autocontenido: solo toca elementos dentro de .landing, asi que se puede
+   importar junto a cualquier hoja global del resto de la app.
+
+   INDICE
+     1.  Tokens (tema claro / oscuro) y base
+     2.  Contenedores y encabezados de seccion
+     3.  Botones
+     4.  Logo
+     5.  Navbar
+     6.  Hero
+     7.  Modulos y beneficios (tarjetas)
+     8.  Planes
+     9.  Preguntas frecuentes
+     10. CTA final
+     11. Footer
+     12. Botones flotantes (WhatsApp / subir)
+     13. Modal de solicitud por WhatsApp
+     14. Animaciones
+     15. Movimiento reducido
+     16. Responsive
+   ============================================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap");
+
+/* -------------------------------------------------------------------------- */
+/* 1. Tokens y base                                                           */
+/* -------------------------------------------------------------------------- */
+.landing {
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Sora", "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --nav-h: 76px;
+
+  /* Ancho de la pagina: cambia estos dos valores y cambia TODO el layout.
+     --ms-max    = ancho maximo del contenido (sube el valor o pon 100% para
+                   ocupar toda la pantalla sin tope)
+     --ms-gutter = margen lateral, fluido segun el ancho de la ventana */
+  --ms-max: 1800px;
+  --ms-gutter: clamp(20px, 4.5vw, 88px);
+
+  --whatsapp: #22c55e;
+  --whatsapp-hover: #1ea851;
+
+  position: relative;
+  font-family: var(--font-sans);
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* overflow-x vive en main/footer (no en .landing) para no romper el navbar
+   sticky. "clip" no crea un contenedor de scroll, asi que tampoco rompe el
+   sticky del bloque de FAQ; "hidden" queda como respaldo. */
+.ms-main {
+  display: block;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+.landing[data-theme="light"] {
+  --bg: #f4f3ee;
+  --bg-muted: #eeece5;
+  --surface: #ffffff;
+  --surface-muted: #ebe9e2;
+  --border: #e3e1d7;
+  --text: #17181a;
+  --text-muted: #63625d;
+  --text-faint: #77756e;
+
+  --accent: #d3860f;
+  --accent-strong: #b96f08;
+  --accent-ink: #9a5a08; /* acento para TEXTO pequeno: cumple contraste AA */
+  --accent-soft: #fbe7c9;
+  --accent-soft-border: #eecea0;
+
+  --teal: #1b7f95;
+  --teal-soft: #d9eef3;
+
+  --shadow: 0 18px 45px -20px rgba(30, 24, 10, 0.22);
+  --shadow-sm: 0 8px 20px -12px rgba(30, 24, 10, 0.18);
+
+  --glow-1: radial-gradient(circle, rgba(211, 134, 15, 0.16), transparent 70%);
+  --glow-2: radial-gradient(circle, rgba(15, 110, 140, 0.14), transparent 70%);
+  --dot: rgba(23, 24, 26, 0.12);
+
+  --cta-bg: linear-gradient(135deg, #15222b 0%, #0d171d 100%);
+  --cta-text: #f6f4ee;
+  --cta-muted: #b7bcbd;
+}
+
+.landing[data-theme="dark"] {
+  --bg: #0a0a0b;
+  --bg-muted: #101012;
+  --surface: #161618;
+  --surface-muted: #1c1c1f;
+  --border: #2a2a2e;
+  --text: #f3f2ef;
+  --text-muted: #a7a6a1;
+  --text-faint: #8a8983;
+
+  --accent: #eda335;
+  --accent-strong: #f4b752;
+  --accent-ink: #f4b752;
+  --accent-soft: #2a2114;
+  --accent-soft-border: #4a380f;
+
+  --teal: #4fb0c6;
+  --teal-soft: #12262c;
+
+  --shadow: 0 25px 60px -20px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 10px 25px -12px rgba(0, 0, 0, 0.5);
+
+  --glow-1: radial-gradient(circle, rgba(237, 163, 53, 0.14), transparent 70%);
+  --glow-2: radial-gradient(circle, rgba(60, 130, 160, 0.16), transparent 70%);
+  --dot: rgba(255, 255, 255, 0.09);
+
+  --cta-bg: linear-gradient(135deg, #1d1a12 0%, #141416 100%);
+  --cta-text: #f3f2ef;
+  --cta-muted: #a7a6a1;
+}
+
+/* Fondo decorativo (brillos + puntos). Va absoluto sobre el primer tramo de la
+   pagina y cambia solo con el tema. El selector con .landing > lo protege de
+   la regla ".landing > *" de abajo, que si no lo dejaba con altura cero. */
+.landing > .landing__bg {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1000px;
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--glow-1), var(--glow-2);
+  background-position: top right, bottom left;
+  background-size: 60% 70%, 55% 60%;
+  background-repeat: no-repeat;
+  transition: background-image 0.35s ease;
+}
+
+.landing__bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.3px);
+  background-size: 26px 26px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+}
+
+.landing > * {
+  position: relative;
+  z-index: 1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.landing *::before,
+.landing *::after {
+  box-sizing: border-box;
+}
+
+.landing a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.landing button {
+  font-family: inherit;
+}
+
+.landing h1,
+.landing h2,
+.landing h3,
+.faq-item__question,
+.ms-modal__title {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.landing ::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* Foco visible para quien navega con teclado */
+.landing :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2. Contenedores y encabezados de seccion                                   */
+/* -------------------------------------------------------------------------- */
+.ms-eyebrow {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent-ink);
+  margin: 0 0 0.75rem;
+}
+
+.ms-section {
+  max-width: var(--ms-max);
+  margin: 0 auto;
+  padding: 96px var(--ms-gutter);
+  scroll-margin-top: var(--nav-h);
+}
+
+.ms-section--muted {
+  background: var(--bg-muted);
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.ms-section--muted > * {
+  max-width: var(--ms-max);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--ms-gutter);
+  padding-right: var(--ms-gutter);
+}
+
+.ms-section__title {
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  margin: 0 0 0.9rem;
+  max-width: 720px;
+  text-wrap: balance;
+}
+
+.ms-section__subtitle {
+  color: var(--text-muted);
+  font-size: 1.04rem;
+  line-height: 1.6;
+  max-width: 620px;
+  margin: 0 0 3.25rem;
+}
+
+/* Encabezados centrados: Modulos, Beneficios y Planes */
+#modulos .ms-eyebrow,
+#modulos .ms-section__title,
+#modulos .ms-section__subtitle,
+#beneficios .ms-eyebrow,
+#beneficios .ms-section__title,
+#beneficios .ms-section__subtitle,
+#planes .ms-eyebrow,
+#planes .ms-section__title,
+#planes .ms-section__subtitle {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 3. Botones                                                                 */
+/* -------------------------------------------------------------------------- */
+.ms-btn {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.18s ease, background-color 0.2s ease,
+    border-color 0.2s ease, box-shadow 0.25s ease, color 0.2s ease;
+  white-space: nowrap;
+}
+
+.ms-btn:hover {
+  transform: translateY(-2px);
+}
+
+.ms-btn:active {
+  transform: translateY(1px);
+}
+
+/* Destello que cruza el boton al pasar el mouse */
+.ms-btn--primary::after,
+.ms-btn--whatsapp::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.38) 50%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.65s ease;
+  pointer-events: none;
+}
+
+.ms-btn--primary:hover::after,
+.ms-btn--whatsapp:hover::after {
+  transform: translateX(120%);
+}
+
+.ms-btn--outline {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.ms-btn--outline:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-sm);
+}
+
+.ms-btn--primary {
+  background: var(--accent);
+  color: #1c1305;
+  box-shadow: var(--shadow-sm);
+}
+
+.ms-btn--primary:hover {
+  background: var(--accent-strong);
+  box-shadow: 0 14px 28px -12px color-mix(in srgb, var(--accent) 75%, transparent);
+}
+
+.ms-btn--whatsapp {
+  background: var(--whatsapp);
+  color: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+.ms-btn--whatsapp:hover {
+  background: var(--whatsapp-hover);
+  box-shadow: 0 14px 28px -12px rgba(34, 197, 94, 0.65);
+}
+
+/* Boton "outline" dentro del panel oscuro del CTA final */
+.ms-btn--on-dark {
+  background: transparent;
+  color: var(--cta-text);
+  border-color: color-mix(in srgb, var(--cta-text) 30%, transparent);
+}
+
+.ms-btn--on-dark:hover {
+  background: color-mix(in srgb, var(--cta-text) 10%, transparent);
+  border-color: var(--accent);
+  color: var(--cta-text);
+  box-shadow: none;
+}
+
+.ms-btn__icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.ms-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, transform 0.25s ease;
+}
+
+.ms-icon-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  transform: rotate(14deg);
+}
+
+.ms-icon-btn svg {
+  width: 19px;
+  height: 19px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 4. Logo                                                                    */
+/* -------------------------------------------------------------------------- */
+.ms-logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ms-logo__mark {
+  height: 40px;
+  width: auto;
+  flex-shrink: 0;
+  object-fit: contain;
+  filter: brightness(1);
+  transition: filter 0.2s ease;
+}
+
+.landing[data-theme="dark"] .ms-logo__mark {
+  filter: brightness(1.15);
+}
+
+.ms-logo--hero {
+  margin-bottom: 1.1rem;
+}
+
+.ms-logo--hero .ms-logo__mark {
+  height: 140px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 5. Navbar                                                                  */
+/* -------------------------------------------------------------------------- */
+.ms-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Al bajar un poco: fondo mas solido y sombra suave */
+.ms-nav--scrolled {
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  box-shadow: 0 12px 30px -20px rgba(20, 16, 6, 0.35);
+}
+
+/* Barra de progreso de lectura (usa --ms-progress, calculado en el JSX) */
+.ms-nav__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--teal));
+  transform-origin: left center;
+  transform: scaleX(var(--ms-progress, 0));
+  pointer-events: none;
+}
+
+.ms-nav__inner {
+  max-width: var(--ms-max);
+  margin: 0 auto;
+  height: var(--nav-h);
+  padding: 0 var(--ms-gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  transition: height 0.25s ease;
+}
+
+.ms-nav--scrolled .ms-nav__inner {
+  height: 64px;
+}
+
+.ms-nav__brand {
+  display: inline-flex;
+  transition: transform 0.2s ease;
+}
+
+.ms-nav__brand:hover {
+  transform: scale(1.04);
+}
+
+.ms-nav__links {
+  display: flex;
+  align-items: center;
+  gap: 2.1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.ms-nav__links a {
+  position: relative;
+  padding: 0.4rem 0;
+  transition: color 0.15s ease;
+}
+
+/* Subrayado animado: aparece al pasar el mouse y queda en la seccion activa */
+.ms-nav__links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.25s ease;
+}
+
+.ms-nav__links a:hover,
+.ms-nav__links a.is-active {
+  color: var(--text);
+}
+
+.ms-nav__links a:hover::after,
+.ms-nav__links a.is-active::after {
+  transform: scaleX(1);
+}
+
+.ms-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ms-nav__burger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.ms-nav__burger span {
+  height: 2px;
+  margin: 0 9px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+}
+
+/* La hamburguesa se convierte en X cuando el menu esta abierto */
+.ms-nav--open .ms-nav__burger span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.ms-nav--open .ms-nav__burger span:nth-child(2) {
+  opacity: 0;
+}
+
+.ms-nav--open .ms-nav__burger span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+.ms-nav__mobile {
+  display: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 6. Hero: texto a la izquierda, video a la derecha                          */
+/* -------------------------------------------------------------------------- */
+.ms-hero--split {
+  max-width: var(--ms-max);
+  margin: 0 auto;
+  padding: 40px var(--ms-gutter) 88px;
+  min-height: calc(100vh - var(--nav-h));
+  min-height: min(calc(100svh - var(--nav-h)), 940px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: clamp(2rem, 4vw, 4.5rem);
+  text-align: left;
+}
+
+.ms-hero__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ms-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-soft-border);
+  color: var(--accent-ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 1.5rem;
+}
+
+/* Punto "en vivo" con pulso suave */
+.ms-badge__dot {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-ink);
+}
+
+.ms-badge__dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--accent-ink);
+  animation: ms-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.ms-hero__title {
+  font-size: clamp(2.2rem, 3.5vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 1.3rem;
+}
+
+.ms-hero__title-accent {
+  color: var(--accent);
+}
+
+.ms-hero__subtitle {
+  font-size: 1.12rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+  max-width: 520px;
+  margin: 0 0 2.2rem;
+}
+
+.ms-hero__actions {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.ms-hero__trust {
+  display: flex;
+  gap: 0.7rem 1.5rem;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.ms-hero__trust span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ms-trust-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--whatsapp);
+  flex-shrink: 0;
+}
+
+/* Entrada del hero: una sola secuencia al cargar la pagina */
+.ms-hero__content > * {
+  animation: ms-rise 0.75s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.ms-hero__content > *:nth-child(1) { animation-delay: 0.05s; }
+.ms-hero__content > *:nth-child(2) { animation-delay: 0.12s; }
+.ms-hero__content > *:nth-child(3) { animation-delay: 0.2s; }
+.ms-hero__content > *:nth-child(4) { animation-delay: 0.28s; }
+.ms-hero__content > *:nth-child(5) { animation-delay: 0.36s; }
+.ms-hero__content > *:nth-child(6) { animation-delay: 0.44s; }
+
+.ms-hero__visual {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: ms-visual-in 0.95s cubic-bezier(0.2, 0.7, 0.2, 1) 0.25s backwards;
+}
+
+/* El marco se inclina un poco siguiendo el mouse (--rx / --ry desde el JSX)
+   y flota suavemente en reposo. */
+.ms-hero__image-frame {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: 900px;
+  transform: perspective(1400px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.3s ease-out;
+  animation: ms-float 8s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Resplandor detras del mockup */
+.ms-hero__image-frame::before {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  z-index: -1;
+  background:
+    radial-gradient(45% 55% at 32% 28%, color-mix(in srgb, var(--accent) 32%, transparent), transparent 70%),
+    radial-gradient(40% 50% at 78% 75%, color-mix(in srgb, var(--teal) 24%, transparent), transparent 70%);
+  filter: blur(34px);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.ms-hero__video {
+  width: 100%;
+  height: auto;
+  display: block;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 30px 45px -20px rgba(15, 12, 5, 0.32),
+    0 8px 14px rgba(15, 12, 5, 0.14);
+}
+
+.landing[data-theme="dark"] .ms-hero__video {
+  box-shadow:
+    0 30px 50px -20px rgba(0, 0, 0, 0.6),
+    0 8px 16px rgba(0, 0, 0, 0.45);
+}
+
+/* -------------------------------------------------------------------------- */
+/* 7. Modulos y beneficios (tarjetas)                                         */
+/* -------------------------------------------------------------------------- */
+.ms-grid--modules {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.ms-card,
+.ms-benefit {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.ms-card {
+  padding: 1.9rem;
+}
+
+.ms-benefit {
+  padding: 1.6rem 1.4rem;
+}
+
+.ms-card:hover,
+.ms-benefit:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+  border-color: var(--accent-soft-border);
+}
+
+/* Luz que sigue al mouse dentro de la tarjeta (--mx / --my desde el JSX) */
+.ms-card::after,
+.ms-benefit::after,
+.ms-plan::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    340px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--accent) 13%, transparent),
+    transparent 62%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.ms-card:hover::after,
+.ms-benefit:hover::after,
+.ms-plan:hover::after {
+  opacity: 1;
+}
+
+.ms-card__icon,
+.ms-benefit__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  transition: transform 0.25s ease, background-color 0.25s ease, color 0.25s ease;
+}
+
+.ms-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  margin-bottom: 1.1rem;
+}
+
+.ms-benefit__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  margin-bottom: 1rem;
+}
+
+/* El icono se "enciende" con el color de marca al pasar el mouse */
+.ms-card:hover .ms-card__icon,
+.ms-benefit:hover .ms-benefit__icon {
+  background: var(--accent);
+  color: #1c1305;
+  transform: rotate(-6deg) scale(1.08);
+}
+
+.ms-card__icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.ms-benefit__icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.ms-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.ms-card p {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.ms-benefits {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.ms-benefit h3 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.ms-benefit p {
+  color: var(--text-muted);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 8. Planes (encabezado de cada tarjeta centrado)                            */
+/* -------------------------------------------------------------------------- */
+.ms-grid--plans {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.75rem;
+  align-items: stretch;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ms-plan {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2.4rem 2.2rem 2.2rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.ms-plan:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+}
+
+.ms-plan--featured {
+  background: linear-gradient(165deg, var(--accent-soft) 0%, var(--surface) 62%);
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent),
+    var(--shadow);
+}
+
+.ms-plan--featured .ms-plan__note {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+/* Etiqueta "Mas completo" centrada sobre el borde superior */
+.ms-plan__badge {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: var(--accent);
+  color: #1c1305;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+}
+
+.ms-plan__label,
+.ms-plan__name,
+.ms-plan__price,
+.ms-plan__desc {
+  text-align: center;
+}
+
+.ms-plan__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  margin: 0 0 0.3rem;
+}
+
+.ms-plan__name {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0 0 0.8rem;
+}
+
+.ms-plan__price {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--accent-ink);
+  margin: 0 0 0.2rem;
+}
+
+.ms-plan__price span {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.ms-plan__desc {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  max-width: 36ch;
+  margin: 0.6rem auto 1.6rem;
+}
+
+.ms-plan__features {
+  list-style: none;
+  margin: 0 0 1.8rem;
+  padding: 1.6rem 0 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  flex: 1;
+}
+
+.ms-plan__features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.92rem;
+}
+
+.ms-plan__check {
+  width: 16px;
+  height: 16px;
+  color: var(--whatsapp);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.ms-plan__cta {
+  width: 100%;
+}
+
+.ms-plan__note {
+  margin-top: 1.2rem;
+  padding: 0.9rem 1rem;
+  background: var(--surface-muted);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.ms-plan__note b {
+  color: var(--text);
+}
+
+/* -------------------------------------------------------------------------- */
+/* 9. Preguntas frecuentes                                                    */
+/* -------------------------------------------------------------------------- */
+.ms-faq-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: start;
+}
+
+.ms-faq-intro {
+  position: sticky;
+  top: calc(var(--nav-h) + 32px);
+}
+
+.ms-faq-intro .ms-section__title,
+.ms-faq-intro .ms-section__subtitle {
+  max-width: none;
+}
+
+.ms-faq-intro .ms-section__subtitle {
+  margin-bottom: 2rem;
+}
+
+.ms-faq {
+  border-top: 1px solid var(--border);
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--border);
+}
+
+.faq-item__question {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 1.35rem 0.25rem;
+  font-size: 1.04rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.faq-item__question:hover,
+.faq-item.is-open .faq-item__question {
+  color: var(--accent-ink);
+}
+
+/* Icono "+" dentro de un circulo; al abrir gira y se vuelve "x" */
+.faq-item__icon {
+  width: 30px;
+  height: 30px;
+  padding: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent-ink);
+  transition: transform 0.3s ease, background-color 0.25s ease,
+    border-color 0.25s ease, color 0.25s ease;
+}
+
+.faq-item.is-open .faq-item__icon {
+  transform: rotate(135deg);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1c1305;
+}
+
+/* Acordeon con altura exacta (sin max-height fijo, no corta respuestas largas) */
+.faq-item__answer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s ease;
+}
+
+.faq-item.is-open .faq-item__answer {
+  grid-template-rows: 1fr;
+}
+
+.faq-item__answer-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.faq-item__answer p {
+  margin: 0 0.25rem 1.35rem;
+  color: var(--text-muted);
+  font-size: 0.96rem;
+  line-height: 1.65;
+  max-width: 640px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 10. CTA final: panel destacado                                             */
+/* -------------------------------------------------------------------------- */
+.ms-cta {
+  max-width: var(--ms-max);
+  margin: 0 auto;
+  padding: 24px var(--ms-gutter) 110px;
+}
+
+.ms-cta__panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  text-align: center;
+  padding: clamp(2.75rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem);
+  border-radius: calc(var(--radius-lg) + 8px);
+  background: var(--cta-bg);
+  color: var(--cta-text);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.ms-cta__panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(50% 70% at 88% 0%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 70%),
+    radial-gradient(45% 60% at 8% 100%, color-mix(in srgb, var(--teal) 30%, transparent), transparent 70%);
+}
+
+.ms-cta__panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1.3px);
+  background-size: 24px 24px;
+  -webkit-mask-image: radial-gradient(70% 90% at 50% 50%, #000 0%, transparent 100%);
+  mask-image: radial-gradient(70% 90% at 50% 50%, #000 0%, transparent 100%);
+}
+
+.ms-cta h2 {
+  font-size: clamp(1.7rem, 3.2vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.15;
+  max-width: 22ch;
+  margin: 0 auto 0.9rem;
+  text-wrap: balance;
+}
+
+.ms-cta p {
+  color: var(--cta-muted);
+  font-size: 1.05rem;
+  max-width: 46ch;
+  margin: 0 auto 2rem;
+}
+
+.ms-cta__actions {
+  display: flex;
+  gap: 0.9rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 11. Footer                                                                 */
+/* -------------------------------------------------------------------------- */
+.ms-footer {
+  position: relative;
+  border-top: 1px solid var(--border);
+  padding: 3rem var(--ms-gutter) 2.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  text-align: center;
+}
+
+/* Linea de acento sobre el borde superior */
+.ms-footer::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.7;
+}
+
+.ms-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.75rem;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.ms-footer__links a {
+  transition: color 0.15s ease;
+}
+
+.ms-footer__links a:hover {
+  color: var(--accent-ink);
+}
+
+.ms-footer p {
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 12. Botones flotantes                                                      */
+/* -------------------------------------------------------------------------- */
+.ms-float-whatsapp {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
+  width: 54px;
+  height: 54px;
+  border: none;
+  border-radius: 50%;
+  background: var(--whatsapp);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 14px 28px -10px rgba(34, 197, 94, 0.55);
+  transition: transform 0.18s ease, background-color 0.2s ease;
+}
+
+.ms-float-whatsapp:hover {
+  background: var(--whatsapp-hover);
+  transform: translateY(-2px) scale(1.05);
+}
+
+/* Aro que se expande para llamar la atencion */
+.ms-float-whatsapp::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 50%;
+  background: var(--whatsapp);
+  opacity: 0.45;
+  animation: ms-ping-lg 2.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.ms-float-whatsapp svg {
+  width: 26px;
+  height: 26px;
+}
+
+.ms-float-whatsapp__label {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translate(6px, -50%);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.ms-float-whatsapp:hover .ms-float-whatsapp__label,
+.ms-float-whatsapp:focus-visible .ms-float-whatsapp__label {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+.ms-to-top {
+  position: fixed;
+  right: 31px;
+  bottom: 92px;
+  z-index: 49;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s,
+    border-color 0.2s ease, color 0.2s ease;
+}
+
+.ms-to-top.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.ms-to-top.is-visible:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  transform: translateY(-2px);
+}
+
+.ms-to-top svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 13. Modal: solicitud de plan por WhatsApp                                  */
+/* -------------------------------------------------------------------------- */
+.ms-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(10, 9, 6, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: ms-fade 0.2s ease;
+}
+
+.ms-modal {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+  animation: ms-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ms-modal__icon {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--whatsapp) 16%, transparent);
+  color: var(--whatsapp);
+  margin-bottom: 1rem;
+}
+
+.ms-modal__icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.ms-modal__close {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.1rem;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.ms-modal__close:hover {
+  color: var(--text);
+  border-color: var(--accent-soft-border);
+  transform: rotate(90deg);
+}
+
+.ms-modal__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ms-modal__title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  padding-right: 2rem;
+}
+
+.ms-modal__subtitle {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 0 0 1.6rem;
+}
+
+.ms-modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ms-modal__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ms-modal__form input {
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 400;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ms-modal__form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* Validacion propia: reemplaza el tooltip nativo del navegador */
+.ms-modal__form input.has-error {
+  border-color: #e0483f;
+}
+
+.ms-modal__form input.has-error:focus {
+  border-color: #e0483f;
+  box-shadow: 0 0 0 3px rgba(224, 72, 63, 0.15);
+}
+
+.ms-field-error {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #e0483f;
+  margin-top: -0.15rem;
+}
+
+.ms-field-error svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.ms-modal__submit {
+  margin-top: 0.4rem;
+  width: 100%;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 14. Animaciones                                                            */
+/* -------------------------------------------------------------------------- */
+
+/* Aparicion al hacer scroll: el JSX agrega .is-visible al entrar en pantalla */
+.ms-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.ms-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Las tarjetas entran en cascada (--i lo pone el JSX). Se usa "backwards"
+   para que, al terminar, el hover siga funcionando. */
+.ms-reveal.is-visible .ms-card,
+.ms-reveal.is-visible .ms-benefit,
+.ms-reveal.is-visible .ms-plan,
+.ms-reveal.is-visible .faq-item {
+  animation: ms-rise-sm 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes ms-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+@keyframes ms-rise-sm {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@keyframes ms-visual-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px) scale(0.97);
+  }
+}
+
+@keyframes ms-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -9px;
+  }
+}
+
+@keyframes ms-ping {
+  75%,
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+@keyframes ms-ping-lg {
+  70%,
+  100% {
+    transform: scale(1.75);
+    opacity: 0;
+  }
+}
+
+@keyframes ms-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ms-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+@keyframes ms-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 15. Movimiento reducido: sin animaciones ni transiciones                   */
+/* -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .landing,
+  .landing *,
+  .landing *::before,
+  .landing *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .ms-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .ms-hero__image-frame {
+    transform: none !important;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 16. Responsive                                                             */
+/* -------------------------------------------------------------------------- */
+
+/* El plan destacado sobresale solo cuando las tarjetas van en fila */
+@media (min-width: 1001px) {
+  .ms-plan--featured {
+    transform: translateY(-10px);
+  }
+
+  .ms-plan--featured:hover {
+    transform: translateY(-14px);
+  }
+}
+
+@media (max-width: 1180px) {
+  /* 5 beneficios: 3 arriba y 2 abajo, sin huecos */
+  .ms-benefits {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .ms-benefit {
+    grid-column: span 2;
+  }
+
+  .ms-benefit:nth-child(n + 4) {
+    grid-column: span 3;
+  }
+}
+
+@media (max-width: 1000px) {
+  .ms-grid--modules {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ms-grid--plans {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
+}
+
+@media (max-width: 960px) {
+  .ms-hero--split {
+    grid-template-columns: 1fr;
+    text-align: center;
+    min-height: 0;
+    padding-top: 64px;
+  }
+
+  .ms-hero__content {
+    align-items: center;
+  }
+
+  .ms-hero__subtitle {
+    max-width: 560px;
+  }
+
+  .ms-hero__actions,
+  .ms-hero__trust {
+    justify-content: center;
+  }
+
+  .ms-hero__visual {
+    order: -1;
+    margin-bottom: 0.5rem;
+  }
+
+  .ms-hero__image-frame {
+    max-width: 560px;
+  }
+}
+
+@media (max-width: 860px) {
+  .ms-faq-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .ms-faq-intro {
+    position: static;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .ms-nav__links,
+  .ms-nav__login {
+    display: none;
+  }
+
+  .ms-nav__burger {
+    display: flex;
+  }
+
+  .ms-nav--open .ms-nav__mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding: 1.4rem var(--ms-gutter) 1.8rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    animation: ms-drop 0.25s ease;
+  }
+
+  .ms-nav--open .ms-nav__mobile a {
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .ms-nav--open .ms-nav__mobile a.is-active {
+    color: var(--accent-ink);
+  }
+
+  .ms-nav--open .ms-nav__mobile .ms-btn {
+    color: var(--text);
+  }
+}
+
+@media (max-width: 640px) {
+  .ms-section {
+    padding-top: 64px;
+    padding-bottom: 64px;
+  }
+
+  .ms-hero--split {
+    padding: 56px var(--ms-gutter) 64px;
+  }
+
+  .ms-hero__actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .ms-hero__actions .ms-btn {
+    width: 100%;
+  }
+
+  .ms-grid--modules {
+    grid-template-columns: 1fr;
+  }
+
+  .ms-benefits {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ms-benefit,
+  .ms-benefit:nth-child(n + 4) {
+    grid-column: auto;
+  }
+
+  .ms-benefit:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .ms-hero__image-frame {
+    max-width: 380px;
+  }
+
+  .ms-cta {
+    padding-bottom: 80px;
+  }
+
+  .ms-cta__actions {
+    flex-direction: column;
+  }
+
+  .ms-cta__actions .ms-btn {
+    width: 100%;
+  }
+
+  .ms-modal {
+    padding: 1.6rem;
+  }
+
+  .ms-float-whatsapp__label {
+    display: none;
+  }
+
+  .ms-float-whatsapp {
+    right: 18px;
+    bottom: 18px;
+  }
+
+  .ms-to-top {
+    right: 25px;
+    bottom: 84px;
+  }
+}
