@@ -1,67 +1,30 @@
 // frontend/src/components/admin/DetalleMesa.jsx
 //
 // ══════════════════════════════════════════════════════════════════
-// REDISEÑO — sigue sin depender de ningún CSS propio ("detalle-mesa.css"
-// no existe más). Todo el estilo sale de las clases ya existentes en
-// Admin.css (las mismas que usan Egresos.jsx, Usuarios, Caja, Dashboard):
-//   modal-overlay / modal-box / modal-header / modal-body / modal-footer
-//   tab-selector / tab-btn, campo-grupo / campo-label / campo-input
-//   chip / chip-verde / chip-amber / chip-rojo / chip-neutro / chip-metodo
-//   tabla / tabla-wrapper / th-* / td-*
-//   btn-primario / btn-secundario / btn-ghost / btn-peligro / btn-ancho
-//   admin-card, division-panel, detalle-total, estado-vacio, alerta-*
-//   dashboard-grid / metrica-card / metrica-etiqueta / metrica-valor / metrica-sub
-// No se agregó ninguna clase nueva a Admin.css. Admin.css NO se toca.
+// PASE 3 — MEJORA VISUAL DE 2 MODALES (solo estética + 1 fix, cero
+// cambios de lógica de negocio, cero clases nuevas en Admin.css):
 //
-// PASE 2 — PULIDO VISUAL (solo dentro de este archivo, vía `style`
-// inline con las variables/tokens que ya existen en Admin.css; cero
-// cambios de lógica de negocio, cero clases nuevas, cero archivo CSS
-// nuevo):
+// 1. Modal interno (createPortal) — el `ancho` ahora se aplica con
+//    `min(ancho, 95vw)` para que en celular nunca se desborde, igual
+//    que se hizo en el Modal.jsx compartido.
 //
-// 1. Botones que antes se veían "solo como texto" (btn-ghost y
-//    btn-secundario en este archivo específicamente: "Mover productos",
-//    "Dividir cuenta", "Cancelar división", "Cancelar" de los modales,
-//    "➕ Nueva subcuenta", "→ Mover", "← Quitar 1") ahora llevan un
-//    fondo/borde permanente (no solo en :hover) usando los mismos
-//    tokens de color que ya usa "Cobrar" (var(--amber-dim),
-//    var(--bg-hover), etc.). Se centralizó en dos constantes de estilo
-//    (ESTILO_BTN_GHOST / ESTILO_BTN_SECUNDARIO) para que quede
-//    consistente en todo el componente.
-// 2. Tira de MÉTRICAS: cada tarjeta ahora tiene un acento de color
-//    distinto en el borde superior (ámbar / azul / morado / verde —
-//    todos tokens que ya existían) para diferenciarlas de un vistazo,
-//    en vez de verse todas idénticas.
-// 3. Los paneles de división (selección simple y subcuentas) ahora
-//    tienen sombra (var(--shadow), ya definida en Admin.css) para dar
-//    más profundidad, en vez de verse planos.
-// 4. La tarjeta de subcuenta activa ahora anima el glow/borde con una
-//    transición suave en vez de "saltar" al seleccionarse.
+// 2. ModalConfigurarCobro ("💳 Cobrar cuenta principal" / cobro
+//    parcial / cobro de subcuenta): pasó de 460px a 800px y ahora usa
+//    un layout de 2 columnas (grid con auto-fit, sin media queries):
+//    izquierda = descuento/servicio/propina/métodos de pago, derecha =
+//    resumen de totales. En pantallas angostas las columnas se apilan
+//    solas. Toda la lógica de cálculo y de pagos es exactamente la
+//    misma.
 //
-// 2. FIX DE BUG (pase anterior) — los modales (cobrar, PIN, mover,
-//    subcuentas) se renderizan con un PORTAL (`createPortal` hacia
-//    `document.body`) en vez de quedar anidados dentro del árbol de
-//    la página. Esto es lo que causaba que el modal se viera
-//    "pegado"/recortado arriba: si algún contenedor padre (p. ej. la
-//    transición entre pestañas del admin) tiene `transform`, rompe el
-//    `position: fixed` de cualquier hijo no-portal y lo desalinea del
-//    viewport real. Con el portal, el modal siempre cubre la pantalla
-//    completa sin importar dónde esté anidado en el árbol de
-//    componentes.
-// 3. El modal tiene `max-height` con scroll interno propio, así que
-//    aunque el contenido sea alto (el de cobrar, por ejemplo) nunca se
-//    corta ni se sale del viewport — el cuadro siempre se ve completo.
-// 4. Tira de MÉTRICAS arriba del detalle (reutiliza dashboard-grid /
-//    metrica-card, igual que Egresos): Total mesa, Ítems, Ticket
-//    promedio, y — solo cuando aplica — Subcuentas activas.
-// 5. Las líneas de método de pago muestran un chip de color
-//    (chip-metodo, ya definido en Admin.css para efectivo/tarjeta/
-//    transferencia) para identificar cada método de un vistazo.
+// 3. ModalMoverItems ("🔀 Mover productos a otra mesa"): pasó de
+//    480px a 620px. Se reemplazó la tabla plana por una lista de
+//    tarjetas de producto (usa .admin-card, .chip, mismos tokens de
+//    color), más fácil de escanear y con mejor feedback visual al
+//    seleccionar. El botón "Mover" ahora también muestra el total
+//    seleccionado. La lógica de selección/mover es la misma.
 //
-// La LÓGICA es exactamente la misma que ya tenías: optimistic update
-// de cantidades, eliminar con PIN, mover productos entre mesas, pago
-// total, pago parcial por selección, subcuentas, pago mixto (varias
-// líneas de método+monto), descuento/servicio/propina y validación
-// de caja.
+// El resto del archivo (lógica de subcuentas, pago mixto, optimistic
+// updates, PIN, portal de modales, etc.) permanece sin cambios.
 //
 // onPagoTotal(metodoPago, resumen) y onPagoParcial(items, metodoPago, resumen)
 // siguen recibiendo `resumen` con:
@@ -88,11 +51,8 @@ const money = (v) => `$${Math.round(num(v)).toLocaleString("es-CO")}`;
 const TOLERANCIA_CUADRE = 1;
 
 // ══════════════════════════════════════════════════════════════════
-// ESTILOS INLINE REUTILIZABLES (pase 2 — solo estética, no lógica)
-// Se centralizan acá para no repetir el mismo objeto en cada botón y
-// para que sea fácil de ajustar en un solo lugar. Usan únicamente
-// variables/tokens que YA existen en Admin.css — no se inventa ningún
-// color nuevo.
+// ESTILOS INLINE REUTILIZABLES — solo estética, no lógica.
+// Usan únicamente variables/tokens que YA existen en Admin.css.
 // ══════════════════════════════════════════════════════════════════
 const ESTILO_BTN_GHOST = {
   background: "var(--bg-hover)",
@@ -152,8 +112,9 @@ const calcularResumenCuenta = (items, opciones = {}) => {
 // ══════════════════════════════════════════════════════════════════
 // Modal genérico — renderizado con un PORTAL hacia document.body para
 // que SIEMPRE cubra el viewport completo sin importar en qué parte
-// del árbol de componentes esté montado (ver nota del encabezado).
-// Incluye scroll interno propio para que el contenido nunca se corte.
+// del árbol de componentes esté montado. Incluye scroll interno propio
+// para que el contenido nunca se corte. `ancho` se aplica con
+// `min(ancho, 95vw)` para que en celular nunca se desborde.
 // ══════════════════════════════════════════════════════════════════
 const Modal = ({ titulo, peligro, ancho, footer, children, onCerrar }) => {
   const contenido = (
@@ -161,7 +122,7 @@ const Modal = ({ titulo, peligro, ancho, footer, children, onCerrar }) => {
       <div
         className="modal-box"
         style={{
-          maxWidth: ancho || "420px",
+          maxWidth: ancho ? `min(${ancho}, 95vw)` : "min(420px, 95vw)",
           maxHeight: "88vh",
           display: "flex",
           flexDirection: "column",
@@ -185,7 +146,7 @@ const Modal = ({ titulo, peligro, ancho, footer, children, onCerrar }) => {
 
 // ── Modal PIN eliminar ────────────────────────────────────────────
 const ModalPin = ({ item, onConfirmar, onCerrar }) => {
-  const [pin, setPin]     = useState("");
+  const [pin, setPin] = useState("");
   const [error, setError] = useState("");
 
   const handleConfirmar = () => {
@@ -232,26 +193,36 @@ const ModalPin = ({ item, onConfirmar, onCerrar }) => {
   );
 };
 
-// ── Modal mover items entre MESAS ────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// Modal mover items entre MESAS.
+// REDISEÑO: la tabla plana se reemplazó por una lista de tarjetas de
+// producto (checkbox + nombre + precio unitario + cantidad), con
+// estado de selección visible (fondo/borde ámbar). Misma lógica de
+// selección y de mover que antes.
+// ══════════════════════════════════════════════════════════════════
 const ModalMoverItems = ({ pedido, mesas, mesaActual, onMover, onCerrar }) => {
   const [indicesSeleccionados, setIndicesSeleccionados] = useState([]);
-  const [mesaDestinoId, setMesaDestinoId]               = useState("");
-  const [procesando, setProcesando]                      = useState(false);
+  const [mesaDestinoId, setMesaDestinoId] = useState("");
+  const [procesando, setProcesando] = useState(false);
 
   const mesasDestino = mesas.filter((m) => m.id !== mesaActual.id && m.ocupada && m.pedido?.length > 0);
-  const mesasLibres  = mesas.filter((m) => m.id !== mesaActual.id && !m.ocupada);
+  const mesasLibres = mesas.filter((m) => m.id !== mesaActual.id && !m.ocupada);
 
   const toggleItem = (idx) =>
     setIndicesSeleccionados((prev) =>
       prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
     );
 
+  const todosSeleccionados = indicesSeleccionados.length === pedido.length && pedido.length > 0;
+
   const toggleTodos = () =>
-    setIndicesSeleccionados(
-      indicesSeleccionados.length === pedido.length ? [] : pedido.map((_, i) => i)
-    );
+    setIndicesSeleccionados(todosSeleccionados ? [] : pedido.map((_, i) => i));
 
   const itemsSeleccionados = indicesSeleccionados.map((i) => pedido[i]).filter(Boolean);
+
+  const totalSeleccionado = itemsSeleccionados.reduce(
+    (acc, i) => acc + num(i.precio) * num(i.cantidad), 0
+  );
 
   const handleMover = async () => {
     if (!mesaDestinoId || !itemsSeleccionados.length) return;
@@ -264,7 +235,7 @@ const ModalMoverItems = ({ pedido, mesas, mesaActual, onMover, onCerrar }) => {
   return (
     <Modal
       titulo="🔀 Mover productos a otra mesa"
-      ancho="480px"
+      ancho="620px"
       onCerrar={onCerrar}
       footer={
         <>
@@ -274,55 +245,79 @@ const ModalMoverItems = ({ pedido, mesas, mesaActual, onMover, onCerrar }) => {
             onClick={handleMover}
             disabled={!itemsSeleccionados.length || !mesaDestinoId || procesando}
           >
-            {procesando ? "Moviendo..." : `Mover (${itemsSeleccionados.length})`}
+            {procesando
+              ? "Moviendo..."
+              : itemsSeleccionados.length
+                ? `Mover (${itemsSeleccionados.length}) · ${money(totalSeleccionado)}`
+                : "Mover"}
           </button>
         </>
       }
     >
-      <p className="texto-secundario" style={{ marginBottom: "0.6rem" }}>
-        Selecciona los productos que deseas mover:
-      </p>
-
-      <div className="tabla-wrapper">
-        <table className="tabla">
-          <thead>
-            <tr>
-              <th className="th-check">
-                <input
-                  type="checkbox"
-                  checked={indicesSeleccionados.length === pedido.length && pedido.length > 0}
-                  onChange={toggleTodos}
-                />
-              </th>
-              <th>Producto</th>
-              <th className="th-num">Cant.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pedido.map((item, idx) => (
-              <tr
-                key={idx}
-                className={indicesSeleccionados.includes(idx) ? "fila-seleccionada" : ""}
-                style={{ cursor: "pointer" }}
-                onClick={() => toggleItem(idx)}
-              >
-                <td className="td-center">
-                  <input
-                    type="checkbox"
-                    checked={indicesSeleccionados.includes(idx)}
-                    onChange={() => toggleItem(idx)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </td>
-                <td className="td-nombre">{item.nombre}</td>
-                <td className="td-num">×{num(item.cantidad)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.9rem", gap: "0.5rem", flexWrap: "wrap" }}>
+        <p className="texto-secundario" style={{ margin: 0 }}>
+          Selecciona los productos que deseas mover:
+        </p>
+        <button
+          className="btn-ghost"
+          style={{ ...ESTILO_BTN_GHOST, fontSize: "0.78rem", padding: "0.35rem 0.75rem" }}
+          onClick={toggleTodos}
+        >
+          {todosSeleccionados ? "Deseleccionar todo" : "Seleccionar todo"}
+        </button>
       </div>
 
-      <div className="campo-grupo" style={{ marginTop: "1rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.25rem" }}>
+        {pedido.map((item, idx) => {
+          const seleccionado = indicesSeleccionados.includes(idx);
+          return (
+            <div
+              key={idx}
+              onClick={() => toggleItem(idx)}
+              className="admin-card"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.85rem",
+                padding: "0.75rem 1rem",
+                cursor: "pointer",
+                borderColor: seleccionado ? "var(--amber-border)" : "var(--border)",
+                background: seleccionado ? "var(--amber-dim)" : "var(--bg-card)",
+                boxShadow: "none",
+                transition: "background 0.15s ease, border-color 0.15s ease",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={seleccionado}
+                onChange={() => toggleItem(idx)}
+                onClick={(e) => e.stopPropagation()}
+                style={{ width: "1.05rem", height: "1.05rem", accentColor: "var(--amber)", flexShrink: 0 }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text-1)" }}>{item.nombre}</p>
+                <p className="texto-muted" style={{ fontSize: "0.76rem", marginTop: "0.1rem" }}>
+                  {money(item.precio)} c/u
+                </p>
+              </div>
+              <span className="chip chip-neutro" style={{ flexShrink: 0 }}>×{num(item.cantidad)}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Pequeño resumen de la selección antes de elegir mesa destino —
+          mismo patrón visual que "division-resumen" en el modo de
+          división simple, para que se sienta consistente con el resto
+          de la app. Solo aparece cuando hay algo seleccionado. */}
+      {itemsSeleccionados.length > 0 && (
+        <div className="division-resumen" style={{ marginBottom: "0.9rem" }}>
+          <span>{itemsSeleccionados.length} producto(s) seleccionado(s)</span>
+          <strong>{money(totalSeleccionado)}</strong>
+        </div>
+      )}
+
+      <div className="campo-grupo" style={{ marginBottom: 0 }}>
         <label className="campo-label">Mesa de destino</label>
         <select
           className="campo-input"
@@ -437,17 +432,17 @@ const ModalCantidadSubcuenta = ({ item, disponible, subcuentaNombre, onConfirmar
 // PAGO MIXTO). Se usa para el cobro total de la mesa, para pago
 // parcial (selección simple) y para el cobro de una subcuenta.
 //
-// El pago se arma como una LISTA de líneas { id, metodo, monto }.
-// Por defecto arranca con una sola línea = el total completo. El
-// usuario puede agregar más líneas para dividir el cobro. No se deja
-// confirmar mientras la suma de las líneas no cuadre con el total.
+// REDISEÑO: ahora usa 2 columnas (grid con auto-fit, sin media
+// queries): izquierda = formulario completo, derecha = resumen de
+// totales. En pantallas angostas se apilan solas. La lógica de
+// cálculo y de líneas de pago es exactamente la misma que antes.
 // ══════════════════════════════════════════════════════════════════
 const ModalConfigurarCobro = ({ titulo, items, onConfirmar, onCerrar }) => {
-  const [descuentoTipo, setDescuentoTipo]     = useState(null);
-  const [descuentoMonto, setDescuentoMonto]   = useState("");
-  const [servicioActivo, setServicioActivo]   = useState(false);
-  const [propina, setPropina]                 = useState("");
-  const [procesando, setProcesando]           = useState(false);
+  const [descuentoTipo, setDescuentoTipo] = useState(null);
+  const [descuentoMonto, setDescuentoMonto] = useState("");
+  const [servicioActivo, setServicioActivo] = useState(false);
+  const [propina, setPropina] = useState("");
+  const [procesando, setProcesando] = useState(false);
 
   const resumen = calcularResumenCuenta(items, {
     descuentoTipo,
@@ -513,7 +508,7 @@ const ModalConfigurarCobro = ({ titulo, items, onConfirmar, onCerrar }) => {
   return (
     <Modal
       titulo={titulo || "💳 Configurar cobro"}
-      ancho="460px"
+      ancho="800px"
       onCerrar={onCerrar}
       footer={
         <>
@@ -524,154 +519,181 @@ const ModalConfigurarCobro = ({ titulo, items, onConfirmar, onCerrar }) => {
         </>
       }
     >
-      {/* Descuento */}
-      <div className="campo-grupo">
-        <label className="campo-label">Descuento</label>
-        <div className="metodo-selector">
-          <button
-            className={`btn-metodo ${descuentoTipo === null ? "activo" : ""}`}
-            onClick={() => { setDescuentoTipo(null); setDescuentoMonto(""); }}
-          >
-            Sin descuento
-          </button>
-          {DESCUENTOS_PRESET.map((p) => (
-            <button
-              key={p}
-              className={`btn-metodo ${descuentoTipo === String(p) ? "activo" : ""}`}
-              onClick={() => setDescuentoTipo(String(p))}
-            >
-              {p}%
-            </button>
-          ))}
-          <button
-            className={`btn-metodo ${descuentoTipo === "personalizado" ? "activo" : ""}`}
-            onClick={() => setDescuentoTipo("personalizado")}
-          >
-            Monto
-          </button>
-        </div>
-        {descuentoTipo === "personalizado" && (
-          <input
-            className="campo-input"
-            type="number"
-            min={0}
-            max={resumen.consumo}
-            placeholder="Valor del descuento"
-            style={{ marginTop: "0.6rem" }}
-            value={descuentoMonto}
-            onChange={(e) => setDescuentoMonto(Math.max(0, num(e.target.value)))}
-          />
-        )}
-      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem", alignItems: "start" }}>
 
-      <hr />
+        {/* ── Columna izquierda: formulario ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem", minWidth: 0 }}>
 
-      {/* Servicio 10% */}
-      <div className="campo-grupo">
-        <label className="campo-label">Servicio del 10% (opcional)</label>
-        <label
-          className="texto-secundario"
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}
-        >
-          <input
-            type="checkbox"
-            checked={servicioActivo}
-            onChange={() => setServicioActivo((s) => !s)}
-            style={{ accentColor: "var(--amber)", width: "1rem", height: "1rem" }}
-          />
-          El cliente acepta el servicio del 10%
-        </label>
-      </div>
-
-      {/* Propina */}
-      <div className="campo-grupo">
-        <label className="campo-label">Propina (voluntaria)</label>
-        <input
-          className="campo-input"
-          type="number"
-          min={0}
-          placeholder="$ 0"
-          value={propina}
-          onChange={(e) => setPropina(Math.max(0, num(e.target.value)))}
-        />
-      </div>
-
-      <hr />
-
-      {/* Métodos de pago — una o varias líneas */}
-      <div className="campo-grupo">
-        <label className="campo-label">Métodos de pago</label>
-        {pagos.map((p) => (
-          <div key={p.id} style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.5rem" }}>
-            <span className={`chip chip-metodo ${CLASE_METODO[p.metodo]}`} style={{ flexShrink: 0 }}>
-              {ICONO_METODO[p.metodo]}
-            </span>
-            <select
-              className="campo-input"
-              style={{ maxWidth: "150px" }}
-              value={p.metodo}
-              onChange={(e) => actualizarPago(p.id, "metodo", e.target.value)}
-            >
-              {METODOS_PAGO.map((m) => (
-                <option key={m} value={m}>{ICONO_METODO[m]} {m}</option>
+          {/* Descuento */}
+          <div className="campo-grupo" style={{ marginBottom: 0 }}>
+            <label className="campo-label">Descuento</label>
+            <div className="metodo-selector">
+              <button
+                className={`btn-metodo ${descuentoTipo === null ? "activo" : ""}`}
+                onClick={() => { setDescuentoTipo(null); setDescuentoMonto(""); }}
+              >
+                Sin descuento
+              </button>
+              {DESCUENTOS_PRESET.map((p) => (
+                <button
+                  key={p}
+                  className={`btn-metodo ${descuentoTipo === String(p) ? "activo" : ""}`}
+                  onClick={() => setDescuentoTipo(String(p))}
+                >
+                  {p}%
+                </button>
               ))}
-            </select>
+              <button
+                className={`btn-metodo ${descuentoTipo === "personalizado" ? "activo" : ""}`}
+                onClick={() => setDescuentoTipo("personalizado")}
+              >
+                Monto
+              </button>
+            </div>
+            {descuentoTipo === "personalizado" && (
+              <input
+                className="campo-input"
+                type="number"
+                min={0}
+                max={resumen.consumo}
+                placeholder="Valor del descuento"
+                style={{ marginTop: "0.6rem" }}
+                value={descuentoMonto}
+                onChange={(e) => setDescuentoMonto(Math.max(0, num(e.target.value)))}
+              />
+            )}
+          </div>
+
+          <hr style={{ margin: 0 }} />
+
+          {/* Servicio 10% */}
+          <div className="campo-grupo" style={{ marginBottom: 0 }}>
+            <label className="campo-label">Servicio del 10% (opcional)</label>
+            <label
+              className="texto-secundario"
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}
+            >
+              <input
+                type="checkbox"
+                checked={servicioActivo}
+                onChange={() => setServicioActivo((s) => !s)}
+                style={{ accentColor: "var(--amber)", width: "1rem", height: "1rem" }}
+              />
+              El cliente acepta el servicio del 10%
+            </label>
+          </div>
+
+          {/* Propina */}
+          <div className="campo-grupo" style={{ marginBottom: 0 }}>
+            <label className="campo-label">Propina (voluntaria)</label>
             <input
               className="campo-input"
               type="number"
               min={0}
               placeholder="$ 0"
-              value={p.monto}
-              onChange={(e) => actualizarPago(p.id, "monto", e.target.value)}
+              value={propina}
+              onChange={(e) => setPropina(Math.max(0, num(e.target.value)))}
             />
-            {pagos.length > 1 && (
-              <button
-                className="btn-ghost"
-                style={{ ...ESTILO_BTN_GHOST, padding: "0 0.6rem" }}
-                onClick={() => quitarLineaPago(p.id)}
+          </div>
+
+          <hr style={{ margin: 0 }} />
+
+          {/* Métodos de pago — una o varias líneas.
+              FIX de alineación: antes el <select> solo tenía un
+              `maxWidth`, sin ancho fijo ni flex-basis, así que su ancho
+              REAL cambiaba según el texto de la opción elegida
+              ("Efectivo" mide distinto que "Tarjeta"), corriendo todo lo
+              que venía después en cada fila. Ahora es un grid con
+              columnas de ancho fijo (ícono / select / monto / botón), así
+              todas las filas quedan alineadas sin importar el método
+              elegido ni cuántas líneas agregues. */}
+          <div className="campo-grupo" style={{ marginBottom: 0 }}>
+            <label className="campo-label">Métodos de pago</label>
+            {pagos.map((p) => (
+              <div
+                key={p.id}
+                style={{ display: "grid", gridTemplateColumns: "38px 150px 1fr auto", gap: "0.5rem", alignItems: "stretch", marginBottom: "0.5rem" }}
               >
-                ✕
-              </button>
+                <span
+                  className={`chip chip-metodo ${CLASE_METODO[p.metodo]}`}
+                  style={{ width: "100%", minHeight: "2.5rem", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, borderRadius: "8px" }}
+                >
+                  {ICONO_METODO[p.metodo]}
+                </span>
+                <select
+                  className="campo-input"
+                  style={{ width: "100%" }}
+                  value={p.metodo}
+                  onChange={(e) => actualizarPago(p.id, "metodo", e.target.value)}
+                >
+                  {METODOS_PAGO.map((m) => (
+                    <option key={m} value={m}>{ICONO_METODO[m]} {m}</option>
+                  ))}
+                </select>
+                <input
+                  className="campo-input"
+                  style={{ width: "100%" }}
+                  type="number"
+                  min={0}
+                  placeholder="$ 0"
+                  value={p.monto}
+                  onChange={(e) => actualizarPago(p.id, "monto", e.target.value)}
+                />
+                {pagos.length > 1 ? (
+                  <button
+                    className="btn-ghost"
+                    style={{ ...ESTILO_BTN_GHOST, padding: "0 0.6rem" }}
+                    onClick={() => quitarLineaPago(p.id)}
+                  >
+                    ✕
+                  </button>
+                ) : (
+                  <span />
+                )}
+              </div>
+            ))}
+            <button
+              className="btn-ghost"
+              style={{ ...ESTILO_BTN_GHOST, fontSize: "0.8rem" }}
+              onClick={agregarLineaPago}
+            >
+              + Dividir entre otro método
+            </button>
+
+            {!cuadra && (
+              <p className="alerta-error" style={{ marginTop: "0.6rem" }}>
+                {diferencia > 0
+                  ? `Falta asignar ${money(diferencia)} para completar el total.`
+                  : `Los montos suman ${money(Math.abs(diferencia))} de más.`}
+              </p>
             )}
           </div>
-        ))}
-        <button
-          className="btn-ghost"
-          style={{ ...ESTILO_BTN_GHOST, fontSize: "0.8rem" }}
-          onClick={agregarLineaPago}
+        </div>
+
+        {/* ── Columna derecha: resumen en tiempo real ── */}
+        <div
+          className="admin-card"
+          style={{ padding: "0.9rem 1rem", borderTop: "2px solid var(--amber)", position: "sticky", top: 0 }}
         >
-          + Dividir entre otro método
-        </button>
-
-        {!cuadra && (
-          <p className="alerta-error" style={{ marginTop: "0.6rem" }}>
-            {diferencia > 0
-              ? `Falta asignar ${money(diferencia)} para completar el total.`
-              : `Los montos suman ${money(Math.abs(diferencia))} de más.`}
-          </p>
-        )}
-      </div>
-
-      {/* Resumen en tiempo real */}
-      <div className="admin-card" style={{ padding: "0.9rem 1rem", borderTop: "2px solid var(--amber)" }}>
-        <table className="tabla" style={{ fontSize: "0.85rem" }}>
-          <tbody>
-            <tr><td>Consumo</td><td className="td-num">{money(resumen.consumo)}</td></tr>
-            {resumen.descuento > 0 && (
+          <table className="tabla" style={{ fontSize: "0.85rem" }}>
+            <tbody>
+              <tr><td>Consumo</td><td className="td-num">{money(resumen.consumo)}</td></tr>
+              {resumen.descuento > 0 && (
+                <tr>
+                  <td style={{ color: "var(--red)" }}>Descuento</td>
+                  <td className="td-num" style={{ color: "var(--red)" }}>-{money(resumen.descuento)}</td>
+                </tr>
+              )}
+              <tr><td>Subtotal</td><td className="td-num">{money(resumen.subtotal)}</td></tr>
+              <tr><td>Servicio 10%</td><td className="td-num">{money(resumen.servicio)}</td></tr>
+              <tr><td>Propina</td><td className="td-num">{money(resumen.propina)}</td></tr>
               <tr>
-                <td style={{ color: "var(--red)" }}>Descuento</td>
-                <td className="td-num" style={{ color: "var(--red)" }}>-{money(resumen.descuento)}</td>
+                <td style={{ fontWeight: 700 }}>Total</td>
+                <td className="td-num td-monto" style={{ fontWeight: 700, fontSize: "1rem" }}>{money(resumen.total)}</td>
               </tr>
-            )}
-            <tr><td>Subtotal</td><td className="td-num">{money(resumen.subtotal)}</td></tr>
-            <tr><td>Servicio 10%</td><td className="td-num">{money(resumen.servicio)}</td></tr>
-            <tr><td>Propina</td><td className="td-num">{money(resumen.propina)}</td></tr>
-            <tr>
-              <td style={{ fontWeight: 700 }}>Total</td>
-              <td className="td-num td-monto" style={{ fontWeight: 700, fontSize: "1rem" }}>{money(resumen.total)}</td>
-            </tr>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
     </Modal>
   );
@@ -692,12 +714,12 @@ const DetalleMesa = ({
   cajaAbierta,
 }) => {
   // ── Estados EXISTENTES (sin tocar su comportamiento) ───────────
-  const [modoDivision,         setModoDivision]         = useState(false);
+  const [modoDivision, setModoDivision] = useState(false);
   const [indicesSeleccionados, setIndicesSeleccionados] = useState([]);
-  const [procesando,           setProcesando]           = useState(false);
-  const [modalPin,             setModalPin]             = useState(null);
-  const [modalMover,           setModalMover]           = useState(false);
-  const [avisoMin,             setAvisoMin]             = useState(null);
+  const [procesando, setProcesando] = useState(false);
+  const [modalPin, setModalPin] = useState(null);
+  const [modalMover, setModalMover] = useState(false);
+  const [avisoMin, setAvisoMin] = useState(null);
 
   // ── Estado local del pedido para optimistic updates (sin cambios)
   const [pedidoLocal, setPedidoLocal] = useState(mesa.pedido || []);
@@ -711,9 +733,9 @@ const DetalleMesa = ({
 
   // ── subcuentas ──────────────────────────────────────────────────
   // [{ id, nombre, items: [{ item_id, nombre, precio, cantidad }] }]
-  const [subcuentas, setSubcuentas]                 = useState([]);
+  const [subcuentas, setSubcuentas] = useState([]);
   const [modalNuevaSubcuenta, setModalNuevaSubcuenta] = useState(false);
-  const [subcuentaActivaId, setSubcuentaActivaId]     = useState(null);
+  const [subcuentaActivaId, setSubcuentaActivaId] = useState(null);
   const [modalCantidadSubcuenta, setModalCantidadSubcuenta] = useState(null); // { item, disponible }
 
   // ── modal de configuración de cobro (descuento/servicio/propina/pagos)
@@ -805,14 +827,14 @@ const DetalleMesa = ({
       const existe = s.items.find(i => i.item_id === item.item_id);
       const items = existe
         ? s.items.map(i => i.item_id === item.item_id
-            ? { ...i, cantidad: num(i.cantidad) + cantidad }
-            : i)
+          ? { ...i, cantidad: num(i.cantidad) + cantidad }
+          : i)
         : [...s.items, {
-            item_id: item.item_id,
-            nombre: item.nombre,
-            precio: item.precio,
-            cantidad,
-          }];
+          item_id: item.item_id,
+          nombre: item.nombre,
+          precio: item.precio,
+          cantidad,
+        }];
       return { ...s, items };
     }));
     setModalCantidadSubcuenta(null);
@@ -916,8 +938,8 @@ const DetalleMesa = ({
         <ModalConfigurarCobro
           titulo={
             modalCobro.tipo === "total" ? "💳 Cobrar cuenta principal" :
-            modalCobro.tipo === "subcuenta" ? `💳 Cobrar subcuenta "${subcuentas.find(s => s.id === modalCobro.subcuentaId)?.nombre || ""}"` :
-            "💳 Cobrar productos seleccionados"
+              modalCobro.tipo === "subcuenta" ? `💳 Cobrar subcuenta "${subcuentas.find(s => s.id === modalCobro.subcuentaId)?.nombre || ""}"` :
+                "💳 Cobrar productos seleccionados"
           }
           items={modalCobro.items}
           onConfirmar={handleConfirmarCobro}
@@ -1259,8 +1281,8 @@ const DetalleMesa = ({
                     <tbody>
                       {pedidoLocal.map((item, idx) => {
                         const seleccionado = indicesSeleccionados.includes(idx);
-                        const precio       = num(item.precio);
-                        const cantidad     = num(item.cantidad);
+                        const precio = num(item.precio);
+                        const cantidad = num(item.cantidad);
                         const enModoSimple = modoDivision && divisionTipo === "simple";
 
                         return (
@@ -1350,16 +1372,12 @@ export default DetalleMesa;
 //
 // 3. Modales: usan `createPortal(document.body)`, así que siempre cubren
 //    el viewport completo sin importar dónde esté montado el componente
-//    en el árbol (evita el bug de "modal pegado arriba" por `transform`
-//    en algún contenedor padre).
+//    en el árbol.
 //
-// 4. PASE 2 (este archivo): los ajustes de color de botones/tarjetas se
-//    hicieron con `style` inline usando variables ya definidas en
-//    Admin.css (var(--amber), var(--amber-dim), var(--bg-hover), etc.).
-//    Admin.css NO fue modificado. Si más adelante prefieren mover estos
-//    estilos a clases reales en Admin.css para reutilizarlos en otros
-//    componentes, las constantes ESTILO_BTN_GHOST / ESTILO_BTN_SECUNDARIO
-//    / ESTILO_PANEL_ELEVADO de arriba son el punto de partida directo.
+// 4. PASE 3 (este archivo): ModalConfigurarCobro y ModalMoverItems se
+//    rediseñaron a un ancho mayor con layout responsive (grid auto-fit,
+//    sin media queries). Admin.css NO fue modificado — todo usa `style`
+//    inline con variables/tokens ya existentes.
 //
 // 5. Este archivo sigue sin importar ningún CSS propio — reutiliza por
 //    completo las clases de Admin.css (igual que Egresos.jsx).
