@@ -241,7 +241,7 @@ exports.registrarPago = async (req, res) => {
       "SELECT COUNT(*) as n FROM pedidos WHERE mesa_id=? AND estado NOT IN ('pagado','cancelado')",
       [mesa_id]
     );
-    if ((activos[0]?.n || 0) == 0) await Mesa.updateEstado(mesa_id, "libre");
+    if ((activos[0]?.n || 0) == 0) await Mesa.updateEstado(mesa_id, req.restaurante_id, "libre");
 
     res.status(201).json({ ok: true, venta_id });
   } catch (err) {

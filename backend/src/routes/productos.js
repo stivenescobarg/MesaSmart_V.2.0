@@ -12,14 +12,15 @@ const router  = express.Router();
 const { pool } = require("../config/db");
 const auth    = require("../middlewares/authMiddleware");
 const role = require("../middlewares/roleMiddleware");
-
+const publicTenant = require("../middlewares/publicTenantMiddleware");
+const requiereTokenQR = require("../middlewares/qrTokenMiddleware");
 // ────────────────────────────────────────────────────────────
 // GET /api/menu/:restauranteId
 // Ruta PÚBLICA (sin login) — la usa el cliente que escaneó el QR.
 // Devuelve todos los productos de ESE restaurante, con sus
 // categorías, subcategorías, opciones y adiciones.
 // ────────────────────────────────────────────────────────────
-router.get("/:restauranteId", async (req, res) => {
+router.get("/:restauranteId", publicTenant, requiereTokenQR, async (req, res) => {
   const { restauranteId } = req.params;
   try {
       const [productos] = await pool.query(

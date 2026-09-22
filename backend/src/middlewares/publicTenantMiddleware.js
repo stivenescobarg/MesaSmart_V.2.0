@@ -9,8 +9,9 @@ const { pool } = require("../config/db");
 //   3. DEFAULT_RESTAURANTE_SLUG como último recurso, si existe
 module.exports = async (req, res, next) => {
   try {
-    const slug = req.params.slug;
-    const restauranteIdRaw = req.body?.restaurante_id || req.query?.restaurante_id;
+      const slug = req.params.slug;
+    const restauranteIdRaw =
+      req.params.restauranteId || req.body?.restaurante_id || req.query?.restaurante_id;
     const restauranteId = Number(restauranteIdRaw);
 
     let restaurante = null;

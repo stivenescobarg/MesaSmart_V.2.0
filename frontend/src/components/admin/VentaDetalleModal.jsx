@@ -1,4 +1,24 @@
 // frontend/src/components/admin/VentaDetalleModal.jsx
+//
+// PASE DE DISEÑO (solo estilo, cero cambios de lógica):
+// 1. FIX real del "aviso feo": este archivo usaba la clase
+//    `texto-error`, que NO existe en Admin.css (solo existe
+//    `alerta-error`, ya definida con fondo/borde rojo). Por eso el
+//    aviso de "no coincide con los pagos" se veía como texto plano sin
+//    ningún estilo. Se reemplazó por `alerta-error` en los 2 lugares
+//    donde aparecía.
+// 2. El aviso "Esta venta ya fue corregida antes" pasó de un bloque
+//    sin estilo a usar `alerta-info` (misma clase que ya usa Mesas.jsx
+//    para "la caja está cerrada"), para que se vea como un aviso real.
+// 3. Layout más ancho (820px) y en 2 columnas cuando hay espacio:
+//    Productos | Métodos de pago. Descuento/Servicio/Propina se quedan
+//    en fila de 3 como antes. El resumen de totales ahora es una
+//    tarjeta con tabla (igual que el resumen del modal de "Cobrar"),
+//    en vez de 2 líneas de texto sueltas.
+// 4. Toda la lógica (cálculo de totalEsperado, pagosCuadran, guardar,
+//    validaciones) es EXACTAMENTE la misma que ya tenían.
+// ══════════════════════════════════════════════════════════════════
+
 import { useState } from "react";
 import Modal from "./Modal";
 import { cajaService } from "../../services/cajaService";
@@ -22,10 +42,9 @@ const VentaDetalleModal = ({ venta, onClose, onGuardado }) => {
 
   const totalPagos = pagos.reduce((acc, p) => acc + (parseFloat(p.monto) || 0), 0);
 
-  // NUEVO: total esperado según la cuenta real (productos - descuento + servicio + propina).
+  // Total esperado según la cuenta real (productos - descuento + servicio + propina).
   // Debe coincidir con totalPagos o el backend rechazará el guardado — esto solo
-  // le avisa al usuario ANTES de intentar guardar, para que no se lleve la sorpresa
-  // en el error del servidor.
+  // le avisa al usuario ANTES de intentar guardar.
   const consumoActual = items.reduce(
     (acc, it) => acc + (parseFloat(it.precio) || 0) * (parseFloat(it.cantidad) || 0), 0
   );
@@ -93,30 +112,21 @@ const VentaDetalleModal = ({ venta, onClose, onGuardado }) => {
   };
 
   return (
-    // `ancho` es la nueva prop opcional de Modal — le da más espacio
-    // horizontal a este formulario en particular sin tocar el resto
-    // de los modales de tu app (que no la pasan y quedan igual que hoy).
     <Modal
       abierto={true}
       titulo={`Editar venta — Mesa ${venta.mesa_nombre || "—"}`}
       onCancelar={onClose}
       labelCancelar="Cancelar"
-      ancho="560px"
+      ancho="820px"
     >
-      {/* Todo lo de abajo usa tus clases reales (campo-grupo, campo-label,
-          campo-input, btn-primario, btn-secundario, btn-ghost) para que
-          herede automáticamente tu tema claro/oscuro — nada de colores
-          fijos acá. */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
         {venta.ediciones?.length > 0 && (
-          <div className="campo-grupo">
-            <p className="texto-secundario" style={{ marginBottom: "0.3rem" }}>
-              ⚠️ Esta venta ya fue corregida antes:
-            </p>
+          <div className="alerta-info" style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            <strong style={{ fontSize: "0.82rem" }}>⚠️ Esta venta ya fue corregida antes</strong>
             <ul style={{ margin: 0, paddingLeft: "1.1rem" }}>
               {venta.ediciones.map((e, i) => (
-                <li key={i} className="texto-muted" style={{ fontSize: "0.8rem" }}>
+                <li key={i} style={{ fontSize: "0.78rem", opacity: 0.9 }}>
                   {new Date(e.editado_en).toLocaleString("es-CO")} — {e.editado_por}: "{e.motivo}"
                 </li>
               ))}
@@ -124,100 +134,143 @@ const VentaDetalleModal = ({ venta, onClose, onGuardado }) => {
           </div>
         )}
 
-        <div className="campo-grupo">
-          <label className="campo-label">Productos</label>
+        {/* Productos y Métodos de pago lado a lado cuando hay espacio;
+            se apilan solos en pantallas angostas (auto-fit, sin media queries) */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.25rem" }}>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {items.map((it, i) => (
-              <div key={i} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <input
-                  className="campo-input"
-                  style={{ flex: 1, minWidth: 0 }}
-                  value={it.nombre}
-                  onChange={(e) => actualizarItem(i, "nombre", e.target.value)}
-                  placeholder="Producto"
-                />
-                <input
-                  className="campo-input"
-                  style={{ width: 64, flex: "none", textAlign: "center" }}
-                  type="number" min="0"
-                  value={it.cantidad}
-                  onChange={(e) => actualizarItem(i, "cantidad", e.target.value)}
-                />
-                <input
-                  className="campo-input"
-                  style={{ width: 120, flex: "none" }}
-                  type="number" min="0"
-                  value={it.precio}
-                  onChange={(e) => actualizarItem(i, "precio", e.target.value)}
-                />
-                <button className="btn-ghost" onClick={() => eliminarItem(i)}>✕</button>
-              </div>
-            ))}
-          </div>
+          <div className="campo-grupo" style={{ marginBottom: 0 }}>
+            <label className="campo-label">Productos</label>
 
-          <button className="btn-secundario" onClick={agregarItem} style={{ marginTop: "0.6rem" }}>
-            + Agregar producto
-          </button>
-        </div>
-
-        <div className="campo-grupo">
-          <label className="campo-label">Métodos de pago</label>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {pagos.map((p, i) => (
-              <div key={i} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <select
-                  className="campo-input"
-                  style={{ flex: 1, minWidth: 0 }}
-                  value={p.metodo_pago}
-                  onChange={(e) => actualizarPago(i, "metodo_pago", e.target.value)}
+            {/* grid con columnas de ancho FIJO (nombre flexible, cantidad y
+                precio fijos, botón fijo) para que todas las filas queden
+                perfectamente alineadas sin importar cuántas haya.
+                El precio se ensanchó (antes 100px se veía cortado por las
+                flechitas del input number) */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {items.map((it, i) => (
+                <div
+                  key={i}
+                  style={{ display: "grid", gridTemplateColumns: "1fr 60px 135px auto", gap: "0.5rem", alignItems: "center" }}
                 >
-                  <option value="efectivo">Efectivo</option>
-                  <option value="tarjeta">Tarjeta</option>
-                  <option value="transferencia">Transferencia</option>
-                </select>
-                <input
-                  className="campo-input"
-                  style={{ width: 140, flex: "none" }}
-                  type="number" min="0"
-                  value={p.monto}
-                  onChange={(e) => actualizarPago(i, "monto", e.target.value)}
-                />
-                <button className="btn-ghost" onClick={() => eliminarPago(i)}>✕</button>
-              </div>
-            ))}
+                  <input
+                    className="campo-input"
+                    style={{ width: "100%", minWidth: 0 }}
+                    value={it.nombre}
+                    onChange={(e) => actualizarItem(i, "nombre", e.target.value)}
+                    placeholder="Producto"
+                  />
+                  <input
+                    className="campo-input"
+                    style={{ width: "100%", textAlign: "center", padding: "0.6rem 0.4rem" }}
+                    type="number" min="0"
+                    value={it.cantidad}
+                    onChange={(e) => actualizarItem(i, "cantidad", e.target.value)}
+                  />
+                  <input
+                    className="campo-input"
+                    style={{ width: "100%", paddingRight: "1.6rem" }}
+                    type="number" min="0"
+                    value={it.precio}
+                    onChange={(e) => actualizarItem(i, "precio", e.target.value)}
+                  />
+                  <button className="btn-ghost" style={{ padding: "0 0.6rem" }} onClick={() => eliminarItem(i)}>✕</button>
+                </div>
+              ))}
+            </div>
+
+            <button className="btn-secundario" onClick={agregarItem} style={{ marginTop: "0.6rem" }}>
+              + Agregar producto
+            </button>
           </div>
 
-          <button className="btn-secundario" onClick={agregarPago} style={{ marginTop: "0.6rem" }}>
-            + Agregar método
-          </button>
+          <div className="campo-grupo" style={{ marginBottom: 0 }}>
+            <label className="campo-label">Métodos de pago</label>
 
-          <p className="texto-secundario" style={{ marginTop: "0.6rem" }}>
-            Total con estos pagos: <strong>{COP(totalPagos)}</strong>
-          </p>
-          <p className={pagosCuadran ? "texto-secundario" : "texto-error"} style={{ marginTop: "0.2rem" }}>
-            Total de la cuenta (productos − descuento + servicio + propina): <strong>{COP(totalEsperado)}</strong>
-            {!pagosCuadran && " — no coincide con los pagos. Ajusta los montos antes de guardar."}
-          </p>
+            {/* misma corrección de alineación: grid con columnas fijas en vez
+                de flex, así el select y el monto quedan en la misma
+                posición en todas las filas sin importar cuántas agregues */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {pagos.map((p, i) => (
+                <div
+                  key={i}
+                  style={{ display: "grid", gridTemplateColumns: "1fr 135px auto", gap: "0.5rem", alignItems: "center" }}
+                >
+                  <select
+                    className="campo-input"
+                    style={{ width: "100%", minWidth: 0 }}
+                    value={p.metodo_pago}
+                    onChange={(e) => actualizarPago(i, "metodo_pago", e.target.value)}
+                  >
+                    <option value="efectivo">Efectivo</option>
+                    <option value="tarjeta">Tarjeta</option>
+                    <option value="transferencia">Transferencia</option>
+                  </select>
+                  <input
+                    className="campo-input"
+                    style={{ width: "100%", paddingRight: "1.6rem" }}
+                    type="number" min="0"
+                    value={p.monto}
+                    onChange={(e) => actualizarPago(i, "monto", e.target.value)}
+                  />
+                  <button className="btn-ghost" style={{ padding: "0 0.6rem" }} onClick={() => eliminarPago(i)}>✕</button>
+                </div>
+              ))}
+            </div>
+
+            <button className="btn-secundario" onClick={agregarPago} style={{ marginTop: "0.6rem" }}>
+              + Agregar método
+            </button>
+          </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem" }}>
-          <div className="campo-grupo">
+        {/* Descuento / Servicio / Propina */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.75rem" }}>
+          <div className="campo-grupo" style={{ marginBottom: 0 }}>
             <label className="campo-label">Descuento</label>
             <input className="campo-input" type="number" value={descuento} onChange={e => setDescuento(e.target.value)} />
           </div>
-          <div className="campo-grupo">
+          <div className="campo-grupo" style={{ marginBottom: 0 }}>
             <label className="campo-label">Servicio</label>
             <input className="campo-input" type="number" value={servicio} onChange={e => setServicio(e.target.value)} />
           </div>
-          <div className="campo-grupo">
+          <div className="campo-grupo" style={{ marginBottom: 0 }}>
             <label className="campo-label">Propina</label>
             <input className="campo-input" type="number" value={propina} onChange={e => setPropina(e.target.value)} />
           </div>
         </div>
 
-        <div className="campo-grupo">
+        {/* Resumen de totales — misma info que antes, ahora en tarjeta */}
+        <div className="admin-card" style={{ padding: "0.9rem 1.1rem", borderTop: "2px solid var(--amber)" }}>
+          <table className="tabla" style={{ fontSize: "0.85rem" }}>
+            <tbody>
+              <tr>
+                <td>Total con estos pagos</td>
+                <td className="td-num td-monto">{COP(totalPagos)}</td>
+              </tr>
+              <tr>
+                <td>
+                  Total de la cuenta
+                  <br />
+                  <span className="texto-muted" style={{ fontSize: "0.7rem" }}>
+                    productos − descuento + servicio + propina
+                  </span>
+                </td>
+                <td className="td-num" style={{ fontWeight: 700 }}>{COP(totalEsperado)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* FIX: antes era <p className="texto-error"> (clase inexistente,
+            se veía sin estilo). Ahora usa alerta-error (roja, ya definida
+            en Admin.css) y solo aparece cuando de verdad no cuadra. */}
+        {!pagosCuadran && (
+          <div className="alerta-error">
+            ⚠️ Los pagos no coinciden con el total de la cuenta. Ajusta los montos antes de guardar.
+          </div>
+        )}
+
+        <div className="campo-grupo" style={{ marginBottom: 0 }}>
           <label className="campo-label">Motivo de la corrección</label>
           <textarea
             className="campo-input"
@@ -228,7 +281,7 @@ const VentaDetalleModal = ({ venta, onClose, onGuardado }) => {
           />
         </div>
 
-        <div className="campo-grupo">
+        <div className="campo-grupo" style={{ marginBottom: 0, maxWidth: "220px" }}>
           <label className="campo-label">PIN de seguridad</label>
           <input
             className="campo-input"
@@ -239,7 +292,8 @@ const VentaDetalleModal = ({ venta, onClose, onGuardado }) => {
           />
         </div>
 
-        {error && <p className="texto-error">{error}</p>}
+        {/* FIX: mismo problema — antes texto-error, ahora alerta-error */}
+        {error && <div className="alerta-error">{error}</div>}
 
         <button className="btn-primario btn-ancho" onClick={handleGuardar} disabled={guardando || !pagosCuadran}>
           {guardando ? "Guardando..." : "Guardar corrección"}

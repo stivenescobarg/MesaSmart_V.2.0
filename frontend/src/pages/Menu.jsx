@@ -20,7 +20,7 @@
 // ============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import "./Menu.css";
 import FoodCard from "../components/FoodCard";
 import { API_URL } from "../services/config";
@@ -206,6 +206,8 @@ const Menu = () => {
 
   // ── SaaS: restaurante y mesa vienen de la URL ─────────────
   const { restauranteId, mesaId } = useParams();
+    const [searchParams] = useSearchParams();
+  const qrToken = searchParams.get("t");
 
   // ── Sesión actual (puede ser null si es un cliente sin login) ──
   const { usuario } = useAuth();
@@ -243,6 +245,7 @@ const Menu = () => {
   const productosRef = useRef(null);
     const [pedidosMesa, setPedidosMesa] = useState([]); // lo ya pedido en esta mesa (cocina, no pagado aún)
     const [pedidosBarMesa, setPedidosBarMesa] = useState([]); // lo ya pedido en esta mesa (bar, no pagado aún)
+    const [accesoInvalido, setAccesoInvalido] = useState(false); // 🔒 true si el QR/token ya no es válido
 
   // ── Estados del formulario de quejas ──────────────────────
   const [quejaMsg,     setQuejaMsg]     = useState("");
@@ -286,9 +289,19 @@ const Menu = () => {
   // ── useEffect: cargar menú desde la API ───────────────────
   useEffect(() => {
     if (!restauranteId) return;
-    fetch(`${API_URL}/menu/${restauranteId}`)
-      .then(res => res.json())
+    const qs = esAdmin ? "" : `?mesa_id=${mesaId}&t=${qrToken}`;
+    fetch(`${API_URL}/menu/${restauranteId}${qs}`, {
+      headers: esAdmin ? { Authorization: `Bearer ${authService.getToken()}` } : {},
+    })
+      .then(res => {
+        if (res.status === 403) {
+          setAccesoInvalido(true);
+          return null;
+        }
+        return res.json();
+      })
       .then(data => {
+        if (!data) return; // era un 403, ya se manejó arriba
         const organizado = {};
         data.forEach(prod => {
           const cat = prod.categoria || "Otros";
@@ -339,12 +352,15 @@ const Menu = () => {
   // ── fetchPedidosMesa: trae lo que ya se ha pedido en esta mesa ───
   const fetchPedidosMesa = () => {
     if (!mesaId || !restauranteId) return;
-    fetch(`${API_URL}/pedidos-cocina/mesa/${mesaId}?restaurante_id=${restauranteId}`)
+    const tokenQs = esAdmin ? "" : `&t=${qrToken}`;
+    const headers = esAdmin ? { Authorization: `Bearer ${authService.getToken()}` } : {};
+
+    fetch(`${API_URL}/pedidos-cocina/mesa/${mesaId}?restaurante_id=${restauranteId}${tokenQs}`, { headers })
       .then(res => res.json())
       .then(data => setPedidosMesa(Array.isArray(data) ? data : []))
       .catch(err => console.error("Error al cargar pedidos de cocina:", err));
 
-    fetch(`${API_URL}/bar/ordenes/mesa/${mesaId}?restaurante_id=${restauranteId}`)
+    fetch(`${API_URL}/bar/ordenes/mesa/${mesaId}?restaurante_id=${restauranteId}${tokenQs}`, { headers })
       .then(res => res.json())
       .then(data => setPedidosBarMesa(Array.isArray(data) ? data : []))
       .catch(err => console.error("Error al cargar pedidos de bar:", err));
@@ -479,6 +495,7 @@ const Menu = () => {
           body: JSON.stringify({
             restaurante_id: restauranteId,
             mesa_id: mesaId,
+            t: qrToken,
             observacion: null,
             items: comidas.map(c => ({
               nombre:      c.nombre,
@@ -510,6 +527,8 @@ const Menu = () => {
           body: JSON.stringify({
             restaurante_id: restauranteId,
             mesa: quejaMesa,
+            mesa_id: mesaId,
+            t: qrToken,
               items: bebidas.map(b => ({
               nombre:    b.nombre,
               cantidad:  b.qty,
@@ -898,6 +917,22 @@ const handleToggleDisponible = async (item) => {
 
 
   // ── RENDER ────────────────────────────────────────────────
+  if (accesoInvalido) {
+    return (
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        minHeight: "100vh", textAlign: "center", padding: "40px 24px", gap: "16px",
+        background: "#0f0f0f", color: "#fff",
+      }}>
+        <div style={{ fontSize: "56px" }}>📷</div>
+        <h2 style={{ margin: 0, fontSize: "20px" }}>Este enlace ya no es válido</h2>
+        <p style={{ margin: 0, color: "rgba(255,255,255,0.6)", fontSize: "14px", maxWidth: "320px" }}>
+          Por seguridad, cada código QR corresponde solo a tu mesa. Escanéalo nuevamente para ver el menú y hacer tu pedido.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="menu-container">
 
@@ -1188,9 +1223,9 @@ const handleToggleDisponible = async (item) => {
          {pagado ? (
           <div className="cart-paid">
             <div className="cart-paid-icon">✅</div>
-            <h3>¡Pedido registrado!</h3>
+            <h3>¡Pedido enviado!</h3>
             <p>
-              Dirígete a caja a pagar 🎉<br/>
+              Un mesero va a confirmar tu pedido en un momento. Cuando termines de comer, dirígete a caja a pagar 🎉<br/>
               {quejaMesa && <strong>Tu mesa es la {quejaMesa}</strong>}
             </p>
             <button className="modal-add-btn" style={{ marginTop: "18px", width: "auto", padding: "0 28px" }}

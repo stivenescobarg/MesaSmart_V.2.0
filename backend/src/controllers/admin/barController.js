@@ -41,6 +41,7 @@ exports.crear = async (req, res) => {
       observacion: observacion || null,
       usuario_id: req.usuario?.id || null,
       ip_address: req.ip || req.connection.remoteAddress || null,
+      estado_inicial: req.usuario?.rol === "admin" ? "pendiente" : "pendiente_confirmacion",
     });
 
     if (!resultado.ok) {
@@ -60,6 +61,15 @@ exports.activas = async (req, res) => {
   } catch (err) {
     console.error("[bar/activas]", err);
     res.status(500).json({ msg: "No fue posible obtener las órdenes." });
+  }
+};
+
+exports.porConfirmar = async (req, res) => {
+  try {
+    res.json({ ok: true, ordenes: await OrdenBar.porConfirmar(req.restaurante_id) });
+  } catch (err) {
+    console.error("[bar/porConfirmar]", err);
+    res.status(500).json({ msg: "No fue posible obtener las órdenes por confirmar." });
   }
 };
 

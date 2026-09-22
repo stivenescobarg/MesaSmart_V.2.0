@@ -38,6 +38,17 @@ const OrdenBar = {
     return enriquecerImagenes(rows.map(parseItems));
   },
 
+  async porConfirmar(restaurante_id) {
+    const [rows] = await pool.query(
+      `SELECT id, mesa, items, observacion, creado_en
+       FROM ordenes_bar
+       WHERE restaurante_id = ? AND estado = 'pendiente_confirmacion'
+       ORDER BY creado_en ASC`,
+      [restaurante_id]
+    );
+    return enriquecerImagenes(rows.map(parseItems));
+  },
+
   async historialHoy(restaurante_id) {
     const [rows] = await pool.query(
       `SELECT id, mesa, items, observacion, estado, creado_en, iniciado_en, listo_en
@@ -65,7 +76,8 @@ const OrdenBar = {
     );
     const [ordenes] = await pool.query(
       `SELECT items FROM ordenes_bar
-       WHERE restaurante_id = ? AND (DATE(creado_en) = CURDATE() OR DATE(listo_en) = CURDATE())`,
+       WHERE restaurante_id = ? AND estado NOT IN ('pendiente_confirmacion', 'cancelado')
+         AND (DATE(creado_en) = CURDATE() OR DATE(listo_en) = CURDATE())`,
       [restaurante_id]
     );
     const bebidas_hoy = ordenes.reduce((total, orden) => {
