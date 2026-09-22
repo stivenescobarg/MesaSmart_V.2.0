@@ -1,4 +1,5 @@
 const QRCode = require("qrcode");
+const { generarToken } = require("../utils/qrToken");
 
 // URL del FRONTEND (donde vive la página pública del menú), no la del backend.
 // En local:      http://localhost:5173  (o el puerto de tu Vite/CRA)
@@ -6,7 +7,8 @@ const QRCode = require("qrcode");
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 function urlMenuMesa(restaurante_id, mesa_id) {
-  return `${FRONTEND_URL}/menu/${restaurante_id}/${mesa_id}`;
+  const token = generarToken(restaurante_id, mesa_id);
+  return `${FRONTEND_URL}/menu/${restaurante_id}/${mesa_id}?t=${token}`;
 }
 
 // Para el endpoint GET /:id/qr -> devuelve la imagen como PNG binario

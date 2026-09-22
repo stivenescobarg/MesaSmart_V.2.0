@@ -16,9 +16,12 @@
 // opcional con el resto de los datos: { zona_id, capacidad, forma, pos_x, pos_y }.
 
 import { useState, useEffect } from "react";
+import { createPortal }  from "react-dom";
 import DetalleMesa       from "./DetalleMesa";
 import PlanoRestaurante  from "./PlanoRestaurante";
 import { zonaService }   from "../../services/zonaService";
+import { pedidoService } from "../../services/pedidoService";
+import { barService }    from "../../services/barService";
 
 // Formas disponibles para una mesa (columna `forma` en la BD).
 const FORMAS_MESA = [
@@ -38,6 +41,71 @@ const formInicial = (zonaId = null) => ({
   pos_y:     20,
 });
 
+// ── Modal: pedidos que llegaron por QR y esperan aprobación ─────────
+const ModalConfirmarPedidos = ({ mesa, onConfirmar, onCerrar }) => {
+  const [procesando, setProcesando] = useState(null); // id del grupo en curso
+
+  // Agrupa por pedido_id (cocina) o __ordenBarId (bar) — cada grupo se
+  // confirma con un solo click, aunque tenga varios items adentro.
+  const grupos = [];
+  const vistos = new Set();
+  for (const item of mesa.pedidosPorConfirmar || []) {
+    const clave = item.__origenBar ? `bar-${item.__ordenBarId}` : `cocina-${item.pedido_id}`;
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+    grupos.push({
+      clave,
+      origenBar: !!item.__origenBar,
+      id: item.__origenBar ? item.__ordenBarId : item.pedido_id,
+      items: (mesa.pedidosPorConfirmar || []).filter(i =>
+        item.__origenBar ? i.__ordenBarId === item.__ordenBarId : i.pedido_id === item.pedido_id
+      ),
+    });
+  }
+
+  const confirmarGrupo = async (grupo) => {
+    setProcesando(grupo.clave);
+    await onConfirmar(grupo);
+    setProcesando(null);
+  };
+
+  return createPortal(
+    <div className="modal-overlay" onClick={onCerrar}>
+      <div className="modal-box" style={{ maxWidth: "480px", maxHeight: "88vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header modal-header-normal">
+          <h4 className="modal-titulo">🔔 Pedidos por confirmar — {mesa.nombre}</h4>
+          <button className="modal-cerrar" onClick={onCerrar}>✕</button>
+        </div>
+        <div className="modal-body" style={{ overflowY: "auto", flex: 1 }}>
+          {grupos.length === 0 && <p className="texto-secundario">No hay pedidos pendientes.</p>}
+          {grupos.map(grupo => (
+            <div key={grupo.clave} className="confirmar-grupo">
+              <span className={`confirmar-grupo-etiqueta ${grupo.origenBar ? "bar" : "cocina"}`}>
+                {grupo.origenBar ? "🍹 Barra" : "🍽️ Cocina"}
+              </span>
+              {grupo.items.map((item, i) => (
+                <p key={i} className="confirmar-item">
+                  <span className="confirmar-item-cant">{item.cantidad}×</span>
+                  <span>{item.nombre}</span>
+                  {item.observacion && <span className="confirmar-item-obs">— {item.observacion}</span>}
+                </p>
+              ))}
+              <button
+                className="btn-primario"
+                disabled={procesando === grupo.clave}
+                onClick={() => confirmarGrupo(grupo)}
+              >
+                {procesando === grupo.clave ? "Confirmando..." : "Confirmar y enviar"}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 const Mesas = ({
   mesas,
   cajaAbierta,
@@ -53,6 +121,7 @@ const Mesas = ({
   toast,
 }) => {
   const [mesaSeleccionada, setMesaSeleccionada] = useState(null);
+  const [mesaConfirmando, setMesaConfirmando]   = useState(null);
   const [formMesa,         setFormMesa]          = useState(formInicial());
   const [modoCrear,        setModoCrear]         = useState(false);
   const [modoEliminar,     setModoEliminar]      = useState(false);
@@ -128,12 +197,33 @@ const Mesas = ({
     );
   }
 
+  const handleConfirmarGrupo = async (grupo) => {
+    try {
+      if (grupo.origenBar) {
+        await barService.actualizarEstado(grupo.id, "pendiente");
+      } else {
+        await pedidoService.confirmarCocina(grupo.id);
+      }
+      await onRecargar();
+      toast?.exito?.("Pedido confirmado y enviado.");
+    } catch (err) {
+      toast?.error?.(err.message || "No se pudo confirmar el pedido.");
+    }
+  };
+
   const mesasFiltradas = zonaFiltro
     ? mesas.filter(m => m.zona_id === zonaFiltro)
     : mesas;
 
   return (
     <div className="seccion-container">
+      {mesaConfirmando && (
+        <ModalConfirmarPedidos
+          mesa={mesaConfirmando}
+          onConfirmar={handleConfirmarGrupo}
+          onCerrar={() => setMesaConfirmando(null)}
+        />
+      )}
 
       {/* ── ENCABEZADO ── */}
       <div className="seccion-header">
@@ -342,9 +432,19 @@ const Mesas = ({
             {mesasFiltradas.map(mesa => (
               <div
                 key={mesa.id}
-                className={`mesa-card ${mesa.ocupada ? "ocupada" : "libre"} ${modoEliminar ? "modo-eliminar" : ""}`}
+                className={`mesa-card ${mesa.ocupada ? "ocupada" : "libre"} ${modoEliminar ? "modo-eliminar" : ""} ${mesa.pedidosPorConfirmar?.length > 0 ? "tiene-pendientes" : ""}`}
                 onClick={() => !modoEliminar && setMesaSeleccionada(mesa)}
               >
+                {mesa.pedidosPorConfirmar?.length > 0 && (
+                  <button
+                    className="badge-pendientes"
+                    onClick={e => { e.stopPropagation(); setMesaConfirmando(mesa); }}
+                  >
+                    <span className="badge-pendientes-dot" />
+                    {mesa.pedidosPorConfirmar.length}
+                  </button>
+                )}
+
                 <div
                   className="mesa-barra"
                   style={{

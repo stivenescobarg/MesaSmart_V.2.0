@@ -3,6 +3,8 @@ const express  = require("express");
 const router   = express.Router();
 const { pool } = require("../config/db");
 const auth     = require("../middlewares/authMiddleware");
+const publicTenant = require("../middlewares/publicTenantMiddleware");
+const requiereTokenQR = require("../middlewares/qrTokenMiddleware");
 
 // GET /api/pedidos-cocina — pedidos con ítems de comida
 // 👇 SaaS: ruta PROTEGIDA. Solo trae pedidos DEL restaurante del
@@ -58,7 +60,7 @@ router.get("/", auth, async (req, res) => {
 
 // POST /api/pedidos-cocina — crear pedido desde el menú
 // Ruta PÚBLICA: la usa el cliente sin login (viene del QR de la mesa).
-router.post("/", async (req, res) => {
+router.post("/", publicTenant, requiereTokenQR, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -96,10 +98,11 @@ router.post("/", async (req, res) => {
     const total = items.reduce((acc, i) => acc + (Number(i.precio) * Number(i.cantidad)), 0);
 
     // 👇 el otro cambio clave: restaurante_id ahora sí viaja en el INSERT
+    const estadoInicial = req.usuario?.rol === "admin" ? "pendiente" : "pendiente_confirmacion";
     const [pedidoResult] = await conn.execute(
       `INSERT INTO pedidos (mesa_id, restaurante_id, estado, total, observacion)
-       VALUES (?, ?, 'pendiente', ?, ?)`,
-      [mesaId, restaurante_id, total, observacion || null]
+       VALUES (?, ?, ?, ?, ?)`,
+      [mesaId, restaurante_id, estadoInicial, total, observacion || null]
     );
     const pedidoId = pedidoResult.insertId;
 
@@ -162,7 +165,7 @@ router.patch("/:id/estado", auth, async (req, res) => {
 // en su propia mesa (evita que pida duplicado por accidente).
 // Solo trae pedidos activos (no pagados ni cancelados).
 // ────────────────────────────────────────────────────────────
-router.get("/mesa/:mesaId", async (req, res) => {
+router.get("/mesa/:mesaId", publicTenant, requiereTokenQR, async (req, res) => {
   try {
     const { mesaId } = req.params;
     const { restaurante_id } = req.query;
@@ -184,6 +187,91 @@ router.get("/mesa/:mesaId", async (req, res) => {
   } catch (err) {
     console.error("❌ Error GET /api/pedidos-cocina/mesa/:mesaId:", err);
     res.status(500).json({ error: "Error al obtener pedidos de la mesa" });
+  }
+});
+// PATCH /api/pedidos-cocina/:id/confirmar
+// El mesero/admin confirma un pedido que llegó por QR antes de que se
+// mande a cocina. Solo pasa de 'pendiente_confirmacion' a 'pendiente'.
+router.patch("/:id/confirmar", auth, async (req, res) => {
+  try {
+    const restauranteId = req.usuario.restaurante_id;
+    const [[pedido]] = await pool.query(
+      "SELECT id, estado FROM pedidos WHERE id = ? AND restaurante_id = ?",
+      [req.params.id, restauranteId]
+    );
+    if (!pedido) return res.status(404).json({ error: "Pedido no encontrado" });
+    if (pedido.estado !== "pendiente_confirmacion") {
+      return res.status(409).json({ error: `No se puede confirmar un pedido en estado ${pedido.estado}` });
+    }
+    await pool.execute(
+      "UPDATE pedidos SET estado = 'pendiente' WHERE id = ? AND restaurante_id = ?",
+      [req.params.id, restauranteId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("❌ Error PATCH /api/pedidos-cocina/:id/confirmar:", err);
+    res.status(500).json({ error: "Error al confirmar pedido" });
+  }
+});
+
+// GET /api/pedidos-cocina/por-confirmar — lista para el panel del mesero/admin
+router.get("/por-confirmar", auth, async (req, res) => {
+  try {
+    const restauranteId = req.usuario.restaurante_id;
+    const [pedidos] = await pool.query(`
+      SELECT p.id, p.observacion, p.creado_en, m.nombre AS mesa
+      FROM pedidos p
+      LEFT JOIN mesas m ON p.mesa_id = m.id
+      WHERE p.estado = 'pendiente_confirmacion' AND p.restaurante_id = ?
+      ORDER BY p.creado_en ASC
+    `, [restauranteId]);
+    res.json(pedidos);
+  } catch (err) {
+    console.error("❌ Error GET /api/pedidos-cocina/por-confirmar:", err);
+    res.status(500).json({ error: "Error al obtener pedidos por confirmar" });
+  }
+});
+
+// PATCH /api/pedidos-cocina/:id/confirmar
+// El mesero/admin confirma un pedido que llegó por QR antes de que se
+// mande a cocina. Solo pasa de 'pendiente_confirmacion' a 'pendiente'.
+router.patch("/:id/confirmar", auth, async (req, res) => {
+  try {
+    const restauranteId = req.usuario.restaurante_id;
+    const [[pedido]] = await pool.query(
+      "SELECT id, estado FROM pedidos WHERE id = ? AND restaurante_id = ?",
+      [req.params.id, restauranteId]
+    );
+    if (!pedido) return res.status(404).json({ error: "Pedido no encontrado" });
+    if (pedido.estado !== "pendiente_confirmacion") {
+      return res.status(409).json({ error: `No se puede confirmar un pedido en estado ${pedido.estado}` });
+    }
+    await pool.execute(
+      "UPDATE pedidos SET estado = 'pendiente' WHERE id = ? AND restaurante_id = ?",
+      [req.params.id, restauranteId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("❌ Error PATCH /api/pedidos-cocina/:id/confirmar:", err);
+    res.status(500).json({ error: "Error al confirmar pedido" });
+  }
+});
+
+// GET /api/pedidos-cocina/por-confirmar — lista para el panel del mesero/admin
+router.get("/por-confirmar", auth, async (req, res) => {
+  try {
+    const restauranteId = req.usuario.restaurante_id;
+    const [pedidos] = await pool.query(`
+      SELECT p.id, p.observacion, p.creado_en, m.nombre AS mesa
+      FROM pedidos p
+      LEFT JOIN mesas m ON p.mesa_id = m.id
+      WHERE p.estado = 'pendiente_confirmacion' AND p.restaurante_id = ?
+      ORDER BY p.creado_en ASC
+    `, [restauranteId]);
+    res.json(pedidos);
+  } catch (err) {
+    console.error("❌ Error GET /api/pedidos-cocina/por-confirmar:", err);
+    res.status(500).json({ error: "Error al obtener pedidos por confirmar" });
   }
 });
 

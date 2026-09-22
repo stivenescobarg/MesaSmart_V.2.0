@@ -31,14 +31,20 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
   .split(",")
   .map((origin) => origin.trim());
 
+const isDev = process.env.NODE_ENV !== "production";
+const ngrokRegex = /^https:\/\/[a-z0-9-]+\.ngrok-free\.(dev|app)$/;
+
 app.use(cors({
   origin: (origin, callback) => {
     // Permite peticiones sin origin (ej. Postman, health checks)
     if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`Origin no permitido por CORS: ${origin}`));
+      return callback(null, true);
     }
+    // Solo en desarrollo: permite cualquier túnel ngrok, cuyo subdominio cambia cada vez
+    if (isDev && ngrokRegex.test(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error(`Origin no permitido por CORS: ${origin}`));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -75,6 +81,14 @@ app.use("/api/ingredientes", ingredienteRoutes);
 
 app.get("/api/ping", (_req, res) => {
   res.json({ ok: true, msg: "MesaSmart API activa" });
+});
+
+// Manejador de errores de CORS: responde 403 en vez de 500 sin controlar
+app.use((err, req, res, next) => {
+  if (err.message?.startsWith("Origin no permitido por CORS")) {
+    return res.status(403).json({ error: err.message });
+  }
+  next(err);
 });
 
 module.exports = app;

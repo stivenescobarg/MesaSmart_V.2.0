@@ -3,8 +3,8 @@ const { pool } = require("../config/db");
 const BarAuditLog = require("../models/BarAuditLog");
 
 const barOrderService = {
-  async crear({ restaurante_id, mesa, items, observacion, usuario_id, ip_address }) {
-    const conn = await pool.getConnection();
+  async crear({ restaurante_id, mesa, items, observacion, usuario_id, ip_address, estado_inicial = "pendiente_confirmacion" }) {
+        const conn = await pool.getConnection();
 
     try {
       await conn.beginTransaction();
@@ -56,15 +56,16 @@ const barOrderService = {
         }
       }
 
-      const [ordenResult] = await conn.execute(
-        `INSERT INTO ordenes_bar (restaurante_id, mesa, items, observacion, usuario_id)
-         VALUES (?, ?, ?, ?, ?)`,
+            const [ordenResult] = await conn.execute(
+        `INSERT INTO ordenes_bar (restaurante_id, mesa, items, observacion, usuario_id, estado)
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [
           restaurante_id,
           mesa.trim(),
           JSON.stringify(items),
           observacion || null,
           usuario_id || null,
+          estado_inicial,
         ]
       );
 
@@ -137,6 +138,7 @@ const barOrderService = {
       }
 
       const transiciones = {
+        pendiente_confirmacion: ["pendiente", "cancelado"],
         pendiente: ["en_preparacion", "cancelado", "pagado"],
         en_preparacion: ["listo", "cancelado", "pagado"],
         listo: ["pagado"],

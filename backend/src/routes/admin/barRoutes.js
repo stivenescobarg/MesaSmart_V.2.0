@@ -7,10 +7,11 @@ const publicTenant = require("../../middlewares/publicTenantMiddleware");
 const role = require("../../middlewares/roleMiddleware");
 const controller = require("../../controllers/admin/barController");
 const barSecurityService = require("../../services/barSecurityService");
+const requiereTokenQR = require("../../middlewares/qrTokenMiddleware");
 
 // El menú público crea las órdenes; la operación del bar exige una sesión autorizada.
-router.post(["/ordenes", "/:slug/ordenes"], publicTenant, controller.crear);
-router.get("/ordenes/mesa/:mesaId", async (req, res) => {
+router.post(["/ordenes", "/:slug/ordenes"], publicTenant, requiereTokenQR, controller.crear);
+router.get("/ordenes/mesa/:mesaId", publicTenant, requiereTokenQR, async (req, res) => {
   try {
     const { mesaId } = req.params;
     const { restaurante_id } = req.query;
@@ -40,6 +41,7 @@ router.get("/ordenes/mesa/:mesaId", async (req, res) => {
 });
 
 router.get("/ordenes", auth, tenant, role(["admin", "bartender"]), controller.activas);
+router.get("/ordenes/por-confirmar", auth, tenant, role(["admin", "bartender"]), controller.porConfirmar);
 router.get("/historial", auth, tenant, role(["admin", "bartender"]), controller.historialHoy);
 router.get("/resumen", auth, tenant, role(["admin", "bartender"]), controller.resumen);
 router.get("/inventario", auth, tenant, role(["admin", "bartender"]), controller.inventario);

@@ -13,4 +13,9 @@ export const pedidoService = {
   // Mover una lista de items a otra mesa
   moverItems:   (item_ids, mesa_destino_id) =>
     api.patch("/pedidos/items/mover", { item_ids, mesa_destino_id }),
+
+  // Confirmar un pedido que llegó por QR y está pendiente_confirmacion.
+  // Vive en el router de "pedidos-cocina" (distinto de /pedidos), por eso
+  // la ruta completa es explícita acá en vez de reusar el prefijo de arriba.
+  confirmarCocina: (pedido_id) => api.patch(`/pedidos-cocina/${pedido_id}/confirmar`),
 };

@@ -17,7 +17,19 @@ const Mesa = {
                 dp.categoria, dp.observacion, p.id as pedido_id, p.estado, p.total
          FROM pedidos p
          JOIN detalle_pedido dp ON dp.pedido_id = p.id
-         WHERE p.mesa_id = ? AND p.estado NOT IN ('pagado','cancelado')
+         WHERE p.mesa_id = ? AND p.estado NOT IN ('pagado','cancelado','pendiente_confirmacion')
+         ORDER BY p.creado_en`,
+        [m.id]
+      );
+
+      // Pedidos que llegaron por QR y todavía nadie confirmó — se muestran
+      // aparte, nunca mezclados con el pedido "real" de la mesa.
+      const [itemsPorConfirmar] = await pool.execute(
+        `SELECT dp.id as item_id, dp.nombre, dp.cantidad, dp.precio,
+                dp.categoria, dp.observacion, p.id as pedido_id, p.estado
+         FROM pedidos p
+         JOIN detalle_pedido dp ON dp.pedido_id = p.id
+         WHERE p.mesa_id = ? AND p.estado = 'pendiente_confirmacion'
          ORDER BY p.creado_en`,
         [m.id]
       );
@@ -27,7 +39,14 @@ const Mesa = {
       const [ordenesBar] = await pool.execute(
   `SELECT id, items, estado
    FROM ordenes_bar
-   WHERE restaurante_id = ? AND mesa = ? AND estado NOT IN ('cancelado','pagado')`,
+   WHERE restaurante_id = ? AND mesa = ? AND estado NOT IN ('cancelado','pagado','pendiente_confirmacion')`,
+  [restaurante_id, String(m.id)]
+);
+
+      const [ordenesBarPorConfirmar] = await pool.execute(
+  `SELECT id, items, estado
+   FROM ordenes_bar
+   WHERE restaurante_id = ? AND mesa = ? AND estado = 'pendiente_confirmacion'`,
   [restaurante_id, String(m.id)]
 );
 
@@ -55,8 +74,33 @@ const Mesa = {
         });
       });
       
+      const itemsBarPorConfirmar = [];
+      ordenesBarPorConfirmar.forEach(orden => {
+        let parsedItems = [];
+        try {
+          parsedItems = typeof orden.items === "string"
+            ? JSON.parse(orden.items)
+            : (orden.items || []);
+        } catch { parsedItems = []; }
+        parsedItems.forEach((item, idx) => {
+          itemsBarPorConfirmar.push({
+            item_id:      `bar-${orden.id}-${idx}`,
+            nombre:       item.nombre,
+            cantidad:     item.cantidad,
+            precio:       Number(item.precio) || 0,
+            categoria:    "bebida",
+            observacion:  [item.opcion, ...(item.adiciones || [])].filter(Boolean).join(", ") || null,
+            pedido_id:    null,
+            estado:       orden.estado,
+            __origenBar:  true,
+            __ordenBarId: orden.id,
+          });
+        });
+      });
+
       const pedidoCompleto = [...items, ...itemsBar];
       m.pedido    = pedidoCompleto;
+      m.pedidosPorConfirmar = [...itemsPorConfirmar, ...itemsBarPorConfirmar];
       m.ocupada   = pedidoCompleto.length > 0;
       m.total     = pedidoCompleto.reduce((a, i) => a + (parseFloat(i.precio) || 0) * i.cantidad, 0);
       m.pos_x     = parseInt(m.pos_x)     || 0;
